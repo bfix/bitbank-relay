@@ -92,6 +92,8 @@ func main() {
 			continue
 		}
 		bpk.Data.Version = version
+		coin.Pk = bpk.String()
+
 		// get handler
 		hdlr, err := lib.GetHandler(coin.Name)
 		if err != nil {
@@ -104,8 +106,6 @@ func main() {
 			fmt.Println("<<< ERROR: " + err.Error())
 			continue
 		}
-		// save computed values
-		coin.Pk = bpk.String()
 		coin.Addr = addr
 	}
 	// save to configuration file
