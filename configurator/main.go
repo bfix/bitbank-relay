@@ -37,6 +37,7 @@ func main() {
 	// N.B.: This is not a BIP39 password added to the list of seed words,
 	// but a passphrase used to generate the seed words for a BIP39 wallet.
 	fmt.Printf(">>> Passphrase: ")
+
 	rdr := bufio.NewReader(os.Stdin)
 	in, _, err := rdr.ReadLine()
 	if err != nil {
@@ -79,14 +80,14 @@ func main() {
 	}
 	// process all entries
 	for _, coin := range cfg.Coins {
-		version := coin.GetMode()
+		fmt.Printf("<<<    Processing '%s'...\n", coin.Name)
+		version := coin.GetXDVersion()
 		if version == 0 {
 			fmt.Printf("<<< ERROR: No valid version specified (%s)\n", coin.Name)
 			continue
 		}
 		// get base extended public key for given account
-		path := coin.Path + "/0/0"
-		bpk, err := hd.Public(path)
+		bpk, err := hd.Public(coin.Path)
 		if err != nil {
 			fmt.Println("<<< ERROR: " + err.Error())
 			continue
@@ -101,6 +102,12 @@ func main() {
 			continue
 		}
 		// compute base account address
+		bpk, err = hd.Public(coin.Path + "/0/0")
+		if err != nil {
+			fmt.Println("<<< ERROR: " + err.Error())
+			continue
+		}
+		bpk.Data.Version = version
 		addr, err := hdlr.GetAddress(bpk.Data)
 		if err != nil {
 			fmt.Println("<<< ERROR: " + err.Error())

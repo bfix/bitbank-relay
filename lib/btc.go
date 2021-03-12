@@ -43,9 +43,9 @@ func (hdlr *BtcHandler) GetAddress(ed *wallet.ExtendedData) (string, error) {
 	}
 	switch ed.Version {
 	case wallet.XpubVersion:
-		return bitcoin.MakeAddress(pk, bitcoin.P2PKH), nil
+		return wallet.MakeAddress(pk, 0, wallet.AddrP2PKH, wallet.AddrMain), nil
 	case wallet.YpubVersion:
-		return bitcoin.MakeAddress(pk, bitcoin.P2SH), nil
+		return wallet.MakeAddress(pk, 0, wallet.AddrP2SH, wallet.AddrMain), nil
 	}
 	return "", fmt.Errorf("Unknown key data")
 }

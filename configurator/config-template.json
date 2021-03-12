@@ -5,7 +5,7 @@
             "descr": "Bitcoin",
             "pk": "",
             "path": "m/49'/0'/0'",
-            "mode": "0x049d7cb2",
+            "mode": "P2SH",
             "addr": ""
         },
         {
@@ -13,7 +13,7 @@
             "descr": "Bitcoin Cash",
             "pk": "",
             "path": "m/44'/145'/0'",
-            "mode": "0x0488b21e",
+            "mode": "P2PKH",
             "addr": ""
         },
         {
@@ -21,7 +21,7 @@
             "descr": "Bitcoin Gold",
             "pk": "",
             "path": "m/49'/156'/0'",
-            "mode": "0x049d7cb2",
+            "mode": "P2SH",
             "addr": ""
         },
         {
@@ -29,7 +29,7 @@
             "descr": "Dash",
             "pk": "",
             "path": "m/44'/5'/0'",
-            "mode": "0x02fe52cc",
+            "mode": "P2PKH",
             "addr": ""
         },
         {
@@ -37,7 +37,7 @@
             "descr": "Digibyte",
             "pk": "",
             "path": "m/49'/20'/0'",
-            "mode": "0x049d7cb2",
+            "mode": "P2SH",
             "addr": ""
         },
         {
@@ -45,7 +45,7 @@
             "descr": "Dogecoin",
             "pk": "",
             "path": "m/44'/3'/0'",
-            "mode": "0x02facafd",
+            "mode": "P2PKH",
             "addr": ""
         },
         {
@@ -53,7 +53,7 @@
             "descr": "Litecoin",
             "pk": "",
             "path": "m/49'/2'/0'",
-            "mode": "0x01b26ef6",
+            "mode": "P2SH",
             "addr": ""
         },
         {
@@ -61,7 +61,7 @@
             "descr": "Namecoin",
             "pk": "",
             "path": "m/44'/7'/0'",
-            "mode": "0x0488b21e",
+            "mode": "P2PKH",
             "addr": ""
         },
         {
@@ -69,7 +69,7 @@
             "descr": "Vertcoin",
             "pk": "",
             "path": "m/49'/28'/0'",
-            "mode": "0x049d7cb2",
+            "mode": "P2SH",
             "addr": ""
         },
         {
@@ -77,7 +77,7 @@
             "descr": "ZCash",
             "pk": "",
             "path": "m/44'/133'/0'",
-            "mode": "0x0488b21e",
+            "mode": "P2PKH",
             "addr": ""
         },
         {
@@ -85,7 +85,7 @@
             "descr": "Ethereum",
             "pk": "",
             "path": "m/44'/60'/0'",
-            "mode": "0x0488b21e",
+            "mode": "P2PKH",
             "addr": ""
         },
         {
@@ -93,7 +93,7 @@
             "descr": "Ethereum Classic",
             "pk": "",
             "path": "m/44'/61'/0'",
-            "mode": "0x0488b21e",
+            "mode": "P2PKH",
             "addr": ""
         }
     ]

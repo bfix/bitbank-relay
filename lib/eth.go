@@ -28,14 +28,14 @@ import (
 )
 
 func init() {
-	handlers["bch"] = &BchHandler{}
+	handlers["eth"] = &EthHandler{}
 }
 
-type BchHandler struct {
+type EthHandler struct {
 }
 
 // GetAddress returns a wallet address.
-func (hdlr *BchHandler) GetAddress(ed *wallet.ExtendedData) (string, error) {
+func (hdlr *EthHandler) GetAddress(ed *wallet.ExtendedData) (string, error) {
 
 	pk, err := bitcoin.PublicKeyFromBytes(ed.Keydata)
 	if err != nil {
@@ -43,9 +43,9 @@ func (hdlr *BchHandler) GetAddress(ed *wallet.ExtendedData) (string, error) {
 	}
 	switch ed.Version {
 	case wallet.XpubVersion:
-		return wallet.MakeAddress(pk, 145, wallet.AddrP2PKH, wallet.AddrMain), nil
+		return wallet.MakeAddress(pk, 60, wallet.AddrP2PKH, wallet.AddrMain), nil
 	case wallet.YpubVersion:
-		return wallet.MakeAddress(pk, 145, wallet.AddrP2SH, wallet.AddrMain), nil
+		return wallet.MakeAddress(pk, 60, wallet.AddrP2SH, wallet.AddrMain), nil
 	}
-	return "", fmt.Errorf("Unknown key data: %x", ed.Version)
+	return "", fmt.Errorf("Unknown key data")
 }

@@ -24,8 +24,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"strconv"
-	"strings"
+
+	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
 // CoinConfig is a configuration for a supported coin (Bitcoin or Altcoin)
@@ -34,22 +34,34 @@ type CoinConfig struct {
 	Descr string `json:"descr"` // coin description
 	Path  string `json:"path"`  // base derivation path like "m/44'/0'/0'/0/0"
 	Pk    string `json:"pk"`    // public key for coin
-	Mode  string `json:"mode"`  // address version (public key)
+	Mode  string `json:"mode"`  // address version (P2PKH, P2SH, ...)
 	Addr  string `json:"addr"`  // address for base derivation path
 }
 
-func (c *CoinConfig) GetMode() uint32 {
-	var val int64
-	var err error
-	if strings.HasPrefix(c.Mode, "0x") {
-		val, err = strconv.ParseInt(c.Mode[2:], 16, 32)
-	} else {
-		val, err = strconv.ParseInt(c.Mode, 10, 32)
+// GetXDVersion returns the extended data version for coin
+func (c *CoinConfig) GetXDVersion() uint32 {
+	var m   int
+	switch c.Mode {
+	case "P2PKH":
+		m = wallet.AddrP2PKH
+	case "P2SH":
+		m = wallet.AddrP2SH
+	case "P2WPKH":
+		m = wallet.AddrP2WPKH
+	case "P2WSH":
+		m = wallet.AddrP2WSH
+	case "P2WPKHinP2SH":
+		m = wallet.AddrP2WPKHinP2SH
+	case "P2WSHinP2SH":
+		m = wallet.AddrP2WSHinP2SH
+	default:
+		return 0
 	}
-	if err != nil {
-		val = 0
+	coin := wallet.GetCoinID(c.Name)
+	if coin < 0 {
+		return 0
 	}
-	return uint32(val)
+	return wallet.GetXDVersion(coin, m, wallet.AddrMain, true)
 }
 
 // Config holds overall configuration settings
