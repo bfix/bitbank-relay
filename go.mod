@@ -2,6 +2,6 @@ module addresser
 
 go 1.16
 
-require github.com/bfix/gospel v1.2.5
+require github.com/bfix/gospel v1.2.6
 
-replace github.com/bfix/gospel v1.2.5 => /vault/prj/libs/Go/Gospel
+replace github.com/bfix/gospel v1.2.6 => /vault/prj/libs/Go/Gospel
