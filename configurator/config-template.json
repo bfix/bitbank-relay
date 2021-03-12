@@ -84,16 +84,16 @@
             "name": "eth",
             "descr": "Ethereum",
             "pk": "",
-            "path": "m/44'/60'/0'",
-            "mode": "P2PKH",
+            "path": "m/44'/60'/0'/0",
+            "mode": "",
             "addr": ""
         },
         {
             "name": "etc",
             "descr": "Ethereum Classic",
             "pk": "",
-            "path": "m/44'/61'/0'",
-            "mode": "P2PKH",
+            "path": "m/44'/61'/0'/0",
+            "mode": "",
             "addr": ""
         }
     ]

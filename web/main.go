@@ -22,6 +22,7 @@ package main
 
 import (
 	"addresser/lib"
+	"fmt"
 	"log"
 
 	"github.com/bfix/gospel/bitcoin/wallet"
@@ -40,36 +41,29 @@ func main() {
 		log.Println("--------------------------------")
 		log.Printf("Coin: '%s'", coin.Name)
 
-		// construct public HD wallet for account
-		pk, err := wallet.ParseExtendedPublicKey(coin.Pk)
-		if err != nil {
-			log.Printf("Pk: %s\n", err.Error())
-			continue
-		}
-		hd := wallet.NewHDPublic(pk, coin.Path)
-
-		// get base extended public key for given account
-		path := coin.Path + "/0/0"
-		bpk, err := hd.Public(path)
-		if err != nil {
-			log.Printf("hd.Public: %s\n", err.Error())
-			continue
-		}
-
 		// get handler
 		hdlr, err := lib.GetHandler(coin.Name)
 		if err != nil {
 			log.Printf("GetHandler: %s\n", err.Error())
 			continue
 		}
-		// verify handler
-		addr, err := hdlr.GetAddress(bpk.Data)
+		// compute base account address
+		bpk, err := wallet.ParseExtendedPublicKey(coin.Pk)
 		if err != nil {
-			log.Printf("GetAddress: %s\n", err.Error())
+			fmt.Println("<<< ERROR: " + err.Error())
+			continue
+		}
+		bpk.Data.Version = coin.GetXDVersion()
+		hdlr.Init(coin.Path, bpk)
+
+		// verify handler
+		addr, err := hdlr.GetAddress(0)
+		if err != nil {
+			log.Printf("<<< ERROR: %s\n", err.Error())
 			continue
 		}
 		if addr != coin.Addr {
-			log.Printf("addr mismatch: %s != %s\n", addr, coin.Addr)
+			log.Printf("<<< ERROR: %s != %s\n", addr, coin.Addr)
 			continue
 		}
 		log.Println("    * Handler verified")

@@ -23,7 +23,6 @@ package lib
 import (
 	"fmt"
 
-	"github.com/bfix/gospel/bitcoin"
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
@@ -32,20 +31,20 @@ func init() {
 }
 
 type BtcHandler struct {
+	BaseHandler
 }
 
 // GetAddress returns a wallet address.
-func (hdlr *BtcHandler) GetAddress(ed *wallet.ExtendedData) (string, error) {
-
-	pk, err := bitcoin.PublicKeyFromBytes(ed.Keydata)
+func (hdlr *BtcHandler) GetAddress(idx int) (string, error) {
+	pk, version, err := hdlr.getPublicKey(idx)
 	if err != nil {
 		return "", err
 	}
-	switch ed.Version {
+	switch version {
 	case wallet.XpubVersion:
 		return wallet.MakeAddress(pk, 0, wallet.AddrP2PKH, wallet.AddrMain), nil
 	case wallet.YpubVersion:
 		return wallet.MakeAddress(pk, 0, wallet.AddrP2SH, wallet.AddrMain), nil
 	}
-	return "", fmt.Errorf("Unknown key data")
+	return "", fmt.Errorf("Unknown extended data version: %x", version)
 }

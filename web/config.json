@@ -1,88 +1,100 @@
 {
-    "coins": [
-        {
-            "name": "btc",
-            "descr": "Bitcoin",
-            "pk": "ypub6XuNrrqCtxJqbCmk3tBvJNQU1nePLuexXKUWJNxsEwLF5KiePNxi9TsZCeKrDsFEopWAVYJWh9LrhQrVtXoGYqdMsUCdSBMZmZr7ufiAApP",
-            "path": "m/49'/0'/0'",
-            "addr": "3EtzTLkZznFz9p7XVvVkEKSfqWtgFoPfeu"
-        },
-        {
-            "name": "bch",
-            "descr": "Bitcoin Cash",
-            "pk": "xpub6CnN6zdRAbCwLiDCqYCYeQhSpzt8R233PkAs6EdBTwjiBkS3WjtSp66ymc5akmBcCL2UaG7RV4rv4tvQpTeqLv9gJBbexk9uHTQiMsd368T",
-            "path": "m/44'/145'/0'",
-            "addr": "bitcoincash:qpnfc27ttwqky82emu6mvwtqphg94y4ahc957hjwhp"
-        },
-        {
-            "name": "btg",
-            "descr": "Bitcoin Gold",
-            "pk": "ypub6XDTKk1YD5X6xam8WxPfQjQg2YsKonBJt3LuKsSQa7UYHhFoC38MvgdajZeJ87kCV3xUbxiUuQkUZnJZP2MNpkj6Yh1nAzptKqyWaCZyykm",
-            "path": "m/49'/156'/0'",
-            "addr": "AMtFjuyrExnQb2Bq5mattQrKvH7rWZH6BJ"
-        },
-        {
-            "name": "dash",
-            "descr": "Dash",
-            "pk": "drkpRzxxkdrHcchDVMqAgWjw7Cgq1m4KZsxCeAi91GtTL1FnNDxoSjD4oJqPg1YzoMpNEwf9L32ybJ5ZkpB7UVuumKStRnST9wdkNGLDb6fh1zk",
-            "path": "m/44'/5'/0'",
-            "addr": "XpXdvoyijeEingcVni5kPCTqXHL6as7Uxv"
-        },
-        {
-            "name": "dgb",
-            "descr": "Digibyte",
-            "pk": "ypub6WeFmEbZnw3GRiCJhZbBWoEb1oSDAV59qmjeLVzV2gUGXkWmmpRtQdjBB6MPdeRBS5Qrv9raoFsWMhNAqQC4iYQDjYxQAvoFFtwtT22EH1G",
-            "path": "m/49'/20'/0'",
-            "addr": "SfQvH8fzBJSSD4tYVN9ms8kHGVaHvQiqzd"
-        },
-        {
-            "name": "doge",
-            "descr": "Dogecoin",
-            "pk": "dgub8rMFinnSyerFqe2HCdi8TG4NEfxKPtHhb3ctqQf74LtNdFBLrsUNbyU2dathy5j1EavdxF3L5Lj6gHzAZUMvHvKbASTzeg57H4P73u4WstH",
-            "path": "m/44'/3'/0'",
-            "addr": "DTAfQ9aRZLue1bmFjcpnWadzoyiieGKHg5"
-        },
-        {
-            "name": "ltc",
-            "descr": "Litecoin",
-            "pk": "Mtub2tnJBoHAtpRmJifWpzFr3AzNXen4TJyNFKT9JtQZ52djg74Cxfp3mUKJVx3ZtEZ2bxPo1me3CKTKiNnVKJraF5GMTcwc25abimZ5DXyS8sb",
-            "path": "m/49'/2'/0'",
-            "addr": "MNa6k9obZu1QezfF8mHxZ4fvFD5c126WfE"
-        },
-        {
-            "name": "nmc",
-            "descr": "Namecoin",
-            "pk": "xpub6CotJSTJkTfUoz7nqKAFjWKp2XELE9NiHUxy8axKNKd6sBv7WafwfRgW8keEZ6MLtp6gSjFporXmE3Mym1g3v7UmNre2tminxjzgEcbs7dx",
-            "path": "m/44'/7'/0'",
-            "addr": "NBQyqsWZNZ4u2i11mqyj8y3NikaUa6t8Gk"
-        },
-        {
-            "name": "vtc",
-            "descr": "Vertcoin",
-            "pk": "ypub6WV6hAKKXzmcXfqCU1ybAstM434wU85gCRwdHDBtpNDuGuuKAfFwxeMKnJ6huVwXPEmJ1sVAqZfBPAiRM2WfyMQukgtp3R58znsek4tHkCm",
-            "path": "m/49'/28'/0'",
-            "addr": "35kk2Zc56w52GH4koqEM5CQ73HFtvKZ9Am"
-        },
-        {
-            "name": "zec",
-            "descr": "ZCash",
-            "pk": "xpub6CQvwLEApzUBkfat88spq9GvRmbcaHjK5vASSD1QusY53oWP1VBoKDL7SycZbGvz5P2HEDZ18wfi24Ydhuv1yyaS6jHjbJwgcve7mL3xbHE",
-            "path": "m/44'/133'/0'",
-            "addr": "t1dZ5Tz8CqnhuQCjeUDrC7xMYtixpyykQ1b"
-        },
-        {
-            "name": "eth",
-            "descr": "Ethereum",
-            "pk": "xpub6DpRgqqKAoHKSWCMUjXLW51LbnEAcQ9SfTmNDB81fgBGZwZCyLEajA9roW9ZpcDKHU5eSN75CB2vbfgPKGLLth8uHf2ZY8NfWPZEw6hoXfo",
-            "path": "m/44'/60'/0'",
-            "addr": "0x2c95F5D417742747a9c3C9c4110191e4d684c9DA"
-        },
-        {
-            "name": "etc",
-            "descr": "Ethereum Classic",
-            "pk": "xpub6E19QPdfbjdD8W2uxJek9VfPPPKymsR9vdwjZm9u8zkwTHpYHJXQU49JbfPHXTfTux9ZafyNLdegeGi9wVjd8i9ARkd3VhWWQP7dkesB5XN",
-            "path": "m/44'/61'/0'",
-            "addr": "0x31c582939BC2fb65Ed7B6509647243C4AEb24c9F"
-        }
-    ]
+	"coins": [
+		{
+			"name": "btc",
+			"descr": "Bitcoin",
+			"path": "m/49'/0'/0'",
+			"pk": "ypub6XuNrrqCtxJqbCmk3tBvJNQU1nePLuexXKUWJNxsEwLF5KiePNxi9TsZCeKrDsFEopWAVYJWh9LrhQrVtXoGYqdMsUCdSBMZmZr7ufiAApP",
+			"mode": "P2SH",
+			"addr": "3EtzTLkZznFz9p7XVvVkEKSfqWtgFoPfeu"
+		},
+		{
+			"name": "bch",
+			"descr": "Bitcoin Cash",
+			"path": "m/44'/145'/0'",
+			"pk": "xpub6CnN6zdRAbCwLiDCqYCYeQhSpzt8R233PkAs6EdBTwjiBkS3WjtSp66ymc5akmBcCL2UaG7RV4rv4tvQpTeqLv9gJBbexk9uHTQiMsd368T",
+			"mode": "P2PKH",
+			"addr": "bitcoincash:qpnfc27ttwqky82emu6mvwtqphg94y4ahc957hjwhp"
+		},
+		{
+			"name": "btg",
+			"descr": "Bitcoin Gold",
+			"path": "m/49'/156'/0'",
+			"pk": "ypub6XDTKk1YD5X6xam8WxPfQjQg2YsKonBJt3LuKsSQa7UYHhFoC38MvgdajZeJ87kCV3xUbxiUuQkUZnJZP2MNpkj6Yh1nAzptKqyWaCZyykm",
+			"mode": "P2SH",
+			"addr": "AMtFjuyrExnQb2Bq5mattQrKvH7rWZH6BJ"
+		},
+		{
+			"name": "dash",
+			"descr": "Dash",
+			"path": "m/44'/5'/0'",
+			"pk": "drkpRzxxkdrHcchDVMqAgWjw7Cgq1m4KZsxCeAi91GtTL1FnNDxoSjD4oJqPg1YzoMpNEwf9L32ybJ5ZkpB7UVuumKStRnST9wdkNGLDb6fh1zk",
+			"mode": "P2PKH",
+			"addr": "XpXdvoyijeEingcVni5kPCTqXHL6as7Uxv"
+		},
+		{
+			"name": "dgb",
+			"descr": "Digibyte",
+			"path": "m/49'/20'/0'",
+			"pk": "ypub6WeFmEbZnw3GRiCJhZbBWoEb1oSDAV59qmjeLVzV2gUGXkWmmpRtQdjBB6MPdeRBS5Qrv9raoFsWMhNAqQC4iYQDjYxQAvoFFtwtT22EH1G",
+			"mode": "P2SH",
+			"addr": "SfQvH8fzBJSSD4tYVN9ms8kHGVaHvQiqzd"
+		},
+		{
+			"name": "doge",
+			"descr": "Dogecoin",
+			"path": "m/44'/3'/0'",
+			"pk": "dgub8rMFinnSyerFqe2HCdi8TG4NEfxKPtHhb3ctqQf74LtNdFBLrsUNbyU2dathy5j1EavdxF3L5Lj6gHzAZUMvHvKbASTzeg57H4P73u4WstH",
+			"mode": "P2PKH",
+			"addr": "DTAfQ9aRZLue1bmFjcpnWadzoyiieGKHg5"
+		},
+		{
+			"name": "ltc",
+			"descr": "Litecoin",
+			"path": "m/49'/2'/0'",
+			"pk": "Mtub2tnJBoHAtpRmJifWpzFr3AzNXen4TJyNFKT9JtQZ52djg74Cxfp3mUKJVx3ZtEZ2bxPo1me3CKTKiNnVKJraF5GMTcwc25abimZ5DXyS8sb",
+			"mode": "P2SH",
+			"addr": "MNa6k9obZu1QezfF8mHxZ4fvFD5c126WfE"
+		},
+		{
+			"name": "nmc",
+			"descr": "Namecoin",
+			"path": "m/44'/7'/0'",
+			"pk": "xpub6CotJSTJkTfUoz7nqKAFjWKp2XELE9NiHUxy8axKNKd6sBv7WafwfRgW8keEZ6MLtp6gSjFporXmE3Mym1g3v7UmNre2tminxjzgEcbs7dx",
+			"mode": "P2PKH",
+			"addr": "NBQyqsWZNZ4u2i11mqyj8y3NikaUa6t8Gk"
+		},
+		{
+			"name": "vtc",
+			"descr": "Vertcoin",
+			"path": "m/49'/28'/0'",
+			"pk": "ypub6WV6hAKKXzmcXfqCU1ybAstM434wU85gCRwdHDBtpNDuGuuKAfFwxeMKnJ6huVwXPEmJ1sVAqZfBPAiRM2WfyMQukgtp3R58znsek4tHkCm",
+			"mode": "P2SH",
+			"addr": "35kk2Zc56w52GH4koqEM5CQ73HFtvKZ9Am"
+		},
+		{
+			"name": "zec",
+			"descr": "ZCash",
+			"path": "m/44'/133'/0'",
+			"pk": "xpub6CQvwLEApzUBkfat88spq9GvRmbcaHjK5vASSD1QusY53oWP1VBoKDL7SycZbGvz5P2HEDZ18wfi24Ydhuv1yyaS6jHjbJwgcve7mL3xbHE",
+			"mode": "P2PKH",
+			"addr": "t1dZ5Tz8CqnhuQCjeUDrC7xMYtixpyykQ1b"
+		},
+		{
+			"name": "eth",
+			"descr": "Ethereum",
+			"path": "m/44'/60'/0'/0",
+			"pk": "xpub6DpRgqqKAoHKSWCMUjXLW51LbnEAcQ9SfTmNDB81fgBGZwZCyLEajA9roW9ZpcDKHU5eSN75CB2vbfgPKGLLth8uHf2ZY8NfWPZEw6hoXfo",
+			"mode": "",
+			"addr": "0x2c95f5d417742747a9c3c9c4110191e4d684c9da"
+		},
+		{
+			"name": "etc",
+			"descr": "Ethereum Classic",
+			"path": "m/44'/61'/0'/0",
+			"pk": "xpub6E19QPdfbjdD8W2uxJek9VfPPPKymsR9vdwjZm9u8zkwTHpYHJXQU49JbfPHXTfTux9ZafyNLdegeGi9wVjd8i9ARkd3VhWWQP7dkesB5XN",
+			"mode": "",
+			"addr": "0x31c582939bc2fb65ed7b6509647243c4aeb24c9f"
+		}
+	]
 }

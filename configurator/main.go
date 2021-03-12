@@ -27,6 +27,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
@@ -102,18 +103,30 @@ func main() {
 			continue
 		}
 		// compute base account address
-		bpk, err = hd.Public(coin.Path + "/0/0")
+		path := coin.Path
+		for strings.Count(path, "/") < 4 {
+			path += "/0"
+		}
+		bpk, err = hd.Public(path)
 		if err != nil {
 			fmt.Println("<<< ERROR: " + err.Error())
 			continue
 		}
 		bpk.Data.Version = version
-		addr, err := hdlr.GetAddress(bpk.Data)
-		if err != nil {
-			fmt.Println("<<< ERROR: " + err.Error())
-			continue
+		hdlr.Init(path, bpk)
+
+		// compute addresses; save first for check
+		for idx := 0; idx < 10; idx++ {
+			addr, err := hdlr.GetAddress(idx)
+			if err != nil {
+				fmt.Println("<<< ERROR: " + err.Error())
+				continue
+			}
+			if idx == 0 {
+				coin.Addr = addr
+			}
+			fmt.Printf("<<<    %2d: %s\n", idx, addr)
 		}
-		coin.Addr = addr
 	}
 	// save to configuration file
 	if err = lib.WriteConfig("config.json", cfg); err != nil {

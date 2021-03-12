@@ -21,10 +21,9 @@
 package lib
 
 import (
-	"fmt"
+	"encoding/hex"
 
-	"github.com/bfix/gospel/bitcoin"
-	"github.com/bfix/gospel/bitcoin/wallet"
+	"golang.org/x/crypto/sha3"
 )
 
 func init() {
@@ -32,20 +31,18 @@ func init() {
 }
 
 type EthHandler struct {
+	BaseHandler
 }
 
 // GetAddress returns a wallet address.
-func (hdlr *EthHandler) GetAddress(ed *wallet.ExtendedData) (string, error) {
-
-	pk, err := bitcoin.PublicKeyFromBytes(ed.Keydata)
+func (hdlr *EthHandler) GetAddress(idx int) (string, error) {
+	pk, _, err := hdlr.getPublicKey(idx)
 	if err != nil {
 		return "", err
 	}
-	switch ed.Version {
-	case wallet.XpubVersion:
-		return wallet.MakeAddress(pk, 60, wallet.AddrP2PKH, wallet.AddrMain), nil
-	case wallet.YpubVersion:
-		return wallet.MakeAddress(pk, 60, wallet.AddrP2SH, wallet.AddrMain), nil
-	}
-	return "", fmt.Errorf("Unknown key data")
+	pkData := pk.Q.Bytes(false)
+	hsh := sha3.NewLegacyKeccak256()
+	hsh.Write(pkData[1:])
+	val := hsh.Sum(nil)
+	return "0x" + hex.EncodeToString(val[12:]), nil
 }

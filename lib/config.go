@@ -40,7 +40,7 @@ type CoinConfig struct {
 
 // GetXDVersion returns the extended data version for coin
 func (c *CoinConfig) GetXDVersion() uint32 {
-	var m   int
+	var m int
 	switch c.Mode {
 	case "P2PKH":
 		m = wallet.AddrP2PKH
@@ -55,7 +55,7 @@ func (c *CoinConfig) GetXDVersion() uint32 {
 	case "P2WSHinP2SH":
 		m = wallet.AddrP2WSHinP2SH
 	default:
-		return 0
+		return wallet.XpubVersion
 	}
 	coin := wallet.GetCoinID(c.Name)
 	if coin < 0 {
