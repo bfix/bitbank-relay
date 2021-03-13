@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
@@ -38,23 +39,29 @@ type CoinConfig struct {
 	Addr  string `json:"addr"`  // address for base derivation path
 }
 
+// GetMode returns the numeric value of mode (P2PKH, P2SH, ...)
+func (c *CoinConfig) GetMode() int {
+	switch strings.ToUpper(c.Mode) {
+	case "P2PKH":
+		return wallet.AddrP2PKH
+	case "P2SH":
+		return wallet.AddrP2SH
+	case "P2WPKH":
+		return wallet.AddrP2WPKH
+	case "P2WSH":
+		return wallet.AddrP2WSH
+	case "P2WPKHinP2SH":
+		return wallet.AddrP2WPKHinP2SH
+	case "P2WSHinP2SH":
+		return wallet.AddrP2WSHinP2SH
+	}
+	return -1
+}
+
 // GetXDVersion returns the extended data version for coin
 func (c *CoinConfig) GetXDVersion() uint32 {
-	var m int
-	switch c.Mode {
-	case "P2PKH":
-		m = wallet.AddrP2PKH
-	case "P2SH":
-		m = wallet.AddrP2SH
-	case "P2WPKH":
-		m = wallet.AddrP2WPKH
-	case "P2WSH":
-		m = wallet.AddrP2WSH
-	case "P2WPKHinP2SH":
-		m = wallet.AddrP2WPKHinP2SH
-	case "P2WSHinP2SH":
-		m = wallet.AddrP2WSHinP2SH
-	default:
+	m := c.GetMode()
+	if m < 0 {
 		return wallet.XpubVersion
 	}
 	coin := wallet.GetCoinID(c.Name)
@@ -100,4 +107,17 @@ func WriteConfig(fname string, cfg *Config) error {
 	}
 	_, err = f.Write(data)
 	return err
+}
+
+// GetNetwork returns the numeric coin network ID
+func GetNetwork(netw string) int {
+	switch strings.ToLower(netw) {
+	case "main":
+		return wallet.AddrMain
+	case "test":
+		return wallet.AddrTest
+	case "reg":
+		return wallet.AddrReg
+	}
+	return -1
 }

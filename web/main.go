@@ -28,44 +28,45 @@ import (
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
+var (
+	handlers = make(map[string]*lib.Handler)
+)
+
 func main() {
 
 	// read configuration
+	log.Println("Reading configuration...")
 	cfg, err := lib.ReadConfig("config.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// verify handlers
+	// load handlers
+	log.Println("Initializing coin handlers:")
 	for _, coin := range cfg.Coins {
-		log.Println("--------------------------------")
-		log.Printf("Coin: '%s'", coin.Name)
+		log.Printf("   * %s (%s)", coin.Name, coin.Descr)
 
-		// get handler
-		hdlr, err := lib.GetHandler(coin.Name)
-		if err != nil {
-			log.Printf("GetHandler: %s\n", err.Error())
-			continue
-		}
-		// compute base account address
-		bpk, err := wallet.ParseExtendedPublicKey(coin.Pk)
+		// get coin handler
+		hdlr, err := lib.NewHandler(coin, wallet.AddrMain)
 		if err != nil {
 			fmt.Println("<<< ERROR: " + err.Error())
 			continue
 		}
-		bpk.Data.Version = coin.GetXDVersion()
-		hdlr.Init(coin.Path, bpk)
-
 		// verify handler
 		addr, err := hdlr.GetAddress(0)
 		if err != nil {
-			log.Printf("<<< ERROR: %s\n", err.Error())
+			log.Println("<<< ERROR: " + err.Error())
 			continue
 		}
 		if addr != coin.Addr {
 			log.Printf("<<< ERROR: %s != %s\n", addr, coin.Addr)
 			continue
 		}
-		log.Println("    * Handler verified")
+		// save handler
+		handlers[coin.Name] = hdlr
 	}
+	log.Println("Done.")
+
+	// setting up webservice
+
 }

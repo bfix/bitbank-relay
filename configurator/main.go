@@ -25,14 +25,19 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
 func main() {
+	// parse and process command-line options
+	var network string
+	flag.StringVar(&network, "n", "main", "Network [main|test|reg]")
+	flag.Parse()
+	netw := lib.GetNetwork(network)
 
 	// Ask for passphrase
 	// N.B.: This is not a BIP39 password added to the list of seed words,
@@ -82,38 +87,22 @@ func main() {
 	// process all entries
 	for _, coin := range cfg.Coins {
 		fmt.Printf("<<<    Processing '%s'...\n", coin.Name)
-		version := coin.GetXDVersion()
-		if version == 0 {
-			fmt.Printf("<<< ERROR: No valid version specified (%s)\n", coin.Name)
-			continue
-		}
+
 		// get base extended public key for given account
 		bpk, err := hd.Public(coin.Path)
 		if err != nil {
 			fmt.Println("<<< ERROR: " + err.Error())
 			continue
 		}
-		bpk.Data.Version = version
+		bpk.Data.Version = coin.GetXDVersion()
 		coin.Pk = bpk.String()
 
-		// get handler
-		hdlr, err := lib.GetHandler(coin.Name)
+		// get coin handler
+		hdlr, err := lib.NewHandler(coin, netw)
 		if err != nil {
 			fmt.Println("<<< ERROR: " + err.Error())
 			continue
 		}
-		// compute base account address
-		path := coin.Path
-		for strings.Count(path, "/") < 4 {
-			path += "/0"
-		}
-		bpk, err = hd.Public(path)
-		if err != nil {
-			fmt.Println("<<< ERROR: " + err.Error())
-			continue
-		}
-		bpk.Data.Version = version
-		hdlr.Init(path, bpk)
 
 		// compute addresses; save first for check
 		for idx := 0; idx < 10; idx++ {
