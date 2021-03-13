@@ -29,7 +29,9 @@ import (
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
-// CoinConfig is a configuration for a supported coin (Bitcoin or Altcoin)
+//----------------------------------------------------------------------
+
+// CoinConfig for a supported coin (Bitcoin or Altcoin)
 type CoinConfig struct {
 	Name  string `json:"name"`  // coin symbol
 	Descr string `json:"descr"` // coin description
@@ -71,10 +73,30 @@ func (c *CoinConfig) GetXDVersion() uint32 {
 	return wallet.GetXDVersion(coin, m, wallet.AddrMain, true)
 }
 
+//----------------------------------------------------------------------
+
+type ServiceConfig struct {
+	Listen string `json:"listen"` // web service listener (host:port)
+}
+
+//----------------------------------------------------------------------
+
+type DatabaseConfig struct {
+	Mode    string `json:"mode"`    // mode (mysql, sqlite3, ...)
+	Connect string `json:"connect"` // database connect string
+}
+
+//----------------------------------------------------------------------
+
 // Config holds overall configuration settings
 type Config struct {
-	Coins []*CoinConfig `json:"coins"` // list of known coins
+	Service *ServiceConfig  `json:"service"`  // web service configuration
+	Db      *DatabaseConfig `json:"database"` // database configuration
+	Coins   []*CoinConfig   `json:"coins"`    // list of known coins
 }
+
+//----------------------------------------------------------------------
+// persistant configuration
 
 // ReadConfig to parse configurations from file
 func ReadConfig(fname string) (*Config, error) {
@@ -107,17 +129,4 @@ func WriteConfig(fname string, cfg *Config) error {
 	}
 	_, err = f.Write(data)
 	return err
-}
-
-// GetNetwork returns the numeric coin network ID
-func GetNetwork(netw string) int {
-	switch strings.ToLower(netw) {
-	case "main":
-		return wallet.AddrMain
-	case "test":
-		return wallet.AddrTest
-	case "reg":
-		return wallet.AddrReg
-	}
-	return -1
 }

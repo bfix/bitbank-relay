@@ -1,100 +1,105 @@
 {
-    "coins": [
-        {
-            "name": "btc",
-            "descr": "Bitcoin",
-            "pk": "",
-            "path": "m/49'/0'/0'",
-            "mode": "P2SH",
-            "addr": ""
-        },
-        {
-            "name": "bch",
-            "descr": "Bitcoin Cash",
-            "pk": "",
-            "path": "m/44'/145'/0'",
-            "mode": "P2PKH",
-            "addr": ""
-        },
-        {
-            "name": "btg",
-            "descr": "Bitcoin Gold",
-            "pk": "",
-            "path": "m/49'/156'/0'",
-            "mode": "P2SH",
-            "addr": ""
-        },
-        {
-            "name": "dash",
-            "descr": "Dash",
-            "pk": "",
-            "path": "m/44'/5'/0'",
-            "mode": "P2PKH",
-            "addr": ""
-        },
-        {
-            "name": "dgb",
-            "descr": "Digibyte",
-            "pk": "",
-            "path": "m/49'/20'/0'",
-            "mode": "P2SH",
-            "addr": ""
-        },
-        {
-            "name": "doge",
-            "descr": "Dogecoin",
-            "pk": "",
-            "path": "m/44'/3'/0'",
-            "mode": "P2PKH",
-            "addr": ""
-        },
-        {
-            "name": "ltc",
-            "descr": "Litecoin",
-            "pk": "",
-            "path": "m/49'/2'/0'",
-            "mode": "P2SH",
-            "addr": ""
-        },
-        {
-            "name": "nmc",
-            "descr": "Namecoin",
-            "pk": "",
-            "path": "m/44'/7'/0'",
-            "mode": "P2PKH",
-            "addr": ""
-        },
-        {
-            "name": "vtc",
-            "descr": "Vertcoin",
-            "pk": "",
-            "path": "m/49'/28'/0'",
-            "mode": "P2SH",
-            "addr": ""
-        },
-        {
-            "name": "zec",
-            "descr": "ZCash",
-            "pk": "",
-            "path": "m/44'/133'/0'",
-            "mode": "P2PKH",
-            "addr": ""
-        },
-        {
-            "name": "eth",
-            "descr": "Ethereum",
-            "pk": "",
-            "path": "m/44'/60'/0'/0",
-            "mode": "",
-            "addr": ""
-        },
-        {
-            "name": "etc",
-            "descr": "Ethereum Classic",
-            "pk": "",
-            "path": "m/44'/61'/0'/0",
-            "mode": "",
-            "addr": ""
-        }
-    ]
+  "service": {
+    "listen": "localhost:80",
+    "db_mode": "mysql",
+    "db_connect": "bb_addr:bb_addr@tcp(127.0.0.1:3306)/BB_Addresser"
+  },
+  "coins": [
+    {
+      "name": "btc",
+      "descr": "Bitcoin",
+      "pk": "",
+      "path": "m/49'/0'/0'",
+      "mode": "P2SH",
+      "addr": ""
+    },
+    {
+      "name": "bch",
+      "descr": "Bitcoin Cash",
+      "pk": "",
+      "path": "m/44'/145'/0'",
+      "mode": "P2PKH",
+      "addr": ""
+    },
+    {
+      "name": "btg",
+      "descr": "Bitcoin Gold",
+      "pk": "",
+      "path": "m/49'/156'/0'",
+      "mode": "P2SH",
+      "addr": ""
+    },
+    {
+      "name": "dash",
+      "descr": "Dash",
+      "pk": "",
+      "path": "m/44'/5'/0'",
+      "mode": "P2PKH",
+      "addr": ""
+    },
+    {
+      "name": "dgb",
+      "descr": "Digibyte",
+      "pk": "",
+      "path": "m/49'/20'/0'",
+      "mode": "P2SH",
+      "addr": ""
+    },
+    {
+      "name": "doge",
+      "descr": "Dogecoin",
+      "pk": "",
+      "path": "m/44'/3'/0'",
+      "mode": "P2PKH",
+      "addr": ""
+    },
+    {
+      "name": "ltc",
+      "descr": "Litecoin",
+      "pk": "",
+      "path": "m/49'/2'/0'",
+      "mode": "P2SH",
+      "addr": ""
+    },
+    {
+      "name": "nmc",
+      "descr": "Namecoin",
+      "pk": "",
+      "path": "m/44'/7'/0'",
+      "mode": "P2PKH",
+      "addr": ""
+    },
+    {
+      "name": "vtc",
+      "descr": "Vertcoin",
+      "pk": "",
+      "path": "m/49'/28'/0'",
+      "mode": "P2SH",
+      "addr": ""
+    },
+    {
+      "name": "zec",
+      "descr": "ZCash",
+      "pk": "",
+      "path": "m/44'/133'/0'",
+      "mode": "P2PKH",
+      "addr": ""
+    },
+    {
+      "name": "eth",
+      "descr": "Ethereum",
+      "pk": "",
+      "path": "m/44'/60'/0'/0",
+      "mode": "",
+      "addr": ""
+    },
+    {
+      "name": "etc",
+      "descr": "Ethereum Classic",
+      "pk": "",
+      "path": "m/44'/61'/0'/0",
+      "mode": "",
+      "addr": ""
+    }
+  ]
 }

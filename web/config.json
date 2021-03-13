@@ -1,6 +1,10 @@
 {
-  "web": {
+  "service": {
     "listen": "localhost:80"
+  },
+  "database": {
+    "mode": "mysql",
+    "connect": "bb_addr:bb_addr@tcp(127.0.0.1:3306)/BB_Addresser"
   },
   "coins": [
     {

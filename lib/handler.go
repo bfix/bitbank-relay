@@ -12,10 +12,10 @@ import (
 )
 
 type Handler struct {
-	coin int // coin identifier
-	mode int              // adress mode (P2PKH, P2SH, ...)
-	netw int // network (Main, Test, Reg)
-	tree *wallet.HDPublic // HDKD for public keys
+	coin    int              // coin identifier
+	mode    int              // adress mode (P2PKH, P2SH, ...)
+	netw    int              // network (Main, Test, Reg)
+	tree    *wallet.HDPublic // HDKD for public keys
 	pathTpl string           // path template for indexing addresses
 }
 
@@ -34,13 +34,13 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 		path += "/0"
 	}
 	path += "/%d"
-	
+
 	return &Handler{
-		coin: wallet.GetCoinID(coin.Name),
-		mode: coin.GetMode(),
-		netw: network,
+		coin:    wallet.GetCoinID(coin.Name),
+		mode:    coin.GetMode(),
+		netw:    network,
 		pathTpl: path,
-		tree: wallet.NewHDPublic(pk, coin.Path),
+		tree:    wallet.NewHDPublic(pk, coin.Path),
 	}, nil
 }
 
@@ -59,6 +59,22 @@ func (hdlr *Handler) GetAddress(idx int) (string, error) {
 		return "", err
 	}
 	return wallet.MakeAddress(pk, hdlr.coin, hdlr.mode, hdlr.netw), nil
+}
+
+//----------------------------------------------------------------------
+// helper functions
+
+// GetNetwork returns the numeric coin network ID
+func GetNetwork(netw string) int {
+	switch strings.ToLower(netw) {
+	case "main":
+		return wallet.AddrMain
+	case "test":
+		return wallet.AddrTest
+	case "reg":
+		return wallet.AddrReg
+	}
+	return -1
 }
 
 //----------------------------------------------------------------------
