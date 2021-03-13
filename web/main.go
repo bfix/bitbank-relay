@@ -1,14 +1,14 @@
 //----------------------------------------------------------------------
-// This file is part of 'Adresser'.
+// This file is part of 'bitbank-relay'.
 // Copyright (C) 2021 Bernd Fix >Y<
 //
-// 'Adresser' is free software: you can redistribute it and/or modify it
-// under the terms of the GNU Affero General Public License as published
+// 'bitbank-relay' is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
 // by the Free Software Foundation, either version 3 of the License,
 // or (at your option) any later version.
 //
-// 'Addresser' is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
+// 'bitbank-relay' is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 // Affero General Public License for more details.
 //
@@ -21,10 +21,10 @@
 package main
 
 import (
-	"addresser/lib"
 	"context"
 	"os"
 	"os/signal"
+	"relay/lib"
 	"syscall"
 	"time"
 
@@ -63,10 +63,11 @@ func main() {
 	// load handlers
 	logger.Println(logger.INFO, "Initializing coin handlers:")
 	for _, coin := range cfg.Coins {
-		logger.Printf(logger.INFO, "   * %s (%s)", coin.Name, coin.Descr)
+		_, name := wallet.GetCoinInfo(coin.Symb)
+		logger.Printf(logger.INFO, "   * %s (%s)", coin.Symb, name)
 
 		// check if coin is in database
-		_, isNew, err = db.GetCoin(coin.Name, coin.Descr)
+		_, isNew, err = db.GetCoin(coin.Symb)
 		if err != nil {
 			logger.Println(logger.ERROR, err.Error())
 			continue
@@ -92,17 +93,12 @@ func main() {
 			continue
 		}
 		// save handler
-		handlers[coin.Name] = hdlr
+		handlers[coin.Symb] = hdlr
 	}
 	logger.Println(logger.INFO, "Done.")
 
 	// setting up webservice
-	ctx, cancel := context.WithCancel(context.Background())
-	if err = runService(ctx); err != nil {
-		logger.Printf(logger.ERROR, "[gns] RPC failed to start: %s", err.Error())
-		return
-	}
-	defer cancel()
+	srvQuit := runService(cfg.Service)
 
 	// handle OS signals
 	sigCh := make(chan os.Signal, 5)
@@ -130,7 +126,12 @@ loop:
 		// handle heart beat
 		case now := <-tick.C:
 			logger.Println(logger.INFO, "Heart beat at "+now.String())
-			go periodicTasks(ctx)
+			go periodicTasks()
 		}
 	}
+
+	// shutdown web service
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	srvQuit(ctx)
 }

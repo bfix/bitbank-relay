@@ -1,3 +1,23 @@
+//----------------------------------------------------------------------
+// This file is part of 'bitbank-relay'.
+// Copyright (C) 2021 Bernd Fix >Y<
+//
+// 'bitbank-relay' is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License,
+// or (at your option) any later version.
+//
+// 'bitbank-relay' is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+// SPDX-License-Identifier: AGPL3.0-or-later
+//----------------------------------------------------------------------
+
 package lib
 
 import (
@@ -11,6 +31,7 @@ import (
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
+// Handler to handle coin accounts (in BIP44/49 wallets)
 type Handler struct {
 	coin    int              // coin identifier
 	mode    int              // adress mode (P2PKH, P2SH, ...)
@@ -19,6 +40,8 @@ type Handler struct {
 	pathTpl string           // path template for indexing addresses
 }
 
+// NewHandler creates a new handler instance for the given coin on
+// a network (main/test/reg) if applicable
 func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 
 	// compute base account address
@@ -28,15 +51,19 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 	}
 	pk.Data.Version = coin.GetXDVersion()
 
-	// compute path tenplate for indexed addreses
+	// compute path template for indexed addreses
 	path := coin.Path
 	for strings.Count(path, "/") < 4 {
 		path += "/0"
 	}
 	path += "/%d"
 
+	// get coin identifier
+	coinID, _ := wallet.GetCoinInfo(coin.Symb)
+
+	// assemble handler for given coin
 	return &Handler{
-		coin:    wallet.GetCoinID(coin.Name),
+		coin:    coinID,
 		mode:    coin.GetMode(),
 		netw:    network,
 		pathTpl: path,
@@ -44,6 +71,7 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 	}, nil
 }
 
+// GetAddress returns the address for a given index in the account
 func (hdlr *Handler) GetAddress(idx int) (string, error) {
 
 	// get extended public key for indexed address

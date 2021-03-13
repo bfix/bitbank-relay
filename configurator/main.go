@@ -1,16 +1,16 @@
 package main
 
 //----------------------------------------------------------------------
-// This file is part of 'bitbank'.
+// This file is part of 'bitbank-relay'.
 // Copyright (C) 2021 Bernd Fix  >Y<
 //
-// 'bitbank' is free software: you can redistribute it and/or modify it
-// under the terms of the GNU Affero General Public License as published
+// 'bitbank-relay' is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
 // by the Free Software Foundation, either version 3 of the License,
 // or (at your option) any later version.
 //
-// 'bitbank' is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
+// 'bitbank-relay' is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 // Affero General Public License for more details.
 //
@@ -21,13 +21,13 @@ package main
 //----------------------------------------------------------------------
 
 import (
-	"addresser/lib"
 	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"flag"
 	"fmt"
 	"os"
+	"relay/lib"
 
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
@@ -86,7 +86,7 @@ func main() {
 	}
 	// process all entries
 	for _, coin := range cfg.Coins {
-		fmt.Printf("<<<    Processing '%s'...\n", coin.Name)
+		fmt.Printf("<<<    Processing '%s'...\n", coin.Symb)
 
 		// get base extended public key for given account
 		bpk, err := hd.Public(coin.Path)

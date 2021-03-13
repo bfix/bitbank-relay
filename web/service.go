@@ -1,14 +1,14 @@
 //----------------------------------------------------------------------
-// This file is part of 'Adresser'.
+// This file is part of 'bitbank-relay'.
 // Copyright (C) 2021 Bernd Fix >Y<
 //
-// 'Adresser' is free software: you can redistribute it and/or modify it
-// under the terms of the GNU Affero General Public License as published
+// 'bitbank-relay' is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
 // by the Free Software Foundation, either version 3 of the License,
 // or (at your option) any later version.
 //
-// 'Addresser' is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
+// 'bitbank-relay' is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 // Affero General Public License for more details.
 //
@@ -22,25 +22,58 @@ package main
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"relay/lib"
 	"time"
 
 	"github.com/bfix/gospel/logger"
+	"github.com/gorilla/mux"
 )
 
-func runService(ctx context.Context) error {
+// run service
+func runService(cfg *lib.ServiceConfig) func(ctx context.Context) error {
 
-	logger.Println(logger.INFO, "Starting web service...")
-	_, cancel := context.WithCancel(ctx)
-	go func() {
-		time.Sleep(2 * time.Minute)
-		logger.Println(logger.DBG, "Cancelling service")
-		cancel()
-	}()
+	// setup request router
+	logger.Println(logger.INFO, "Setting up web service...")
+	r := mux.NewRouter()
+	r.HandleFunc("/receive/{account}/{coin}", ReceiveHandler)
+	r.HandleFunc("/status/{txid}", StatusHandler)
 
+	// assemble HTTP server
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         cfg.Listen,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+	// start server
 	logger.Println(logger.INFO, "Waiting for client requests...")
-	return nil
+	go func() {
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			logger.Println(logger.ERROR, err.Error())
+		}
+	}()
+	return srv.Shutdown
 }
 
-func periodicTasks(ctx context.Context) {
+// ReceiveHandler returns an new transaction that includes an (unused) address
+// for the given coin and account.
+func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	io.WriteString(w, `{"alive": true}`)
+}
+
+// StatusHandler returns the status for a given transaction
+func StatusHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	io.WriteString(w, `{"alive": true}`)
+}
+
+func periodicTasks() {
 
 }

@@ -19,13 +19,20 @@ create table coin (
     active  boolean default 0
 );
 
-create table addr (
+create table account (
     id      integer auto_increment primary key,
-    coin    integer references coin(id) on delete cascade,
-    val     varchar(127) not null,
-    idx     integer not null,
-    stat    integer default 0,
-    firstSeen timestamp default current_timestamp,
-    lastSeen timestamp null default null
+    label   varchar(127),
+    active  boolean default 0
+);
+
+create table addr (
+    id          integer auto_increment primary key,
+    coin        integer references coin(id) on delete cascade,
+    accnt       integer references account(id) on delete cascade,
+    val         varchar(127) not null,
+    idx         integer not null,
+    active      boolean default 1,
+    firstSeen   timestamp default current_timestamp,
+    lastSeen    timestamp null default null
 );
 

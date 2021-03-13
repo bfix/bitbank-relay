@@ -1,14 +1,14 @@
 //----------------------------------------------------------------------
-// This file is part of 'Adresser'.
+// This file is part of 'bitbank-relay'.
 // Copyright (C) 2021 Bernd Fix >Y<
 //
-// 'Adresser' is free software: you can redistribute it and/or modify it
+// 'bitbank-relay' is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Affero General Public License as published
 // by the Free Software Foundation, either version 3 of the License,
 // or (at your option) any later version.
 //
-// 'Addresser' is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
+// 'bitbank-relay' is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 // Affero General Public License for more details.
 //
@@ -33,12 +33,11 @@ import (
 
 // CoinConfig for a supported coin (Bitcoin or Altcoin)
 type CoinConfig struct {
-	Name  string `json:"name"`  // coin symbol
-	Descr string `json:"descr"` // coin description
-	Path  string `json:"path"`  // base derivation path like "m/44'/0'/0'/0/0"
-	Pk    string `json:"pk"`    // public key for coin
-	Mode  string `json:"mode"`  // address version (P2PKH, P2SH, ...)
-	Addr  string `json:"addr"`  // address for base derivation path
+	Symb string `json:"symb"` // coin symbol
+	Path string `json:"path"` // base derivation path like "m/44'/0'/0'/0/0"
+	Mode string `json:"mode"` // address version (P2PKH, P2SH, ...)
+	Pk   string `json:"pk"`   // public key for coin
+	Addr string `json:"addr"` // address for base derivation path
 }
 
 // GetMode returns the numeric value of mode (P2PKH, P2SH, ...)
@@ -66,7 +65,7 @@ func (c *CoinConfig) GetXDVersion() uint32 {
 	if m < 0 {
 		return wallet.XpubVersion
 	}
-	coin := wallet.GetCoinID(c.Name)
+	coin, _ := wallet.GetCoinInfo(c.Symb)
 	if coin < 0 {
 		return 0
 	}
