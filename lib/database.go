@@ -21,6 +21,7 @@
 package lib
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
@@ -51,17 +52,12 @@ func (db *Database) Close() error {
 // Coin-related methods
 //----------------------------------------------------------------------
 
-// Error codes (coin-related)
-var (
-	ErrDbUnknownCoin = fmt.Errorf("Unknown coin")
-)
-
 // CoinInfo contains information about a coin
 type CoinInfo struct {
 	Symbol string   `json:"symb"`
 	Label  string   `json:"label"`
 	Logo   string   `json:"logo"`
-	Market []*Price `json:"prices"`
+	Market []*Price `json:"prices,omitempty"`
 }
 
 func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
@@ -99,13 +95,19 @@ func (db *Database) SetCoinLogo(coin, logo string) error {
 // Address-related methods
 //----------------------------------------------------------------------
 
+// Error codes (coin-related)
+var (
+	ErrDbUnknownCoin = fmt.Errorf("Unknown coin")
+)
+
 // GetUnusedAddress returns a currently unused address for a given
 // coin/account pair. Creates a new address if none is available.
-func (db *Database) GetUnusedAddress(coin, account string) (addr string, err error) {
+// (Internal use for generating new transactions)
+func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr string, err error) {
 
 	// (1) do we have a unused address for given coin?
 	//     if so, use that address.
-	row := db.inst.QueryRow(
+	row := dbtx.QueryRow(
 		"select val from v_addr where stat=0 and coin=?",
 		coin)
 	err = row.Scan(&addr)
@@ -115,7 +117,7 @@ func (db *Database) GetUnusedAddress(coin, account string) (addr string, err err
 
 	// (2) do we have a pending address with matching coin/account pair?
 	//     if so, (re-)use that address.
-	row = db.inst.QueryRow(
+	row = dbtx.QueryRow(
 		"select val from v_addr where stat=1 and coin=? and account=?",
 		coin, account)
 	err = row.Scan(&addr)
@@ -129,14 +131,25 @@ func (db *Database) GetUnusedAddress(coin, account string) (addr string, err err
 		err = ErrDbUnknownCoin
 		return
 	}
+
 	// get coin database id
 	var coinID int64
-	row = db.inst.QueryRow("select id from coin where symbol=?", coin)
+	row = dbtx.QueryRow("select id from coin where symbol=?", coin)
 	err = row.Scan(&coinID)
+	if err != nil {
+		return
+	}
+	// get account database id
+	var accntID int64
+	row = dbtx.QueryRow("select id from account where label=?", account)
+	err = row.Scan(&accntID)
+	if err != nil {
+		return
+	}
 
 	// get next address index
 	var idxV sql.NullInt64
-	row = db.inst.QueryRow("select max(idx)+1 from addr where coin=?", coinID)
+	row = dbtx.QueryRow("select max(idx)+1 from addr where coin=?", coinID)
 	if err = row.Scan(&idxV); err != nil {
 		return
 	}
@@ -148,7 +161,7 @@ func (db *Database) GetUnusedAddress(coin, account string) (addr string, err err
 	if addr, err = hdlr.GetAddress(idx); err != nil {
 		return
 	}
-	_, err = db.inst.Exec("insert into addr(coin,idx,val) values(?,?,?)", coinID, idx, addr)
+	_, err = dbtx.Exec("insert into addr(coin,account,idx,val) values(?,?,?)", coinID, accntID, idx, addr)
 	return
 }
 
@@ -171,8 +184,22 @@ type Transaction struct {
 	ValidTo   int64  `json:"validTo"`
 }
 
-// NewTransaction creates a new pending transaction for a given address
-func (db *Database) NewTransaction(addr string) (tx *Transaction, err error) {
+// NewTransaction creates a new pending transaction for a given coin/account pair
+func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err error) {
+
+	// start database transaction
+	ctx := context.Background()
+	var dbtx *sql.Tx
+	if dbtx, err = db.inst.BeginTx(ctx, nil); err != nil {
+		return
+	}
+	// get an address
+	var addr string
+	if addr, err = db.getUnusedAddress(dbtx, coin, account); err != nil {
+		dbtx.Rollback()
+		return
+	}
+
 	// initialize values
 	now := time.Now().Unix()
 	idData := make([]byte, 32)
@@ -181,19 +208,35 @@ func (db *Database) NewTransaction(addr string) (tx *Transaction, err error) {
 	// assemble transaction
 	tx = &Transaction{
 		ID:        hex.EncodeToString(idData),
+		Addr:      addr,
 		Status:    0,
 		ValidFrom: now,
 		ValidTo:   now + 7200,
 	}
 	var addrID int64
-	row := db.inst.QueryRow("select id,coin,account from v_addr where val=?", addr)
-	if err = row.Scan(&addrID, &tx.Coin, &tx.Accnt); err != nil {
+	var accnt sql.NullString
+	row := dbtx.QueryRow("select id,coin,account from v_addr where val=?", addr)
+	if err = row.Scan(&addrID, &tx.Coin, &accnt); err != nil {
+		dbtx.Rollback()
 		return
 	}
+	if accnt.Valid {
+		tx.Accnt = accnt.String
+	}
 	// insert transaction into database
-	_, err = db.inst.Exec(
+	if _, err = dbtx.Exec(
 		"insert into tx(txid,addr,validFrom,validTo) values(?,?,?,?)",
-		tx.ID, addrID, tx.ValidFrom, tx.ValidTo)
+		tx.ID, addrID, tx.ValidFrom, tx.ValidTo); err != nil {
+		dbtx.Rollback()
+		return
+	}
+	// increment ref counter in address
+	if _, err = dbtx.Exec("update addr set refCnt = refCnt + 1 where id=?", addrID); err != nil {
+		dbtx.Rollback()
+		return
+	}
+	// commit database transaction
+	err = dbtx.Commit()
 	return
 }
 
