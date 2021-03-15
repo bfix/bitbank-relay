@@ -1,5 +1,3 @@
-package main
-
 //----------------------------------------------------------------------
 // This file is part of 'bitbank-relay'.
 // Copyright (C) 2021 Bernd Fix  >Y<
@@ -19,6 +17,8 @@ package main
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+
+package main
 
 import (
 	"bufio"

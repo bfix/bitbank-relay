@@ -34,17 +34,14 @@ import (
 
 // Package-global variables
 var (
-	handlers             = make(map[string]*lib.Handler)
-	db       *Database   = nil
-	cfg      *lib.Config = nil
+	db  *lib.Database = nil
+	cfg *lib.Config   = nil
 )
 
 // Application entry point
 func main() {
-	var (
-		err   error
-		isNew bool
-	)
+	var err error
+
 	// read configuration
 	defer logger.Flush()
 	logger.Println(logger.INFO, "Reading configuration...")
@@ -54,7 +51,7 @@ func main() {
 	}
 	// connect to database
 	logger.Println(logger.INFO, "Connecting to database...")
-	if db, err = Connect(cfg.Db); err != nil {
+	if db, err = lib.Connect(cfg.Db); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
@@ -67,15 +64,10 @@ func main() {
 		logger.Printf(logger.INFO, "   * %s (%s)", coin.Symb, name)
 
 		// check if coin is in database
-		_, isNew, err = db.GetCoin(coin.Symb)
-		if err != nil {
+		if _, err = db.GetCoin(coin.Symb); err != nil {
 			logger.Println(logger.ERROR, err.Error())
 			continue
 		}
-		if isNew {
-			logger.Println(logger.INFO, "     Added to database...")
-		}
-
 		// get coin handler
 		hdlr, err := lib.NewHandler(coin, wallet.AddrMain)
 		if err != nil {
@@ -93,7 +85,7 @@ func main() {
 			continue
 		}
 		// save handler
-		handlers[coin.Symb] = hdlr
+		lib.HdlrList[coin.Symb] = hdlr
 	}
 	logger.Println(logger.INFO, "Done.")
 
