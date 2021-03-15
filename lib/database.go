@@ -65,7 +65,7 @@ type CoinInfo struct {
 }
 
 func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
-	rows, err := db.inst.Query("select symb,label,logo from coins4account where ref=?", account)
+	rows, err := db.inst.Query("select coin,label,logo from coins4account where account=?", account)
 	if err != nil {
 		return nil, err
 	}
@@ -80,11 +80,12 @@ func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
 	return list, nil
 }
 
-// GetCoin get the database identifier for a given coin.
-// An entry is created if the coin is not found.
-func (db *Database) GetCoinID(symb string) (id int64, err error) {
-	row := db.inst.QueryRow("select id from coin where symbol=?", symb)
-	err = row.Scan(&id)
+// GetCoin get information for a given coin.
+func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
+	row := db.inst.QueryRow("select label,logo from coin where symbol=?", symb)
+	ci = new(CoinInfo)
+	ci.Symbol = symb
+	err = row.Scan(&ci.Label, &ci.Logo)
 	return
 }
 
@@ -98,56 +99,58 @@ func (db *Database) SetCoinLogo(coin, logo string) error {
 // Address-related methods
 //----------------------------------------------------------------------
 
-// GetUnusedAddress returns a currently unused address for a given coin.
-// Creates a new one if none is available.
-func (db *Database) GetUnusedAddress(coin string, coinID int64) (addr string, addrID int64, err error) {
-	// get coin id if no specified
-	if coinID == 0 {
-		if coinID, err = db.GetCoinID(coin); err != nil {
-			return
-		}
+// GetUnusedAddress returns a currently unused address for a given
+// coin/account pair. Creates a new address if none is available.
+func (db *Database) GetUnusedAddress(coin, account string) (addr string, err error) {
+
+	// (1) do we have a unused address for given coin?
+	//     if so, use that address.
+	row := db.inst.QueryRow(
+		"select val from v_addr where stat=0 and coin=?",
+		coin)
+	err = row.Scan(&addr)
+	if err == nil || err != sql.ErrNoRows {
+		return
 	}
-	// select (oldest) unused address
-	row := db.inst.QueryRow("select id,val from addr where coin=? and stat=0 order by idx asc limit 1", coinID)
-	if err = row.Scan(&addrID, &addr); err != nil {
-		if err != sql.ErrNoRows {
-			return
-		}
-		// no address found: generate a new one
-		hdlr, ok := HdlrList[coin]
-		if !ok {
-			err = ErrDbUnknownCoin
-			return
-		}
-		// get next address index
-		var idx int64
-		row = db.inst.QueryRow("select max(idx)+1 from addr where coin=?", coinID)
-		if err = row.Scan(&idx); err != nil {
-			return
-		}
-		// create and store new address
-		if addr, err = hdlr.GetAddress(int(idx)); err != nil {
-			return
-		}
-		var res sql.Result
-		if res, err = db.inst.Exec("insert into addr(coin,idx,val) values(?,?,?)", coinID, idx, addr); err != nil {
-			return
-		}
-		addrID, err = res.LastInsertId()
+
+	// (2) do we have a pending address with matching coin/account pair?
+	//     if so, (re-)use that address.
+	row = db.inst.QueryRow(
+		"select val from v_addr where stat=1 and coin=? and account=?",
+		coin, account)
+	err = row.Scan(&addr)
+	if err == nil || err != sql.ErrNoRows {
+		return
 	}
+
+	// (3) no old address found: generate a new one
+	hdlr, ok := HdlrList[coin]
+	if !ok {
+		err = ErrDbUnknownCoin
+		return
+	}
+	// get coin database id
+	var coinID int64
+	row = db.inst.QueryRow("select id from coin where symbol=?", coin)
+	err = row.Scan(&coinID)
+
+	// get next address index
+	var idx int64
+	row = db.inst.QueryRow("select max(idx)+1 from addr where coin=?", coinID)
+	if err = row.Scan(&idx); err != nil {
+		return
+	}
+	// create and store new address
+	if addr, err = hdlr.GetAddress(int(idx)); err != nil {
+		return
+	}
+	_, err = db.inst.Exec("insert into addr(coin,idx,val) values(?,?,?)", coinID, idx, addr)
 	return
 }
 
 //----------------------------------------------------------------------
 // Account-related methods
 //----------------------------------------------------------------------
-
-// GetAccount returns the database id of an account reference
-func (db *Database) GetAccountID(ref string) (id int64, err error) {
-	row := db.inst.QueryRow("select id from account where ref=?", ref)
-	err = row.Scan(&id)
-	return
-}
 
 //----------------------------------------------------------------------
 // Transaction-related methods
@@ -156,15 +159,16 @@ func (db *Database) GetAccountID(ref string) (id int64, err error) {
 // Transaction is a pending/closed coin transaction
 type Transaction struct {
 	ID        string `json:"id"`
-	Addr      int64  `json:"addr"`
-	Accnt     int64  `json:"account"`
+	Addr      string `json:"addr"`
+	Accnt     string `json:"account"`
+	Coin      string `json:"coin"`
 	Status    int    `json:"status"`
 	ValidFrom int64  `json:"validFrom"`
 	ValidTo   int64  `json:"validTo"`
 }
 
 // NewTransaction creates a new pending transaction for a given address
-func (db *Database) NewTransaction(addrID int64, accountID int64) (tx *Transaction, err error) {
+func (db *Database) NewTransaction(addr string) (tx *Transaction, err error) {
 	// initialize values
 	now := time.Now().Unix()
 	idData := make([]byte, 32)
@@ -173,16 +177,28 @@ func (db *Database) NewTransaction(addrID int64, accountID int64) (tx *Transacti
 	// assemble transaction
 	tx = &Transaction{
 		ID:        hex.EncodeToString(idData),
-		Addr:      addrID,
-		Accnt:     accountID,
 		Status:    0,
 		ValidFrom: now,
 		ValidTo:   now + 7200,
 	}
+	var addrID int64
+	row := db.inst.QueryRow("select id,coin,account from v_addr where val=?", addr)
+	if err = row.Scan(&addrID, &tx.Coin, &tx.Accnt); err != nil {
+		return
+	}
 	// insert transaction into database
 	_, err = db.inst.Exec(
-		"insert into tx(txid,addr,accnt,validFrom,validTo) values(?,?,?,?,?)",
-		tx.ID, addrID, accountID, tx.ValidFrom, tx.ValidTo)
+		"insert into tx(txid,addr,validFrom,validTo) values(?,?,?,?)",
+		tx.ID, addrID, tx.ValidFrom, tx.ValidTo)
+	return
+}
+
+// GetTransaction returns the Tx instance for a given identifier
+func (db *Database) GetTransaction(txid string) (tx *Transaction, err error) {
+	tx = new(Transaction)
+	row := db.inst.QueryRow(
+		"select addr,coin,account,stat,validFrom,validTo from v_tx where txid=?", txid)
+	err = row.Scan(&tx.Addr, &tx.Coin, &tx.Accnt, &tx.Status, &tx.ValidFrom, &tx.ValidTo)
 	return
 }
 
