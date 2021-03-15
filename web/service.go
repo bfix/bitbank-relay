@@ -120,19 +120,14 @@ func receiveHandler(w http.ResponseWriter, r *http.Request) {
 	coin := r.FormValue("c")
 	logger.Printf(logger.DBG, "receive: account=%s, coin=%s\n", accnt, coin)
 
-	addr, err := db.GetUnusedAddress(coin, accnt)
-	if err != nil {
-		resp.Error = err.Error()
-		return
-	}
-	tx, err := db.NewTransaction(addr)
+	tx, err := db.NewTransaction(coin, accnt)
 	if err != nil {
 		resp.Error = err.Error()
 		return
 	}
 	// generate QR code of address
 	qr := "data:image/jpeg;base64,"
-	qrc, err := qrcode.New(addr)
+	qrc, err := qrcode.New(tx.Addr)
 	if err == nil {
 		buf := new(bytes.Buffer)
 		qrc.SaveTo(buf)
