@@ -21,28 +21,35 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"io"
 	"net/http"
 	"relay/lib"
 	"time"
 
 	"github.com/bfix/gospel/logger"
-	"github.com/gorilla/mux"
+	qrcode "github.com/yeqown/go-qrcode"
 )
 
+//----------------------------------------------------------------------
 // run service
+//----------------------------------------------------------------------
+
 func runService(cfg *lib.ServiceConfig) func(ctx context.Context) error {
 
 	// setup request router
 	logger.Println(logger.INFO, "Setting up web service...")
-	r := mux.NewRouter()
-	r.HandleFunc("/receive/{account}/{coin}", ReceiveHandler)
-	r.HandleFunc("/status/{txid}", StatusHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/list/", listHandler)
+	mux.HandleFunc("/receive/", receiveHandler)
+	mux.HandleFunc("/status/", statusHandler)
 
 	// assemble HTTP server
 	srv := &http.Server{
-		Handler:      r,
+		Handler:      mux,
 		Addr:         cfg.Listen,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
@@ -57,23 +64,117 @@ func runService(cfg *lib.ServiceConfig) func(ctx context.Context) error {
 	return srv.Shutdown
 }
 
+//----------------------------------------------------------------------
+// ListHandler returns a list of coins accepted for a given account.
+// Returns an empty list if no valid account is specified.
+//----------------------------------------------------------------------
+
+func listHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	accnt := r.FormValue("a")
+	if len(accnt) == 0 {
+		io.WriteString(w, "[]")
+		return
+	}
+	list, err := db.GetCoins(accnt)
+	if err != nil {
+		logger.Println(logger.ERROR, "List[1]: "+err.Error())
+		io.WriteString(w, "[]")
+		return
+	}
+	body, err := json.Marshal(list)
+	if err != nil {
+		logger.Println(logger.ERROR, "List[2]: "+err.Error())
+		io.WriteString(w, "[]")
+		return
+	}
+	w.Write(body)
+}
+
+//----------------------------------------------------------------------
 // ReceiveHandler returns an new transaction that includes an (unused) address
 // for the given coin and account.
-func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
+//----------------------------------------------------------------------
+
+type txResponse struct {
+	Error string           `json:"error,omitempty"`
+	Tx    *lib.Transaction `json:"tx"`
+	Qr    string           `json:"qr"`
+}
+
+func receiveHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	io.WriteString(w, `{"alive": true}`)
+	// create response and send it on exit
+	resp := new(txResponse)
+	defer func() {
+		buf, _ := json.Marshal(resp)
+		w.Write(buf)
+	}()
+
+	// get address for given account and coin
+	accnt := r.FormValue("a")
+	coin := r.FormValue("c")
+	addr, err := db.GetUnusedAddress(coin, accnt)
+	if err != nil {
+		resp.Error = err.Error()
+		return
+	}
+	tx, err := db.NewTransaction(addr)
+	if err != nil {
+		resp.Error = err.Error()
+		return
+	}
+	// generate QR code of address
+	qr := "data:image/jpeg;base64,"
+	qrc, err := qrcode.New(addr)
+	if err == nil {
+		buf := new(bytes.Buffer)
+		qrc.SaveTo(buf)
+		qr += base64.StdEncoding.EncodeToString(buf.Bytes())
+	} else {
+		qr = ""
+	}
+	// assemble response
+	resp.Qr = qr
+	resp.Tx = tx
 }
 
+//----------------------------------------------------------------------
 // StatusHandler returns the status for a given transaction
-func StatusHandler(w http.ResponseWriter, r *http.Request) {
+//----------------------------------------------------------------------
+
+func statusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	io.WriteString(w, `{"alive": true}`)
-}
+	// create response and send it on exit
+	resp := new(txResponse)
+	defer func() {
+		buf, _ := json.Marshal(resp)
+		w.Write(buf)
+	}()
 
-func periodicTasks() {
-
+	// get transaction
+	var err error
+	tx := r.FormValue("t")
+	if resp.Tx, err = db.GetTransaction(tx); err != nil {
+		resp.Error = err.Error()
+		return
+	}
+	// generate QR code of address
+	qr := "data:image/jpeg;base64,"
+	qrc, err := qrcode.New(resp.Tx.Addr)
+	if err == nil {
+		buf := new(bytes.Buffer)
+		qrc.SaveTo(buf)
+		qr += base64.StdEncoding.EncodeToString(buf.Bytes())
+	} else {
+		qr = ""
+	}
+	// assemble response
+	resp.Qr = qr
 }
