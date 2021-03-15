@@ -83,7 +83,7 @@ create table addr (
     coin integer references coin(id) on delete cascade,
 
     -- BIP32/39/44 address index
-    idx integer not null,
+    idx integer,
 
     -- address as string
     val varchar(127) not null,
@@ -105,8 +105,9 @@ create table addr (
     validTo timestamp null default null
 );
 
--- id-less view on address records
+-- view on address records
 create view v_addr as select
+    a.id as id,
     c.label as coin,
     a.val as val,
     a.stat as stat,
@@ -115,10 +116,11 @@ create view v_addr as select
     a.validFrom as validFrom,
     a.validTo as validTo
 from
-    addr a, account b, coin c
-where
-    a.coin = c.id and a.accnt = b.id;
-
+    addr a
+inner join
+    coin c on c.id = a.coin
+left join
+    account b on b.id = a.accnt;
 
 -- transaction
 create table tx (
