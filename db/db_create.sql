@@ -94,7 +94,7 @@ create table addr (
     --  2 = closed (address was used; don't use again)
     stat integer default 0,
 
-    -- reference to account (if stat != 0)
+    -- reference to account
     accnt integer references account(id) on delete cascade,
 
     -- reference count in pending transactions:
@@ -108,7 +108,7 @@ create table addr (
 -- view on address records
 create view v_addr as select
     a.id as id,
-    c.label as coin,
+    c.symbol as coin,
     a.val as val,
     a.stat as stat,
     b.label as account,
