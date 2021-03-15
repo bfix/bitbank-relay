@@ -118,6 +118,8 @@ func receiveHandler(w http.ResponseWriter, r *http.Request) {
 	// get address for given account and coin
 	accnt := r.FormValue("a")
 	coin := r.FormValue("c")
+	logger.Printf(logger.DBG, "receive: account=%s, coin=%s\n", accnt, coin)
+
 	addr, err := db.GetUnusedAddress(coin, accnt)
 	if err != nil {
 		resp.Error = err.Error()
@@ -161,6 +163,8 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	// get transaction
 	var err error
 	tx := r.FormValue("t")
+	logger.Printf(logger.DBG, "status: tx=%s\n", tx)
+
 	if resp.Tx, err = db.GetTransaction(tx); err != nil {
 		resp.Error = err.Error()
 		return
