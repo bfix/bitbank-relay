@@ -135,13 +135,17 @@ func (db *Database) GetUnusedAddress(coin, account string) (addr string, err err
 	err = row.Scan(&coinID)
 
 	// get next address index
-	var idx int64
+	var idxV sql.NullInt64
 	row = db.inst.QueryRow("select max(idx)+1 from addr where coin=?", coinID)
-	if err = row.Scan(&idx); err != nil {
+	if err = row.Scan(&idxV); err != nil {
 		return
 	}
+	idx := int(idxV.Int64)
+	if !idxV.Valid {
+		idx = 0
+	}
 	// create and store new address
-	if addr, err = hdlr.GetAddress(int(idx)); err != nil {
+	if addr, err = hdlr.GetAddress(idx); err != nil {
 		return
 	}
 	_, err = db.inst.Exec("insert into addr(coin,idx,val) values(?,?,?)", coinID, idx, addr)
