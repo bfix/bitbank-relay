@@ -31,6 +31,11 @@ import (
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
+var (
+	// HdlrList is a list of registered handlers
+	HdlrList = make(map[string]*Handler)
+)
+
 // Handler to handle coin accounts (in BIP44/49 wallets)
 type Handler struct {
 	coin    int              // coin identifier
