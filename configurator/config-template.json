@@ -4,7 +4,7 @@
   },
   "database": {
     "mode": "mysql",
-    "connect": "bb_addr:bb_addr@tcp(127.0.0.1:3306)/BB_Addresser"
+    "connect": "bb_relay:bb_relay@tcp(127.0.0.1:3306)/BB_Relay"
   },
   "coins": [
     {
