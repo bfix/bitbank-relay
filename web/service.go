@@ -102,6 +102,7 @@ type txResponse struct {
 	Error string           `json:"error,omitempty"`
 	Tx    *lib.Transaction `json:"tx"`
 	Qr    string           `json:"qr"`
+	Coin  *lib.CoinInfo    `json:"coin"`
 }
 
 func receiveHandler(w http.ResponseWriter, r *http.Request) {
@@ -135,9 +136,16 @@ func receiveHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		qr = ""
 	}
+	// get coin info
+	ci, err := db.GetCoin(coin)
+	if err != nil {
+		resp.Error = err.Error()
+		return
+	}
 	// assemble response
 	resp.Qr = qr
 	resp.Tx = tx
+	resp.Coin = ci
 }
 
 //----------------------------------------------------------------------
