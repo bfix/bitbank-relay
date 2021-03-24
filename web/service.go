@@ -182,6 +182,13 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		qr = ""
 	}
+	// get coin info
+	ci, err := db.GetCoin(resp.Tx.Coin)
+	if err != nil {
+		resp.Error = err.Error()
+		return
+	}
 	// assemble response
 	resp.Qr = qr
+	resp.Coin = ci
 }
