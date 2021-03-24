@@ -105,33 +105,20 @@ var (
 // (Internal use for generating new transactions)
 func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr string, err error) {
 
-	// (1) do we have a unused address for given coin?
-	//     if so, use that address.
+	// do we have a unused address for given coin? if so, use that address.
 	row := dbtx.QueryRow(
-		"select val from v_addr where stat=0 and coin=?",
-		coin)
-	err = row.Scan(&addr)
-	if err == nil || err != sql.ErrNoRows {
-		return
-	}
-
-	// (2) do we have a pending address with matching coin/account pair?
-	//     if so, (re-)use that address.
-	row = dbtx.QueryRow(
-		"select val from v_addr where stat=1 and coin=? and account=?",
+		"select val from v_addr where stat=0 and coin=? and account=?",
 		coin, account)
 	err = row.Scan(&addr)
 	if err == nil || err != sql.ErrNoRows {
 		return
 	}
-
-	// (3) no old address found: generate a new one
+	//  no old address found: generate a new one
 	hdlr, ok := HdlrList[coin]
 	if !ok {
 		err = ErrDbUnknownCoin
 		return
 	}
-
 	// get coin database id
 	var coinID int64
 	row = dbtx.QueryRow("select id from coin where symbol=?", coin)
@@ -146,7 +133,6 @@ func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr s
 	if err != nil {
 		return
 	}
-
 	// get next address index
 	var idxV sql.NullInt64
 	row = dbtx.QueryRow("select max(idx)+1 from addr where coin=?", coinID)
@@ -161,7 +147,7 @@ func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr s
 	if addr, err = hdlr.GetAddress(idx); err != nil {
 		return
 	}
-	_, err = dbtx.Exec("insert into addr(coin,account,idx,val) values(?,?,?)", coinID, accntID, idx, addr)
+	_, err = dbtx.Exec("insert into addr(coin,accnt,idx,val) values(?,?,?,?)", coinID, accntID, idx, addr)
 	return
 }
 
@@ -243,6 +229,7 @@ func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err e
 // GetTransaction returns the Tx instance for a given identifier
 func (db *Database) GetTransaction(txid string) (tx *Transaction, err error) {
 	tx = new(Transaction)
+	tx.ID = txid
 	row := db.inst.QueryRow(
 		"select addr,coin,account,stat,validFrom,validTo from v_tx where txid=?", txid)
 	err = row.Scan(&tx.Addr, &tx.Coin, &tx.Accnt, &tx.Status, &tx.ValidFrom, &tx.ValidTo)

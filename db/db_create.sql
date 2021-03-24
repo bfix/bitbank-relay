@@ -89,15 +89,14 @@ create table addr (
     val varchar(127) not null,
 
     -- status:
-    --  0 = unused
-    --  1 = pending (used in a pending transaction)
-    --  2 = closed (address was used; don't use again)
+    --  0 = open (ready to be used)
+    --  1 = closed (address was used; don't use again)
     stat integer default 0,
 
     -- reference to account
     accnt integer references account(id) on delete cascade,
 
-    -- reference count in pending transactions:
+    -- reference count (transactions)
     refCnt integer default 0,
 
     -- address life-span
