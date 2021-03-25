@@ -27,34 +27,32 @@ import (
 	"net/http"
 )
 
-// Balancer interface for querying address balances
-type Balancer interface {
-	Get(addr string) (float64, error)
-}
+// Balancer prototype for querying address balances
+type Balancer func(addr string) (float64, error)
 
 //----------------------------------------------------------------------
 // Manage available balancers
 //----------------------------------------------------------------------
 
+// List of known address balancers
 var (
-	balancer = make(map[string]Balancer)
+	balancer = map[string]Balancer{
+		"btc":  BtcBalancer,
+		"bch":  BchBalancer,
+		"btg":  nil,
+		"dash": DashBalancer,
+		"dgb":  nil,
+		"doge": DogeBalancer,
+		"ltc":  LtcBalancer,
+		"nmc":  nil,
+		"vtc":  nil,
+		"zec":  ZecBalancer,
+		"eth":  EthBalancer,
+		"etc":  nil,
+	}
 )
 
-func init() {
-	balancer["btc"] = new(BtcBalancer)
-	balancer["bch"] = new(BchBalancer)
-	balancer["btg"] = nil
-	balancer["dash"] = new(DashBalancer)
-	balancer["dgb"] = nil
-	balancer["doge"] = new(DogeBalancer)
-	balancer["ltc"] = new(LtcBalancer)
-	balancer["nmc"] = nil
-	balancer["vtc"] = nil
-	balancer["zec"] = new(ZecBalancer)
-	balancer["eth"] = new(EthBalancer)
-	balancer["etc"] = nil
-}
-
+// GetBalancer acts as a factory for coin-specific balancers.
 func GetBalancer(coin string) Balancer {
 	b, ok := balancer[coin]
 	if !ok {
@@ -104,11 +102,8 @@ type BtcAddrInfo struct {
 	} `json:"txs"`
 }
 
-// BtcBalancer implements the Balancer interface for Bitcoin addresses
-type BtcBalancer struct{}
-
-// Get the balance of a Bitcoin address
-func (b *BtcBalancer) Get(addr string) (float64, error) {
+// BtcBalancer gets the balance of a Bitcoin address
+func BtcBalancer(addr string) (float64, error) {
 	query := fmt.Sprintf("https://blockchain.info/rawaddr/%s?limit=0", addr)
 	resp, err := http.Get(query)
 	if err != nil {
@@ -130,6 +125,7 @@ func (b *BtcBalancer) Get(addr string) (float64, error) {
 // ETH (Ethereum)
 //----------------------------------------------------------------------
 
+// EthAddressInfo is a response from the ethplorer.io API for an address query
 type EthAddrInfo struct {
 	Address string `json:"address"`
 	ETH     struct {
@@ -151,11 +147,8 @@ type EthAddrInfo struct {
 	CounTxs int `json:"countTxs"`
 }
 
-// EthBalancer implements the Balancer interface for Ethereum addresses
-type EthBalancer struct{}
-
-// Get the balance of an Ethereum address
-func (b *EthBalancer) Get(addr string) (float64, error) {
+// EthBalancer gets the balance of an Ethereum address
+func EthBalancer(addr string) (float64, error) {
 	query := fmt.Sprintf("https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey", addr)
 	resp, err := http.Get(query)
 	if err != nil {
@@ -177,6 +170,7 @@ func (b *EthBalancer) Get(addr string) (float64, error) {
 // ZEC (ZCash)
 //----------------------------------------------------------------------
 
+// ZecAddressInfo is a response from the zcha.in API for an address query
 type ZecAddrInfo struct {
 	Address    string  `json:"address"`
 	Balance    float64 `json:"balance"`
@@ -189,11 +183,8 @@ type ZecAddrInfo struct {
 	TotalRecv  float64 `json:"totalRecv"`
 }
 
-// ZecBalancer implements the Balancer interface for ZCash addresses
-type ZecBalancer struct{}
-
-// Get the balance of a ZCash address
-func (b *ZecBalancer) Get(addr string) (float64, error) {
+// ZecBalancer gets the balance of a ZCash address
+func ZecBalancer(addr string) (float64, error) {
 	query := fmt.Sprintf("https://api.zcha.in/v2/mainnet/accounts/%s", addr)
 	resp, err := http.Get(query)
 	if err != nil {
@@ -215,9 +206,8 @@ func (b *ZecBalancer) Get(addr string) (float64, error) {
 // BCH (Bitcoin Cash)
 //----------------------------------------------------------------------
 
-type BchBalancer struct{}
-
-func (b *BchBalancer) Get(addr string) (float64, error) {
+// BchBalancer gets the balance of a Bitcoin Cash address
+func BchBalancer(addr string) (float64, error) {
 	data, err := BlockchairGet("bitcoin-cash", addr)
 	if err != nil {
 		return -1, err
@@ -229,9 +219,8 @@ func (b *BchBalancer) Get(addr string) (float64, error) {
 // DASH
 //----------------------------------------------------------------------
 
-type DashBalancer struct{}
-
-func (b *DashBalancer) Get(addr string) (float64, error) {
+// DashBalancer gets the balance of a Dash address
+func DashBalancer(addr string) (float64, error) {
 	data, err := BlockchairGet("dash", addr)
 	if err != nil {
 		return -1, err
@@ -243,9 +232,8 @@ func (b *DashBalancer) Get(addr string) (float64, error) {
 // Doge (Dogecoin)
 //----------------------------------------------------------------------
 
-type DogeBalancer struct{}
-
-func (b *DogeBalancer) Get(addr string) (float64, error) {
+// DogeBalancer gets the balance of a Dogecoin address
+func DogeBalancer(addr string) (float64, error) {
 	data, err := BlockchairGet("dogecoin", addr)
 	if err != nil {
 		return -1, err
@@ -257,9 +245,8 @@ func (b *DogeBalancer) Get(addr string) (float64, error) {
 // LTC (Litecoin)
 //----------------------------------------------------------------------
 
-type LtcBalancer struct{}
-
-func (b *LtcBalancer) Get(addr string) (float64, error) {
+// LtcBalancer gets the balance of a Litecoin address
+func LtcBalancer(addr string) (float64, error) {
 	data, err := BlockchairGet("litecoin", addr)
 	if err != nil {
 		return -1, err
@@ -271,6 +258,7 @@ func (b *LtcBalancer) Get(addr string) (float64, error) {
 // Generic Balancer (blockchair.com)
 //----------------------------------------------------------------------
 
+// BlockchairAddrInfo is the response from the blockchair.com API
 type BlockchairAddrInfo struct {
 	Data map[string]struct {
 		Address struct {

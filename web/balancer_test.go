@@ -27,8 +27,7 @@ import (
 
 func TestBalancerBtcEmpty(t *testing.T) {
 	addr := "3EtzTLkZznFz9p7XVvVkEKSfqWtgFoPfeu"
-	b := new(BtcBalancer)
-	val, err := b.Get(addr)
+	val, err := BtcBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,8 +39,7 @@ func TestBalancerBtcEmpty(t *testing.T) {
 
 func TestBalanceBtcUsed(t *testing.T) {
 	addr := "1DFrkMZnFReDz93FQPBLT512DBDPAFF6qV"
-	b := new(BtcBalancer)
-	val, err := b.Get(addr)
+	val, err := BtcBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,8 +51,7 @@ func TestBalanceBtcUsed(t *testing.T) {
 
 func TestBalanceEthEmpty(t *testing.T) {
 	addr := "0x2c95f5d417742747a9c3c9c4110191e4d684c9da"
-	b := new(EthBalancer)
-	val, err := b.Get(addr)
+	val, err := EthBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,8 +63,7 @@ func TestBalanceEthEmpty(t *testing.T) {
 
 func TestBalanceEthUsed(t *testing.T) {
 	addr := "0x3f5ce5fbfe3e9af3971dd833d26ba9b5c936f0be"
-	b := new(EthBalancer)
-	val, err := b.Get(addr)
+	val, err := EthBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,8 +75,7 @@ func TestBalanceEthUsed(t *testing.T) {
 
 func TestBalanceZecEmpty(t *testing.T) {
 	addr := "t1dZ5Tz8CqnhuQCjeUDrC7xMYtixpyykQ1b"
-	b := new(ZecBalancer)
-	val, err := b.Get(addr)
+	val, err := ZecBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,8 +87,7 @@ func TestBalanceZecEmpty(t *testing.T) {
 
 func TestBalanceZecUsed(t *testing.T) {
 	addr := "t3XyYW8yBFRuMnfvm5KLGFbEVz25kckZXym"
-	b := new(ZecBalancer)
-	val, err := b.Get(addr)
+	val, err := ZecBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,8 +99,7 @@ func TestBalanceZecUsed(t *testing.T) {
 
 func TestBalanceBitcoinCashEmpty(t *testing.T) {
 	addr := "qpnfc27ttwqky82emu6mvwtqphg94y4ahc957hjwhp"
-	b := new(BchBalancer)
-	val, err := b.Get(addr)
+	val, err := BchBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,8 +111,7 @@ func TestBalanceBitcoinCashEmpty(t *testing.T) {
 
 func TestBalanceBitcoinCashUsed(t *testing.T) {
 	addr := "qz7xc0vl85nck65ffrsx5wvewjznp9lflgktxc5878"
-	b := new(BchBalancer)
-	val, err := b.Get(addr)
+	val, err := BchBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,8 +123,7 @@ func TestBalanceBitcoinCashUsed(t *testing.T) {
 
 func TestBalanceDogeEmpty(t *testing.T) {
 	addr := "DTAfQ9aRZLue1bmFjcpnWadzoyiieGKHg5"
-	b := new(DogeBalancer)
-	val, err := b.Get(addr)
+	val, err := DogeBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,8 +135,7 @@ func TestBalanceDogeEmpty(t *testing.T) {
 
 func TestBalanceDogeUsed(t *testing.T) {
 	addr := "DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L"
-	b := new(DogeBalancer)
-	val, err := b.Get(addr)
+	val, err := DogeBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,8 +147,7 @@ func TestBalanceDogeUsed(t *testing.T) {
 
 func TestBalanceDashEmpty(t *testing.T) {
 	addr := "XpXdvoyijeEingcVni5kPCTqXHL6as7Uxv"
-	b := new(DashBalancer)
-	val, err := b.Get(addr)
+	val, err := DashBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,8 +159,7 @@ func TestBalanceDashEmpty(t *testing.T) {
 
 func TestBalanceDashUsed(t *testing.T) {
 	addr := "XcQgFcjNLS36B6TYAW8ZrbibZC31Rbxitg"
-	b := new(DashBalancer)
-	val, err := b.Get(addr)
+	val, err := DashBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,8 +171,7 @@ func TestBalanceDashUsed(t *testing.T) {
 
 func TestBalanceLitecoinEmpty(t *testing.T) {
 	addr := "MNa6k9obZu1QezfF8mHxZ4fvFD5c126WfE"
-	b := new(LtcBalancer)
-	val, err := b.Get(addr)
+	val, err := LtcBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,8 +183,7 @@ func TestBalanceLitecoinEmpty(t *testing.T) {
 
 func TestBalanceLitecoinUsed(t *testing.T) {
 	addr := "M8T1B2Z97gVdvmfkQcAtYbEepune1tzGua"
-	b := new(LtcBalancer)
-	val, err := b.Get(addr)
+	val, err := LtcBalancer(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
