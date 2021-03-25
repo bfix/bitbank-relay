@@ -38,11 +38,12 @@ var (
 
 // Handler to handle coin accounts (in BIP44/49 wallets)
 type Handler struct {
-	coin    int              // coin identifier
-	mode    int              // adress mode (P2PKH, P2SH, ...)
-	netw    int              // network (Main, Test, Reg)
-	tree    *wallet.HDPublic // HDKD for public keys
-	pathTpl string           // path template for indexing addresses
+	coin     int              // coin identifier
+	mode     int              // adress mode (P2PKH, P2SH, ...)
+	netw     int              // network (Main, Test, Reg)
+	tree     *wallet.HDPublic // HDKD for public keys
+	balancer Balancer         // address balance handler for coin
+	pathTpl  string           // path template for indexing addresses
 }
 
 // NewHandler creates a new handler instance for the given coin on
@@ -66,13 +67,19 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 	// get coin identifier
 	coinID, _ := wallet.GetCoinInfo(coin.Symb)
 
+	// balancer function for coin
+	b, ok := balancer[coin.Symb]
+	if !ok {
+		b = nil
+	}
 	// assemble handler for given coin
 	return &Handler{
-		coin:    coinID,
-		mode:    coin.GetMode(),
-		netw:    network,
-		pathTpl: path,
-		tree:    wallet.NewHDPublic(pk, coin.Path),
+		coin:     coinID,
+		mode:     coin.GetMode(),
+		netw:     network,
+		tree:     wallet.NewHDPublic(pk, coin.Path),
+		balancer: b,
+		pathTpl:  path,
 	}, nil
 }
 
@@ -92,6 +99,11 @@ func (hdlr *Handler) GetAddress(idx int) (string, error) {
 		return "", err
 	}
 	return wallet.MakeAddress(pk, hdlr.coin, hdlr.mode, hdlr.netw), nil
+}
+
+// GetBalance returns the balance for a given address
+func (hdlr *Handler) GetBalance(addr string) (float64, error) {
+	return hdlr.balancer(addr)
 }
 
 //----------------------------------------------------------------------

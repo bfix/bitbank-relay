@@ -18,13 +18,16 @@
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
 
-package main
+package lib
 
 import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // Balancer prototype for querying address balances
@@ -39,27 +42,24 @@ var (
 	balancer = map[string]Balancer{
 		"btc":  BtcBalancer,
 		"bch":  BchBalancer,
-		"btg":  nil,
+		"btg":  BtgBalancer,
 		"dash": DashBalancer,
 		"dgb":  nil,
 		"doge": DogeBalancer,
 		"ltc":  LtcBalancer,
 		"nmc":  nil,
-		"vtc":  nil,
+		"vtc":  VtcBalancer,
 		"zec":  ZecBalancer,
 		"eth":  EthBalancer,
 		"etc":  nil,
 	}
 )
 
-// GetBalancer acts as a factory for coin-specific balancers.
-func GetBalancer(coin string) Balancer {
-	b, ok := balancer[coin]
-	if !ok {
-		b = nil
-	}
-	return b
-}
+// Error codes
+var (
+	ErrBalanceFailed       = fmt.Errorf("balance query failed")
+	ErrBalanceAccessDenied = fmt.Errorf("HTTP GET access denied")
+)
 
 //----------------------------------------------------------------------
 // BTC (Bitcoin)
@@ -216,6 +216,48 @@ func BchBalancer(addr string) (float64, error) {
 }
 
 //----------------------------------------------------------------------
+// BTG (Bitcoin Gold)
+//----------------------------------------------------------------------
+
+// BtgAddrInfo is the response from the btgexplorer.com API
+type BtgAddrInfo struct {
+	Page               int      `json:"page"`
+	TotalPages         int      `json:"totalPages"`
+	ItemsOnPage        int      `json:"itemsOnPage"`
+	Address            string   `json:"addrStr"`
+	Balance            string   `json:"balance"`
+	TotalReceived      string   `json:"totalReceived"`
+	TotalSent          string   `json:"totalSent"`
+	UnconfirmedBalance string   `json:"unconfirmedBalance"`
+	UnconfirmedTxs     int      `json:"unconfirmedTxApperances"`
+	TxApperances       int      `json:"txApperances"`
+	Transaction        []string `json:"transactions"`
+}
+
+// BtgBalancer gets the balance of a Bitcoin Gold address
+func BtgBalancer(addr string) (float64, error) {
+	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
+	resp, err := http.Get(query)
+	if err != nil {
+		return -1, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return -1, err
+	}
+	data := new(BtgAddrInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return -1, err
+	}
+	val, err := strconv.ParseFloat(data.Balance, 64)
+	if err != nil {
+		return -1, err
+	}
+	return val, nil
+}
+
+//----------------------------------------------------------------------
 // DASH
 //----------------------------------------------------------------------
 
@@ -252,6 +294,66 @@ func LtcBalancer(addr string) (float64, error) {
 		return -1, err
 	}
 	return float64(data.Data[addr].Address.Balance) / 1e8, nil
+}
+
+//----------------------------------------------------------------------
+// VTC (Vertcoin)
+//----------------------------------------------------------------------
+
+// VtcAddrInfo is the response to a coinexplorer.net API call.
+type VtcAddrInfo struct {
+	Success bool        `json:"success"`
+	Result  interface{} `json:"result"`
+	Error   string      `json:"error"`
+}
+
+// VtcBalancer gets the balance of a Vertcoin address
+func VtcBalancer(addr string) (float64, error) {
+	// enforce rate limit
+	time.Sleep(time.Second)
+
+	// query address balance
+	query := fmt.Sprintf("https://www.coinexplorer.net/api/v1/VTC/address/balance?address=%s", addr)
+
+	// perform HTTP GET request
+	req, err := http.NewRequest("GET", query, nil)
+	if err != nil {
+		return -1, err
+	}
+	req.AddCookie(&http.Cookie{Name: "test", Value: "test"})
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return -1, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return -1, err
+	}
+	// check for failure
+	if strings.HasPrefix(string(body), "error code:") {
+		// we are blocked on cloudflare
+		return -1, ErrBalanceAccessDenied
+	}
+	// parse JSON response
+	data := new(VtcAddrInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return -1, err
+	}
+	// evaluate response
+	if !data.Success {
+		return 0, nil
+	}
+	res, ok := data.Result.(map[string]string)
+	if !ok {
+		return 0, nil
+	}
+	val, err := strconv.ParseFloat(res[addr], 64)
+	if err != nil {
+		return -1, err
+	}
+	return val, nil
 }
 
 //----------------------------------------------------------------------
