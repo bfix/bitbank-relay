@@ -102,3 +102,107 @@ func TestBalanceZecUsed(t *testing.T) {
 	}
 	t.Logf("Balance for '%s': %f\n", addr, val)
 }
+
+func TestBalanceBitcoinCashEmpty(t *testing.T) {
+	addr := "qpnfc27ttwqky82emu6mvwtqphg94y4ahc957hjwhp"
+	b := new(BchBalancer)
+	val, err := b.Get(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(val) >= 1e-8 {
+		t.Fatal("Balance not ZERO!")
+	}
+	t.Logf("Balance for '%s': %f\n", addr, val)
+}
+
+func TestBalanceBitcoinCashUsed(t *testing.T) {
+	addr := "qz7xc0vl85nck65ffrsx5wvewjznp9lflgktxc5878"
+	b := new(BchBalancer)
+	val, err := b.Get(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(val) < 1e-8 {
+		t.Fatal("Balance is ZERO!")
+	}
+	t.Logf("Balance for '%s': %f\n", addr, val)
+}
+
+func TestBalanceDogeEmpty(t *testing.T) {
+	addr := "DTAfQ9aRZLue1bmFjcpnWadzoyiieGKHg5"
+	b := new(DogeBalancer)
+	val, err := b.Get(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(val) >= 1e-8 {
+		t.Fatal("Balance not ZERO!")
+	}
+	t.Logf("Balance for '%s': %f\n", addr, val)
+}
+
+func TestBalanceDogeUsed(t *testing.T) {
+	addr := "DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L"
+	b := new(DogeBalancer)
+	val, err := b.Get(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(val) < 1e-8 {
+		t.Fatal("Balance is ZERO!")
+	}
+	t.Logf("Balance for '%s': %f\n", addr, val)
+}
+
+func TestBalanceDashEmpty(t *testing.T) {
+	addr := "XpXdvoyijeEingcVni5kPCTqXHL6as7Uxv"
+	b := new(DashBalancer)
+	val, err := b.Get(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(val) >= 1e-8 {
+		t.Fatal("Balance not ZERO!")
+	}
+	t.Logf("Balance for '%s': %f\n", addr, val)
+}
+
+func TestBalanceDashUsed(t *testing.T) {
+	addr := "XcQgFcjNLS36B6TYAW8ZrbibZC31Rbxitg"
+	b := new(DashBalancer)
+	val, err := b.Get(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(val) < 1e-8 {
+		t.Fatal("Balance is ZERO!")
+	}
+	t.Logf("Balance for '%s': %f\n", addr, val)
+}
+
+func TestBalanceLitecoinEmpty(t *testing.T) {
+	addr := "MNa6k9obZu1QezfF8mHxZ4fvFD5c126WfE"
+	b := new(LtcBalancer)
+	val, err := b.Get(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(val) >= 1e-8 {
+		t.Fatal("Balance not ZERO!")
+	}
+	t.Logf("Balance for '%s': %f\n", addr, val)
+}
+
+func TestBalanceLitecoinUsed(t *testing.T) {
+	addr := "M8T1B2Z97gVdvmfkQcAtYbEepune1tzGua"
+	b := new(LtcBalancer)
+	val, err := b.Get(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(val) < 1e-8 {
+		t.Fatal("Balance is ZERO!")
+	}
+	t.Logf("Balance for '%s': %f\n", addr, val)
+}
