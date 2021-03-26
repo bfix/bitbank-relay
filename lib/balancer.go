@@ -44,7 +44,7 @@ var (
 		"bch":  BchBalancer,
 		"btg":  BtgBalancer,
 		"dash": DashBalancer,
-		"dgb":  nil,
+		"dgb":  DgbBalancer,
 		"doge": DogeBalancer,
 		"ltc":  LtcBalancer,
 		"nmc":  nil,
@@ -147,8 +147,15 @@ type EthAddrInfo struct {
 	CounTxs int `json:"countTxs"`
 }
 
+// honor rate limit minimum
+var ethLimiter = NewLimiter(5, 50, 200, 2000, 3000)
+
 // EthBalancer gets the balance of an Ethereum address
 func EthBalancer(addr string) (float64, error) {
+	// honor rate limit
+	ethLimiter.Pass()
+
+	// assemble and execute GET request
 	query := fmt.Sprintf("https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey", addr)
 	resp, err := http.Get(query)
 	if err != nil {
@@ -350,6 +357,35 @@ func VtcBalancer(addr string) (float64, error) {
 		return 0, nil
 	}
 	val, err := strconv.ParseFloat(res[addr], 64)
+	if err != nil {
+		return -1, err
+	}
+	return val, nil
+}
+
+//----------------------------------------------------------------------
+// DGB (Digibyte)
+//----------------------------------------------------------------------
+
+var dgbLimiter = NewLimiter(0, 6)
+
+// NmcBalancer gets the balance of a Namecoin address
+func DgbBalancer(addr string) (float64, error) {
+	// honor rate limit
+	dgbLimiter.Pass()
+
+	// assemble query
+	query := fmt.Sprintf("https://chainz.cryptoid.info/dgb/api.dws?q=getbalance&a=%s", addr)
+	resp, err := http.Get(query)
+	if err != nil {
+		return -1, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return -1, err
+	}
+	val, err := strconv.ParseFloat(string(body), 64)
 	if err != nil {
 		return -1, err
 	}
