@@ -55,21 +55,21 @@ func (db *Database) Close() error {
 
 // CoinInfo contains information about a coin
 type CoinInfo struct {
-	Symbol string   `json:"symb"`
-	Label  string   `json:"label"`
-	Logo   string   `json:"logo"`
-	Market []*Price `json:"prices,omitempty"`
+	Symbol string  `json:"symb"`
+	Label  string  `json:"label"`
+	Logo   string  `json:"logo"`
+	Rate   float64 `json:"rate"`
 }
 
 func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
-	rows, err := db.inst.Query("select coin,label,logo from coins4account where account=?", account)
+	rows, err := db.inst.Query("select coin,label,logo,rate from coins4account where account=?", account)
 	if err != nil {
 		return nil, err
 	}
 	list := make([]*CoinInfo, 0)
 	for rows.Next() {
 		e := new(CoinInfo)
-		if err = rows.Scan(&e.Symbol, &e.Label, &e.Logo); err != nil {
+		if err = rows.Scan(&e.Symbol, &e.Label, &e.Logo, &e.Rate); err != nil {
 			return nil, err
 		}
 		list = append(list, e)
@@ -79,10 +79,10 @@ func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
 
 // GetCoin get information for a given coin.
 func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
-	row := db.inst.QueryRow("select label,logo from coin where symbol=?", symb)
+	row := db.inst.QueryRow("select label,logo,rate from coin where symbol=?", symb)
 	ci = new(CoinInfo)
 	ci.Symbol = symb
-	err = row.Scan(&ci.Label, &ci.Logo)
+	err = row.Scan(&ci.Label, &ci.Logo, &ci.Rate)
 	return
 }
 
@@ -150,6 +150,25 @@ func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr s
 	}
 	_, err = dbtx.Exec("insert into addr(coin,accnt,idx,val) values(?,?,?,?)", coinID, accntID, idx, addr)
 	return
+}
+
+// PendingAddresses returns a list of open addresses with a balance check
+// older than 't' seconds.
+func (db *Database) PendingAddresses(t int64) ([]int64, error) {
+	now := time.Now().Unix()
+	rows, err := db.inst.Query("select id from addr where stat=0 and (?-lastCheck)>?", now, t)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]int64, 0)
+	var ID int64
+	for rows.Next() {
+		if err = rows.Scan(&ID); err != nil {
+			return nil, err
+		}
+		res = append(res, ID)
+	}
+	return res, nil
 }
 
 //----------------------------------------------------------------------
@@ -237,9 +256,40 @@ func (db *Database) GetTransaction(txid string) (tx *Transaction, err error) {
 	return
 }
 
+// CloseExpiredTransactions closes transactions that have expired.
+// Returns a list of asoviated addresses.
+func (db *Database) CloseExpiredTransactions(t int64) ([]int64, error) {
+	list := make(map[int64]bool)
+	rows, err := db.inst.Query("select id,addr from tx where stat=0 and validto < ?", t)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		// get identifiers for tx and address
+		var txID, addrID int64
+		if err = rows.Scan(&txID, &addrID); err != nil {
+			return nil, err
+		}
+		// close transaction
+		db.inst.Exec("update tx set stat=1 where id=?", txID)
+		// remember address
+		list[addrID] = true
+	}
+	// return list of associated addresses (id)
+	res := make([]int64, 0)
+	for id := range list {
+		res = append(res, id)
+	}
+	return res, nil
+}
+
 //----------------------------------------------------------------------
 // Market-related methods
 //----------------------------------------------------------------------
 
-type Price struct {
+// UpdateRate sets the new exchange rate (in market base currency) for
+// the given coin.
+func (db *Database) UpdateRate(coin string, rate float64) error {
+	_, err := db.inst.Exec("update coin set rate=? where symb=?", coin, rate)
+	return err
 }
