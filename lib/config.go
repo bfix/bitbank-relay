@@ -75,7 +75,11 @@ func (c *CoinConfig) GetXDVersion() uint32 {
 //----------------------------------------------------------------------
 
 type ServiceConfig struct {
-	Listen string `json:"listen"` // web service listener (host:port)
+	Listen    string `json:"listen"`    // web service listener (host:port)
+	Epoch     int    `json:"epoch"`     // epoch time in seconds
+	LogFile   string `json:"logFile"`   // logfile name
+	LogLevel  string `json:"logLevel"`  // logging level
+	LogRotate int    `json:"logRotate"` // epochs between log rotation
 }
 
 //----------------------------------------------------------------------
@@ -87,11 +91,27 @@ type DatabaseConfig struct {
 
 //----------------------------------------------------------------------
 
+type BalancerConfig struct {
+	AccountLimit string `json:"accountLimit"` // auto-close address balance limit
+	Rescan       int64  `json:"rescan"`       // address rescan time interval
+}
+
+//----------------------------------------------------------------------
+
+type MarketConfig struct {
+	Fiat   string `json:"fiat"`   // Fiat base currency
+	APIKey string `json:"apikey"` // API access key (coinapi.io)
+}
+
+//----------------------------------------------------------------------
+
 // Config holds overall configuration settings
 type Config struct {
-	Service *ServiceConfig  `json:"service"`  // web service configuration
-	Db      *DatabaseConfig `json:"database"` // database configuration
-	Coins   []*CoinConfig   `json:"coins"`    // list of known coins
+	Service  *ServiceConfig  `json:"service"`  // web service configuration
+	Db       *DatabaseConfig `json:"database"` // database configuration
+	Balancer *BalancerConfig `json:"balancer"` // balancer configuration
+	Market   *MarketConfig   `json:"market"`   // market configuration
+	Coins    []*CoinConfig   `json:"coins"`    // list of known coins
 }
 
 //----------------------------------------------------------------------
