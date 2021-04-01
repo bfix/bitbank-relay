@@ -35,7 +35,7 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 	addrIds, err := db.CloseExpiredTransactions()
 	if err != nil {
 		logger.Println(logger.ERROR, "[periodic] CloseExpiredTxs: "+err.Error())
-	} else {
+	} else if len(addrIds) > 0 {
 		logger.Printf(logger.DBG, "[periodic] => %d addresses effected", len(addrIds))
 		// check balance of all effected addresses
 		go func() {
