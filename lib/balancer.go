@@ -27,7 +27,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/bfix/gospel/logger"
 )
@@ -49,11 +48,11 @@ var (
 		"dgb":  DgbBalancer,
 		"doge": DogeBalancer,
 		"ltc":  LtcBalancer,
-		"nmc":  nil,
+		"nmc":  NilBalancer,
 		"vtc":  VtcBalancer,
 		"zec":  ZecBalancer,
 		"eth":  EthBalancer,
-		"etc":  nil,
+		"etc":  NilBalancer,
 	}
 )
 
@@ -81,46 +80,41 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					return
 				}
 				// get address information
-				var (
-					addr, coin    string
-					balance, rate float64
-				)
-				row := db.inst.QueryRow("select coin,val,balance,rate from v_addr where id=?", ID)
-				if err := row.Scan(&coin, &addr, &balance, &rate); err != nil {
+				addr, coin, balance, rate, err := db.GetAddressInfo(ID)
+				if err != nil {
 					logger.Printf(logger.ERROR, "Balancer: can't retrieve address #%d", ID)
 					logger.Println(logger.ERROR, "=> "+err.Error())
 					continue
 				}
 				// get new address balance
-				hdlr, ok := HdlrList[coin]
-				if !ok {
-					logger.Printf(logger.ERROR, "Balancer: No handler for '%s'", coin)
-					continue
-				}
-				newBalance, err := hdlr.GetBalance(addr)
-				if err != nil {
-					logger.Println(logger.ERROR, "Balancer: "+err.Error())
-					continue
-				}
-				// update balance if increased
-				if newBalance >= balance {
-					balance = newBalance
-				}
-				// update balance
-				if _, err = db.inst.Exec(
-					"update addr set balance=?, lastCheck=? where id=?",
-					balance, time.Now().Unix(), ID); err != nil {
-					logger.Println(logger.ERROR, "Balance update: "+err.Error())
-				}
-				// check if account limit is reached...
-				if cfg.AccountLimit < balance*rate {
-					// yes: close address
-					logger.Printf(logger.INFO, "Closing address '%s' with balance=%f", addr, balance)
-					_, err := db.inst.Exec("update addr set stat=1, validTo=now() where id=?", ID)
+				go func() {
+					hdlr, ok := HdlrList[coin]
+					if !ok {
+						logger.Printf(logger.ERROR, "Balancer: No handler for '%s'", coin)
+						return
+					}
+					newBalance, err := hdlr.GetBalance(addr)
 					if err != nil {
 						logger.Println(logger.ERROR, "Balancer: "+err.Error())
+						return
 					}
-				}
+					// update balance if increased
+					if newBalance >= balance {
+						balance = newBalance
+					}
+					// update balance
+					if err = db.UpdateBalance(ID, balance); err != nil {
+						logger.Println(logger.ERROR, "Balance update: "+err.Error())
+					}
+					// check if account limit is reached...
+					if cfg.AccountLimit < balance*rate {
+						// yes: close address
+						logger.Printf(logger.INFO, "Closing address '%s' with balance=%f", addr, balance)
+						if err = db.CloseAddress(ID); err != nil {
+							logger.Println(logger.ERROR, "Balancer: "+err.Error())
+						}
+					}
+				}()
 
 			// cancel processor
 			case <-ctx.Done():
@@ -218,7 +212,7 @@ type EthAddrInfo struct {
 }
 
 // honor rate limit minimum
-var ethLimiter = NewLimiter(5, 50, 200, 2000, 3000)
+var ethLimiter = NewRateLimiter(5, 50, 200, 2000, 3000)
 
 // EthBalancer gets the balance of an Ethereum address
 func EthBalancer(addr string) (float64, error) {
@@ -285,11 +279,7 @@ func ZecBalancer(addr string) (float64, error) {
 
 // BchBalancer gets the balance of a Bitcoin Cash address
 func BchBalancer(addr string) (float64, error) {
-	data, err := BlockchairGet("bitcoin-cash", addr)
-	if err != nil {
-		return -1, err
-	}
-	return float64(data.Data[addr].Address.Balance) / 1e8, nil
+	return BlockchairGet("bitcoin-cash", addr)
 }
 
 //----------------------------------------------------------------------
@@ -340,11 +330,7 @@ func BtgBalancer(addr string) (float64, error) {
 
 // DashBalancer gets the balance of a Dash address
 func DashBalancer(addr string) (float64, error) {
-	data, err := BlockchairGet("dash", addr)
-	if err != nil {
-		return -1, err
-	}
-	return float64(data.Data[addr].Address.Balance) / 1e8, nil
+	return CciBalancer("dash", addr)
 }
 
 //----------------------------------------------------------------------
@@ -353,11 +339,7 @@ func DashBalancer(addr string) (float64, error) {
 
 // DogeBalancer gets the balance of a Dogecoin address
 func DogeBalancer(addr string) (float64, error) {
-	data, err := BlockchairGet("dogecoin", addr)
-	if err != nil {
-		return -1, err
-	}
-	return float64(data.Data[addr].Address.Balance) / 1e8, nil
+	return BlockchairGet("dogecoin", addr)
 }
 
 //----------------------------------------------------------------------
@@ -366,55 +348,52 @@ func DogeBalancer(addr string) (float64, error) {
 
 // LtcBalancer gets the balance of a Litecoin address
 func LtcBalancer(addr string) (float64, error) {
-	data, err := BlockchairGet("litecoin", addr)
-	if err != nil {
-		return -1, err
-	}
-	return float64(data.Data[addr].Address.Balance) / 1e8, nil
+	return CciBalancer("ltc", addr)
 }
 
 //----------------------------------------------------------------------
 // VTC (Vertcoin)
 //----------------------------------------------------------------------
 
-var vtcLimiter = NewLimiter(0, 6)
-
 // VtcBalancer gets the balance of a Namecoin address
 func VtcBalancer(addr string) (float64, error) {
-	// honor rate limit
-	vtcLimiter.Pass()
-
-	// assemble query
-	query := fmt.Sprintf("https://chainz.cryptoid.info/vtc/api.dws?q=getbalance&a=%s", addr)
-	resp, err := http.Get(query)
-	if err != nil {
-		return -1, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return -1, err
-	}
-	val, err := strconv.ParseFloat(string(body), 64)
-	if err != nil {
-		return -1, err
-	}
-	return val, nil
+	return CciBalancer("vtc", addr)
 }
 
 //----------------------------------------------------------------------
 // DGB (Digibyte)
 //----------------------------------------------------------------------
 
-var dgbLimiter = NewLimiter(0, 6)
-
-// DgbBalancer gets the balance of a Namecoin address
+// DgbBalancer gets the balance of a Digibyte address
 func DgbBalancer(addr string) (float64, error) {
+	return CciBalancer("dgb", addr)
+}
+
+//======================================================================
+// Generic Balancers
+//======================================================================
+
+//----------------------------------------------------------------------
+// 'nil' balancer (zero balance)
+//----------------------------------------------------------------------
+
+func NilBalancer(addr string) (float64, error) {
+	return 0, nil
+}
+
+//----------------------------------------------------------------------
+// chainz.cryptoid.info
+//----------------------------------------------------------------------
+
+var cciLimiter = NewRateLimiter(0, 6)
+
+// CciBalancer gets the address balance from chainz.cryptoid.info
+func CciBalancer(coin, addr string) (float64, error) {
 	// honor rate limit
-	dgbLimiter.Pass()
+	cciLimiter.Pass()
 
 	// assemble query
-	query := fmt.Sprintf("https://chainz.cryptoid.info/dgb/api.dws?q=getbalance&a=%s", addr)
+	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=getbalance&a=%s", coin, addr)
 	resp, err := http.Get(query)
 	if err != nil {
 		return -1, err
@@ -432,7 +411,7 @@ func DgbBalancer(addr string) (float64, error) {
 }
 
 //----------------------------------------------------------------------
-// Generic Balancer (blockchair.com)
+// (blockchair.com)
 //----------------------------------------------------------------------
 
 // BlockchairAddrInfo is the response from the blockchair.com API
@@ -487,33 +466,33 @@ type BlockchairAddrInfo struct {
 	} `json:"context"`
 }
 
-var bchairLimiter = NewLimiter(0, 1)
+var bchairLimiter = NewRateLimiter(0, 1)
 
 // BlockchairGet gets the balance of a Blockchair address
-func BlockchairGet(coin, addr string) (*BlockchairAddrInfo, error) {
+func BlockchairGet(coin, addr string) (float64, error) {
 	bchairLimiter.Pass()
 
 	// query API
 	query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/address/%s", coin, addr)
 	resp, err := http.Get(query)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 	defer resp.Body.Close()
 	// read response
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 	// parse response
 	data := new(BlockchairAddrInfo)
 	if err = json.Unmarshal(body, &data); err != nil {
-		return nil, err
+		return -1, err
 	}
 	// check status code.
 	if data.Context.Code != 200 {
-		return nil, fmt.Errorf("HTTP response %d", data.Context.Code)
+		return -1, fmt.Errorf("HTTP response %d", data.Context.Code)
 	}
 	// return response
-	return data, nil
+	return float64(data.Data[addr].Address.Balance) / 1e8, nil
 }

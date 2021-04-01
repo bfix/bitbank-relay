@@ -173,6 +173,27 @@ func (db *Database) PendingAddresses(t int64) ([]int64, error) {
 	return res, nil
 }
 
+// CloseAddress locks an address; no further usage (except spending)
+func (db *Database) CloseAddress(ID int64) error {
+	_, err := db.inst.Exec("update addr set stat=1, validTo=now() where id=?", ID)
+	return err
+}
+
+// GetAddressInfo returns basic info about an address
+func (db *Database) GetAddressInfo(ID int64) (addr, coin string, balance, rate float64, err error) {
+	row := db.inst.QueryRow("select coin,val,balance,rate from v_addr where id=?", ID)
+	err = row.Scan(&coin, &addr, &balance, &rate)
+	return
+}
+
+// UpdateBalance sets the new balance for an address
+func (db *Database) UpdateBalance(ID int64, balance float64) error {
+	_, err := db.inst.Exec(
+		"update addr set balance=?, lastCheck=? where id=?",
+		balance, time.Now().Unix(), ID)
+	return err
+}
+
 //----------------------------------------------------------------------
 // Account-related methods
 //----------------------------------------------------------------------
