@@ -11,7 +11,7 @@
     "connect": "bb_relay:bb_relay@tcp(127.0.0.1:3306)/BB_Relay"
   },
   "balancer": {
-    "accountLimit": "10000.00",
+    "accountLimit": 10000,
     "rescan": 14400
   },
   "market": {
