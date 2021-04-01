@@ -218,7 +218,7 @@ func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err e
 		Addr:      addr,
 		Status:    0,
 		ValidFrom: now,
-		ValidTo:   now + 7200,
+		ValidTo:   now + 900,
 	}
 	var addrID int64
 	var accnt sql.NullString
