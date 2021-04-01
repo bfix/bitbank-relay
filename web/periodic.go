@@ -30,44 +30,44 @@ import (
 // Periodic tasks for service/data maintenance
 func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 
-	// check expired transactions (every 15 mins)
-	if epoch%(900/cfg.Service.Epoch) == 0 {
-		logger.Println(logger.INFO, "Closing expired transactions...")
-		addrIds, err := db.CloseExpiredTransactions()
-		if err != nil {
-			logger.Println(logger.ERROR, "periodic(tx): "+err.Error())
-		} else {
-			// check balance of all effected addresses
-			go func() {
-				for _, id := range addrIds {
-					balancer <- id
-				}
-			}()
-		}
+	// check expired transactions
+	logger.Println(logger.INFO, "[periodic] Closing expired transactions...")
+	addrIds, err := db.CloseExpiredTransactions()
+	if err != nil {
+		logger.Println(logger.ERROR, "[periodic] CloseExpiredTxs: "+err.Error())
+	} else {
+		logger.Printf(logger.DBG, "[periodic] => %d addresses effected", len(addrIds))
+		// check balance of all effected addresses
+		go func() {
+			for _, id := range addrIds {
+				balancer <- id
+			}
+		}()
 	}
 	// update market data (every 6 hrs)
 	if epoch%(21600/cfg.Service.Epoch) == 1 {
 		// get new exchange rates
-		logger.Println(logger.INFO, "Get market data...")
+		logger.Println(logger.INFO, "[periodic] Get market data...")
 		rates, err := lib.GetMarketData(cfg.Market.Fiat, coins, cfg.Market.APIKey)
 		if err != nil {
-			logger.Println(logger.ERROR, "periodic(market): "+err.Error())
+			logger.Println(logger.ERROR, "[periodic] GetMarketData: "+err.Error())
 		} else {
+			logger.Printf(logger.INFO, "[periodic] Updating market data (%d entries)", len(rates))
 			// update rates in coin table
 			for coin, rate := range rates {
+				logger.Printf(logger.DBG, "[periodic]    * %s: %f", coin, rate)
 				if err := db.UpdateRate(coin, rate); err != nil {
-					logger.Println(logger.ERROR, "periodic(market): "+err.Error())
+					logger.Println(logger.ERROR, "[periodic] UpdateRate: "+err.Error())
 				}
 			}
 		}
 	}
 	// check balances of address if it is not closed and the last check
 	// is older than 6 hrs
-	addrIds, err := db.PendingAddresses(cfg.Balancer.Rescan)
-	if err != nil {
-		logger.Println(logger.ERROR, "rescan: "+err.Error())
+	if addrIds, err = db.PendingAddresses(cfg.Balancer.Rescan); err != nil {
+		logger.Println(logger.ERROR, "[periodic] rescan: "+err.Error())
 	} else {
-		logger.Println(logger.INFO, "Update pending address balances...")
+		logger.Printf(logger.INFO, "[periodic] Update %d pending address balances...", len(addrIds))
 		// check balance of all effected addresses
 		go func() {
 			for _, id := range addrIds {
