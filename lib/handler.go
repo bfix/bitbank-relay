@@ -39,6 +39,7 @@ var (
 // Handler to handle coin accounts (in BIP44/49 wallets)
 type Handler struct {
 	coin     int              // coin identifier
+	symb     string           // coin symbol
 	mode     int              // adress mode (P2PKH, P2SH, ...)
 	netw     int              // network (Main, Test, Reg)
 	tree     *wallet.HDPublic // HDKD for public keys
@@ -75,6 +76,7 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 	// assemble handler for given coin
 	return &Handler{
 		coin:     coinID,
+		symb:     coin.Symb,
 		mode:     coin.GetMode(),
 		netw:     network,
 		tree:     wallet.NewHDPublic(pk, coin.Path),
