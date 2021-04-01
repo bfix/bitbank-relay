@@ -15,7 +15,7 @@
     "rescan": 14400
   },
   "market": {
-    "fiat": "eur",
+    "fiat": "EUR",
     "apikey": ""
   },
   "coins": [
