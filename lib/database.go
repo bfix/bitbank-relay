@@ -293,6 +293,6 @@ func (db *Database) CloseExpiredTransactions() ([]int64, error) {
 // UpdateRate sets the new exchange rate (in market base currency) for
 // the given coin.
 func (db *Database) UpdateRate(coin string, rate float64) error {
-	_, err := db.inst.Exec("update coin set rate=? where symbol=?", coin, rate)
+	_, err := db.inst.Exec("update coin set rate=? where symbol=?", rate, coin)
 	return err
 }
