@@ -118,6 +118,7 @@ create view v_addr as select
     c.symbol as coin,
     a.val as val,
     a.balance as balance,
+    c.rate as rate,
     a.stat as stat,
     b.label as account,
     a.refCnt as cnt,
