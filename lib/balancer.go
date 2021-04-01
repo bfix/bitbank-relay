@@ -96,7 +96,7 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					newBalance, err := hdlr.GetBalance(addr)
 					if err != nil {
 						logger.Println(logger.ERROR, "Balancer: "+err.Error())
-						return
+						newBalance = 0.0
 					}
 					// update balance if increased
 					if newBalance >= balance {
