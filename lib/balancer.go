@@ -112,10 +112,10 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					balance, time.Now().Unix(), ID); err != nil {
 					logger.Println(logger.ERROR, "Balance update: "+err.Error())
 				}
-				// check if limit is reached...
-				if cfg.AccountLimit < newBalance*rate {
+				// check if account limit is reached...
+				if cfg.AccountLimit < balance*rate {
 					// yes: close address
-					logger.Printf(logger.INFO, "Closing address '%s' with balance=%f", addr, newBalance)
+					logger.Printf(logger.INFO, "Closing address '%s' with balance=%f", addr, balance)
 					_, err := db.inst.Exec("update addr set stat=1, validTo=now() where id=?", ID)
 					if err != nil {
 						logger.Println(logger.ERROR, "Balancer: "+err.Error())
