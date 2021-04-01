@@ -23,18 +23,17 @@ package main
 import (
 	"context"
 	"relay/lib"
-	"time"
 
 	"github.com/bfix/gospel/logger"
 )
 
 // Periodic tasks for service/data maintenance
 func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
-	t := time.Now().Unix()
 
 	// check expired transactions (every 15 mins)
 	if epoch%(900/cfg.Service.Epoch) == 0 {
-		addrIds, err := db.CloseExpiredTransactions(t)
+		logger.Println(logger.INFO, "Closing expired transactions...")
+		addrIds, err := db.CloseExpiredTransactions()
 		if err != nil {
 			logger.Println(logger.ERROR, "periodic(tx): "+err.Error())
 		} else {
@@ -49,6 +48,7 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 	// update market data (every 6 hrs)
 	if epoch%(21600/cfg.Service.Epoch) == 1 {
 		// get new exchange rates
+		logger.Println(logger.INFO, "Get market data...")
 		rates, err := lib.GetMarketData(cfg.Market.Fiat, coins, cfg.Market.APIKey)
 		if err != nil {
 			logger.Println(logger.ERROR, "periodic(market): "+err.Error())
@@ -67,6 +67,7 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 	if err != nil {
 		logger.Println(logger.ERROR, "rescan: "+err.Error())
 	} else {
+		logger.Println(logger.INFO, "Update pending address balances...")
 		// check balance of all effected addresses
 		go func() {
 			for _, id := range addrIds {
