@@ -36,6 +36,7 @@ func NewLimiter(rate ...int) *Limiter {
 	lim := new(Limiter)
 	lim.base = time.Now().Unix()
 	lim.events = make([]int64, 0, 3600*24*7)
+	lim.rates = rate
 	return lim
 }
 
@@ -78,6 +79,11 @@ func (lim *Limiter) Pass() {
 		lim.events = lim.events[:size-skip]
 	}
 	// compute wait time
-	time.Sleep(10 * time.Second)
+	if lim.rates[0] == 0 {
+		secs := 60/lim.rates[1] + 2
+		time.Sleep(time.Duration(secs) * time.Second)
+	} else {
+		time.Sleep(10 * time.Second)
+	}
 	lim.events = append(lim.events, time.Now().Unix())
 }
