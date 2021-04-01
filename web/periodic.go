@@ -20,6 +20,62 @@
 
 package main
 
-func periodicTasks() {
+import (
+	"context"
+	"relay/lib"
+	"time"
 
+	"github.com/bfix/gospel/logger"
+)
+
+// Periodic tasks for service/data maintenance
+func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
+	t := time.Now().Unix()
+
+	// check expired transactions (every 15 mins)
+	if epoch%(900/cfg.Service.Epoch) == 0 {
+		addrIds, err := db.CloseExpiredTransactions(t)
+		if err != nil {
+			logger.Println(logger.ERROR, "periodic(tx): "+err.Error())
+		} else {
+			// check balance of all effected addresses
+			go func() {
+				for _, id := range addrIds {
+					balancer <- id
+				}
+			}()
+		}
+	}
+	// update market data (every 6 hrs)
+	if epoch%(21600/cfg.Service.Epoch) == 1 {
+		// get new exchange rates
+		rates, err := lib.GetMarketData(cfg.Market.Fiat, coins, cfg.Market.APIKey)
+		if err != nil {
+			logger.Println(logger.ERROR, "periodic(market): "+err.Error())
+		} else {
+			// update rates in coin table
+			for coin, rate := range rates {
+				if err := db.UpdateRate(coin, rate); err != nil {
+					logger.Println(logger.ERROR, "periodic(market): "+err.Error())
+				}
+			}
+		}
+	}
+	// check balances of address if it is not closed and the last check
+	// is older than 6 hrs
+	addrIds, err := db.PendingAddresses(cfg.Balancer.Rescan)
+	if err != nil {
+		logger.Println(logger.ERROR, "rescan: "+err.Error())
+	} else {
+		// check balance of all effected addresses
+		go func() {
+			for _, id := range addrIds {
+				balancer <- id
+			}
+		}()
+	}
+	// check for log rotation
+	if epoch%cfg.Service.LogRotate == 0 {
+		logger.Rotate()
+	}
 }
