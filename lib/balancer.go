@@ -21,13 +21,15 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/bfix/gospel/logger"
 )
 
 // Balancer prototype for querying address balances
@@ -60,6 +62,74 @@ var (
 	ErrBalanceFailed       = fmt.Errorf("balance query failed")
 	ErrBalanceAccessDenied = fmt.Errorf("HTTP GET access denied")
 )
+
+// StartBalancer starts the background balance processor.
+// It returns a channel for balance check requests that accepts int64
+// values that refer to the database id (row id) of the address record
+// that is to be checked.
+func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan int64 {
+	ch := make(chan int64)
+	go func() {
+		for {
+			select {
+			// handle balance requests
+			case ID := <-ch:
+				logger.Printf(logger.DBG, "Balancer: request=%d", ID)
+
+				// close processor on negative row id
+				if ID < 0 {
+					return
+				}
+				// get address information
+				var (
+					addr, coin string
+					balance    float64
+				)
+				row := db.inst.QueryRow("select coin,val,balance from v_addr where id=?", ID)
+				if err := row.Scan(&coin, &addr, &balance); err != nil {
+					logger.Printf(logger.ERROR, "Balancer: can't retrieve address #%d", ID)
+					logger.Println(logger.ERROR, "=> "+err.Error())
+					continue
+				}
+				// get new address balance
+				hdlr, ok := HdlrList[coin]
+				if !ok {
+					logger.Printf(logger.ERROR, "Balancer: No handler for '%s'", coin)
+					continue
+				}
+				newBalance, err := hdlr.GetBalance(addr)
+				if err != nil {
+					logger.Println(logger.ERROR, "Balancer: "+err.Error())
+					continue
+				}
+				// update balance if increased
+				if newBalance >= balance {
+					balance = newBalance
+				}
+				// update balance
+				if _, err = db.inst.Exec(
+					"update addr set balance=?, last_check=? where id=?",
+					balance, time.Now().Unix(), ID); err != nil {
+					logger.Println(logger.ERROR, "Balance update: "+err.Error())
+				}
+				// check if limit is reached...
+				if hdlr.CheckClose(cfg.AccountLimit, newBalance) {
+					// yes: close address
+					logger.Printf(logger.INFO, "Closing address '%s' with balance=%f", addr, newBalance)
+					_, err := db.inst.Exec("update addr set stat=1, validTo=now() where id=?", ID)
+					if err != nil {
+						logger.Println(logger.ERROR, "Balancer: "+err.Error())
+					}
+				}
+
+			// cancel processor
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return ch
+}
 
 //----------------------------------------------------------------------
 // BTC (Bitcoin)
@@ -307,29 +377,16 @@ func LtcBalancer(addr string) (float64, error) {
 // VTC (Vertcoin)
 //----------------------------------------------------------------------
 
-// VtcAddrInfo is the response to a coinexplorer.net API call.
-type VtcAddrInfo struct {
-	Success bool        `json:"success"`
-	Result  interface{} `json:"result"`
-	Error   string      `json:"error"`
-}
+var vtcLimiter = NewLimiter(0, 6)
 
-// VtcBalancer gets the balance of a Vertcoin address
+// VtcBalancer gets the balance of a Namecoin address
 func VtcBalancer(addr string) (float64, error) {
-	// enforce rate limit
-	time.Sleep(time.Second)
+	// honor rate limit
+	vtcLimiter.Pass()
 
-	// query address balance
-	query := fmt.Sprintf("https://www.coinexplorer.net/api/v1/VTC/address/balance?address=%s", addr)
-
-	// perform HTTP GET request
-	req, err := http.NewRequest("GET", query, nil)
-	if err != nil {
-		return -1, err
-	}
-	req.AddCookie(&http.Cookie{Name: "test", Value: "test"})
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	// assemble query
+	query := fmt.Sprintf("https://chainz.cryptoid.info/vtc/api.dws?q=getbalance&a=%s", addr)
+	resp, err := http.Get(query)
 	if err != nil {
 		return -1, err
 	}
@@ -338,25 +395,7 @@ func VtcBalancer(addr string) (float64, error) {
 	if err != nil {
 		return -1, err
 	}
-	// check for failure
-	if strings.HasPrefix(string(body), "error code:") {
-		// we are blocked on cloudflare
-		return -1, ErrBalanceAccessDenied
-	}
-	// parse JSON response
-	data := new(VtcAddrInfo)
-	if err = json.Unmarshal(body, &data); err != nil {
-		return -1, err
-	}
-	// evaluate response
-	if !data.Success {
-		return 0, nil
-	}
-	res, ok := data.Result.(map[string]string)
-	if !ok {
-		return 0, nil
-	}
-	val, err := strconv.ParseFloat(res[addr], 64)
+	val, err := strconv.ParseFloat(string(body), 64)
 	if err != nil {
 		return -1, err
 	}
@@ -369,7 +408,7 @@ func VtcBalancer(addr string) (float64, error) {
 
 var dgbLimiter = NewLimiter(0, 6)
 
-// NmcBalancer gets the balance of a Namecoin address
+// DgbBalancer gets the balance of a Namecoin address
 func DgbBalancer(addr string) (float64, error) {
 	// honor rate limit
 	dgbLimiter.Pass()
@@ -448,21 +487,33 @@ type BlockchairAddrInfo struct {
 	} `json:"context"`
 }
 
+var bchairLimiter = NewLimiter(0, 1)
+
 // BlockchairGet gets the balance of a Blockchair address
 func BlockchairGet(coin, addr string) (*BlockchairAddrInfo, error) {
+	bchairLimiter.Pass()
+
+	// query API
 	query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/address/%s", coin, addr)
 	resp, err := http.Get(query)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	// read response
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+	// parse response
 	data := new(BlockchairAddrInfo)
 	if err = json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
+	// check status code.
+	if data.Context.Code != 200 {
+		return nil, fmt.Errorf("HTTP response %d", data.Context.Code)
+	}
+	// return response
 	return data, nil
 }
