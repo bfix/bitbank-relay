@@ -35,6 +35,9 @@ create table coin (
 
     -- coin logo (base64-encoded SVG)
     logo text default null
+
+    -- market data for coin
+    rate float default 0.0
 );
 
 -- account is a receiver for cryptocoins
@@ -57,6 +60,7 @@ create view coins4account as select
     c.symbol as coin,
     c.label as label,
     c.logo as logo,
+    c.rate as rate,
     a.label as account
 from
     coin c, account a, accept x
@@ -88,6 +92,10 @@ create table addr (
     -- reference count (transactions)
     refCnt integer default 0,
 
+    -- address balance
+    balance float default 0.0,
+    lastCheck integer default 0,
+
     -- address life-span
     validFrom timestamp default current_timestamp,
     validTo timestamp null default null
@@ -98,9 +106,11 @@ create view v_addr as select
     a.id as id,
     c.symbol as coin,
     a.val as val,
+    a.balance as balance,
     a.stat as stat,
     b.label as account,
     a.refCnt as cnt,
+    a.lastCheck as lastCheck,
     a.validFrom as validFrom,
     a.validTo as validTo
 from
@@ -124,7 +134,6 @@ create table tx (
     -- status:
     --  0 = pending
     --  1 = expired
-    --  2 = finalized
     stat integer default 0,
 
     -- transaction life-span
