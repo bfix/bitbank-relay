@@ -32,10 +32,24 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 
 	// check expired transactions
 	logger.Println(logger.INFO, "[periodic] Closing expired transactions...")
-	addrIds, err := db.CloseExpiredTransactions()
+	txList, err := db.GetExpiredTransactions()
 	if err != nil {
-		logger.Println(logger.ERROR, "[periodic] CloseExpiredTxs: "+err.Error())
-	} else if len(addrIds) > 0 {
+		logger.Println(logger.ERROR, "[periodic] GetExpiredTxs: "+err.Error())
+	} else {
+		// build unique list of addresses from expired transaction
+		list := make(map[int64]bool)
+		for txID, addrID := range txList {
+			logger.Printf(logger.INFO, "[periodic] Closing transaction #%d", txID)
+			if err = db.CloseTransaction(txID); err != nil {
+				logger.Println(logger.ERROR, "[periodic] CloseTx: "+err.Error())
+				continue
+			}
+			list[addrID] = true
+		}
+		addrIds := make([]int64, 0)
+		for addrID := range list {
+			addrIds = append(addrIds, addrID)
+		}
 		logger.Printf(logger.DBG, "[periodic] => %d addresses effected", len(addrIds))
 		// check balance of all effected addresses
 		go func() {
@@ -64,7 +78,8 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 	}
 	// check balances of address if it is not closed and the last check
 	// is older than 6 hrs
-	if addrIds, err = db.PendingAddresses(cfg.Balancer.Rescan); err != nil {
+	addrIds, err := db.PendingAddresses(cfg.Balancer.Rescan)
+	if err != nil {
 		logger.Println(logger.ERROR, "[periodic] rescan: "+err.Error())
 	} else {
 		logger.Printf(logger.INFO, "[periodic] Update %d pending address balances...", len(addrIds))

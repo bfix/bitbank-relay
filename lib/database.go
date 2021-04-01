@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bfix/gospel/logger"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -67,6 +66,7 @@ func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	list := make([]*CoinInfo, 0)
 	for rows.Next() {
 		e := new(CoinInfo)
@@ -161,6 +161,7 @@ func (db *Database) PendingAddresses(t int64) ([]int64, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	res := make([]int64, 0)
 	var ID int64
 	for rows.Next() {
@@ -257,33 +258,31 @@ func (db *Database) GetTransaction(txid string) (tx *Transaction, err error) {
 	return
 }
 
-// CloseExpiredTransactions closes transactions that have expired.
-// Returns a list of asoviated addresses.
-func (db *Database) CloseExpiredTransactions() ([]int64, error) {
+// GetExpiredTransactions collects transactions that have expired.
+// Returns a mapping between transaction and associated address.
+func (db *Database) GetExpiredTransactions() (map[int64]int64, error) {
 	t := time.Now().Unix()
-	list := make(map[int64]bool)
 	rows, err := db.inst.Query("select id,addr from tx where stat=0 and validTo<?", t)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+	list := make(map[int64]int64)
 	for rows.Next() {
 		// get identifiers for tx and address
 		var txID, addrID int64
 		if err = rows.Scan(&txID, &addrID); err != nil {
 			return nil, err
 		}
-		// close transaction
-		logger.Printf(logger.INFO, "Closing transaction #%d", txID)
-		db.inst.Exec("update tx set stat=1 where id=?", txID)
-		// remember address
-		list[addrID] = true
+		list[txID] = addrID
 	}
-	// return list of associated addresses (id)
-	res := make([]int64, 0)
-	for id := range list {
-		res = append(res, id)
-	}
-	return res, nil
+	return list, nil
+}
+
+// CloseTransaction closes a pending transaction.
+func (db *Database) CloseTransaction(txID int64) error {
+	_, err := db.inst.Exec("update tx set stat=1 where id=?", txID)
+	return err
 }
 
 //----------------------------------------------------------------------
