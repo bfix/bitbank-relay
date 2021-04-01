@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bfix/gospel/logger"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -258,9 +259,10 @@ func (db *Database) GetTransaction(txid string) (tx *Transaction, err error) {
 
 // CloseExpiredTransactions closes transactions that have expired.
 // Returns a list of asoviated addresses.
-func (db *Database) CloseExpiredTransactions(t int64) ([]int64, error) {
+func (db *Database) CloseExpiredTransactions() ([]int64, error) {
+	t := time.Now().Unix()
 	list := make(map[int64]bool)
-	rows, err := db.inst.Query("select id,addr from tx where stat=0 and validto < ?", t)
+	rows, err := db.inst.Query("select id,addr from tx where stat=0 and validTo<?", t)
 	if err != nil {
 		return nil, err
 	}
@@ -271,6 +273,7 @@ func (db *Database) CloseExpiredTransactions(t int64) ([]int64, error) {
 			return nil, err
 		}
 		// close transaction
+		logger.Printf(logger.INFO, "Closing transaction #%d", txID)
 		db.inst.Exec("update tx set stat=1 where id=?", txID)
 		// remember address
 		list[addrID] = true
