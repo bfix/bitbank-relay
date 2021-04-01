@@ -82,11 +82,11 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 				}
 				// get address information
 				var (
-					addr, coin string
-					balance    float64
+					addr, coin    string
+					balance, rate float64
 				)
-				row := db.inst.QueryRow("select coin,val,balance from v_addr where id=?", ID)
-				if err := row.Scan(&coin, &addr, &balance); err != nil {
+				row := db.inst.QueryRow("select coin,val,balance,rate from v_addr where id=?", ID)
+				if err := row.Scan(&coin, &addr, &balance, &rate); err != nil {
 					logger.Printf(logger.ERROR, "Balancer: can't retrieve address #%d", ID)
 					logger.Println(logger.ERROR, "=> "+err.Error())
 					continue
@@ -108,12 +108,12 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 				}
 				// update balance
 				if _, err = db.inst.Exec(
-					"update addr set balance=?, last_check=? where id=?",
+					"update addr set balance=?, lastCheck=? where id=?",
 					balance, time.Now().Unix(), ID); err != nil {
 					logger.Println(logger.ERROR, "Balance update: "+err.Error())
 				}
 				// check if limit is reached...
-				if hdlr.CheckClose(cfg.AccountLimit, newBalance) {
+				if cfg.AccountLimit < newBalance*rate {
 					// yes: close address
 					logger.Printf(logger.INFO, "Closing address '%s' with balance=%f", addr, newBalance)
 					_, err := db.inst.Exec("update addr set stat=1, validTo=now() where id=?", ID)
