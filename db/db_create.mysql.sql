@@ -45,7 +45,7 @@ create table coin (
     label varchar(63) default null,
 
     -- coin logo (base64-encoded SVG)
-    logo text default null
+    logo text default null,
 
     -- market data for coin
     rate float default 0.0
