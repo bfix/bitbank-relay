@@ -34,8 +34,9 @@ import (
 
 // Package-global variables
 var (
-	db  *lib.Database = nil
-	cfg *lib.Config   = nil
+	db    *lib.Database = nil
+	cfg   *lib.Config   = nil
+	coins string        = ""
 )
 
 // Application entry point
@@ -49,6 +50,12 @@ func main() {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
+	// setup logging
+	if len(cfg.Service.LogFile) > 0 {
+		logger.LogToFile(cfg.Service.LogFile)
+	}
+	logger.SetLogLevelFromName(cfg.Service.LogLevel)
+
 	// connect to database
 	logger.Println(logger.INFO, "Connecting to database...")
 	if db, err = lib.Connect(cfg.Db); err != nil {
@@ -57,7 +64,7 @@ func main() {
 	}
 	defer db.Close()
 
-	// load handlers
+	// load handlers; assemble list of coin symbols
 	logger.Println(logger.INFO, "Initializing coin handlers:")
 	for _, coin := range cfg.Coins {
 		_, name := wallet.GetCoinInfo(coin.Symb)
@@ -68,6 +75,11 @@ func main() {
 			logger.Println(logger.ERROR, err.Error())
 			continue
 		}
+		// add to list of coins
+		if len(coins) > 0 {
+			coins += ","
+		}
+		coins += coin.Symb
 		// get coin handler
 		hdlr, err := lib.NewHandler(coin, wallet.AddrMain)
 		if err != nil {
@@ -89,6 +101,13 @@ func main() {
 	}
 	logger.Println(logger.INFO, "Done.")
 
+	// Prepare context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// setting up balancer service
+	balanceCh := lib.StartBalancer(ctx, db, cfg.Balancer)
+
 	// setting up webservice
 	srvQuit := runService(cfg.Service)
 
@@ -97,7 +116,8 @@ func main() {
 	signal.Notify(sigCh)
 
 	// heart beat
-	tick := time.NewTicker(5 * time.Minute)
+	tick := time.NewTicker(time.Duration(cfg.Service.Epoch) * time.Second)
+	epoch := 0
 
 loop:
 	for {
@@ -117,13 +137,14 @@ loop:
 			}
 		// handle heart beat
 		case now := <-tick.C:
-			logger.Println(logger.INFO, "Heart beat at "+now.String())
-			go periodicTasks()
+			epoch++
+			logger.Printf(logger.INFO, "Epoch #%d at %s", epoch, now.String())
+			go periodicTasks(ctx, epoch, balanceCh)
 		}
 	}
 
 	// shutdown web service
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	srvQuit(ctx)
+	ctxSrv, cancelSrv := context.WithTimeout(ctx, 15*time.Second)
+	defer cancelSrv()
+	srvQuit(ctxSrv)
 }
