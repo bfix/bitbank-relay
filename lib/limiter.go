@@ -27,40 +27,59 @@ import (
 	"github.com/bfix/gospel/logger"
 )
 
+//----------------------------------------------------------------------
+// Rate limiter
+//----------------------------------------------------------------------
+
 // RateLimiter computes rate limit-compliant delays for requests
 type RateLimiter struct {
-	rates []int      // rates [sec, min, hr, day, week]
-	lock  sync.Mutex // one request at a time
-	last  *entry     // reference to last entry
+	rates       []int      // rates [sec, min, hr, day, week]
+	lock        sync.Mutex // one request at a time
+	last, first *entry     // reference to last and first entry
+	intern      bool       // nested calls don't block
 }
 
 // NewRateLimiter creates a newly initialitzed rate limiter.
 func NewRateLimiter(rate ...int) *RateLimiter {
 	lim := new(RateLimiter)
-	lim.rates = rate
+	lim.rates = make([]int, 5)
+	for i, r := range rate {
+		lim.rates[i] = r
+	}
 	lim.last = newEntry()
+	lim.first = lim.last
+	lim.intern = false
 	return lim
 }
 
-// Pass waits for a rate limit-compliant delay before passing a new request
-func (lim *RateLimiter) Pass() {
+// Stats returns current statistics for the rate limiter
+func (lim *RateLimiter) Stats() (stats *RateStats) {
 	// only one request at a time
-	lim.lock.Lock()
-	defer lim.lock.Unlock()
+	if !lim.intern {
+		lim.lock.Lock()
+		defer lim.lock.Unlock()
+	}
 
-	// get current timestamp
-	ts := time.Now().Unix()
-
-	// calculate rates
-	pSec, pMin, pHr, pDay, pWeek := 0, 0, 0, 0, 0
-	var e, next, xHr, xDay, xWeek *entry
+	// assemble statistics
+	stats = &RateStats{
+		ts:    time.Now().Unix(),
+		rSec:  lim.rates[0],
+		rMin:  lim.rates[1],
+		rHr:   lim.rates[2],
+		rDay:  lim.rates[3],
+		rWeek: lim.rates[4],
+		xLast: lim.last,
+	}
+	var e, next *entry
 loop:
 	for e, next = lim.last, nil; e != nil; next, e = e, e.prev {
-		tDiff := ts - e.ts
+		tDiff := stats.ts - e.ts
 		switch {
 		case tDiff > 3600*24*7:
-			// drop out-of-range entries (one week)
+			// cut off tail
 			next.prev = nil
+			lim.first = next
+			// drop out-of-range entries (one week)
 			for e != nil {
 				e = e.drop()
 			}
@@ -68,50 +87,98 @@ loop:
 			break loop
 		// Count events in time-slot
 		case tDiff > 3600*24:
-			pWeek++
+			stats.xOldest = e
+			stats.pWeek++
 		case tDiff > 3600:
-			xWeek = e
-			pDay++
+			stats.xWeek = e
+			stats.pDay++
 		case tDiff > 60:
-			xDay = e
-			pHr++
+			stats.xDay = e
+			stats.pHr++
 		case tDiff > 0:
-			xHr = e
-			pMin++
+			stats.xHr = e
+			stats.pMin++
 		case tDiff == 0:
-			pSec++
+			stats.pSec++
 		}
 	}
-	pMin += pSec
-	pHr += pMin
-	pDay += pHr
-	pWeek += pDay
+	// correct accumulation
+	stats.pMin += stats.pSec
+	stats.pHr += stats.pMin
+	stats.pDay += stats.pHr
+	stats.pWeek += stats.pDay
 
-	// check compliance with given rates; compute wait time
-	// for next accepted request
-	num := len(lim.rates)
-	var delay int = 0
-	switch {
-	case num > 0 && pSec+1 > lim.rates[0]:
-		delay = 1
-	case num > 1 && pMin+1 > lim.rates[1]:
-		delay = 60 - int(ts-xHr.ts)
-	case num > 2 && pHr+1 > lim.rates[2]:
-		delay = 3600 - int(ts-xDay.ts)
-	case num > 3 && pDay+1 > lim.rates[3]:
-		delay = 24*3600 - int(ts-xWeek.ts)
-	case num > 4 && pWeek+1 > lim.rates[4]:
-		delay = 7*24*3600 - int(ts-xWeek.ts)
+	// adjust boundary links
+	if stats.xHr == nil {
+		stats.xHr = lim.first
 	}
+	if stats.xDay == nil {
+		stats.xDay = stats.xHr
+	}
+	if stats.xWeek == nil {
+		stats.xWeek = stats.xDay
+	}
+	if stats.xOldest == nil {
+		stats.xOldest = stats.xWeek
+	}
+	return
+}
+
+// Pass waits for a rate limit-compliant delay before passing a new request
+func (lim *RateLimiter) Pass() {
+	// only one request at a time
+	lim.lock.Lock()
+	lim.intern = true
+	defer func() {
+		lim.intern = false
+		lim.lock.Unlock()
+	}()
+
+	// get current rate statistics
+	stats := lim.Stats()
+	delay := stats.Wait()
 	// delay for given time
 	if delay > 0 {
 		logger.Printf(logger.DBG, "RateLimit: Delaying for %d seconds", delay)
 		time.Sleep(time.Duration(delay) * time.Second)
 	}
 	// prepend new request at beginning of list
-	e = newEntry()
+	e := newEntry()
 	e.prev = lim.last
 	lim.last = e
+}
+
+//----------------------------------------------------------------------
+// Rate statistics
+//----------------------------------------------------------------------
+
+// RateStats contains rate statistics
+type RateStats struct {
+	ts                               int64  // timestamp
+	rSec, rMin, rHr, rDay, rWeek     int    // rate limits
+	pSec, pMin, pHr, pDay, pWeek     int    // actual rates
+	xLast, xHr, xDay, xWeek, xOldest *entry // pointer to border elements
+}
+
+// Wait returns the delay (wait time) to be rate-limit compliant
+func (rs *RateStats) Wait() int {
+	delay := 0
+	eval := func(r, p, d int) {
+		if r > 0 && p+1 > r {
+			if d < 1 {
+				d = 1
+			}
+			if d > delay {
+				delay = d
+			}
+		}
+	}
+	eval(rs.rSec, rs.pSec, 1)
+	eval(rs.rMin, rs.pMin, 61-int(rs.ts-rs.xHr.ts))
+	eval(rs.rHr, rs.pHr, 3601-int(rs.ts-rs.xDay.ts))
+	eval(rs.rDay, rs.pDay, 86401-int(rs.ts-rs.xWeek.ts))
+	eval(rs.rWeek, rs.pWeek, 604801-int(rs.ts-rs.xOldest.ts))
+	return delay
 }
 
 //----------------------------------------------------------------------
