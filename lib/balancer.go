@@ -54,6 +54,8 @@ var (
 		"eth":  EthBalancer,
 		"etc":  NilBalancer,
 	}
+
+	apikeys map[string]string
 )
 
 // Error codes
@@ -67,6 +69,10 @@ var (
 // values that refer to the database id (row id) of the address record
 // that is to be checked.
 func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan int64 {
+	// save API keys
+	apikeys = cfg.APIKeys
+
+	// start background process
 	ch := make(chan int64)
 	go func() {
 		for {
@@ -466,7 +472,7 @@ type BlockchairAddrInfo struct {
 	} `json:"context"`
 }
 
-var bchairLimiter = NewRateLimiter(0, 1)
+var bchairLimiter = NewRateLimiter(0, 1, 0, 1440)
 
 // BlockchairGet gets the balance of a Blockchair address
 func BlockchairGet(coin, addr string) (float64, error) {
@@ -474,6 +480,9 @@ func BlockchairGet(coin, addr string) (float64, error) {
 
 	// query API
 	query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/address/%s", coin, addr)
+	if k, ok := apikeys["blockchair"]; ok {
+		query += fmt.Sprintf("?key=%s", k)
+	}
 	resp, err := http.Get(query)
 	if err != nil {
 		return -1, err
