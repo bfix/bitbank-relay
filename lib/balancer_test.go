@@ -22,6 +22,7 @@ package lib
 
 import (
 	"math"
+	"os"
 	"testing"
 )
 
@@ -71,6 +72,13 @@ func checkUsed(t *testing.T, b Balancer, addr string) {
 }
 
 func TestBalances(t *testing.T) {
+	// initialize API keys
+	k := os.Getenv("BLOCKCHAIR_APIKEY")
+	if len(k) > 0 {
+		apikeys["blockchair"] = k
+	}
+
+	// test all addresses
 	for coin, addr := range addrs {
 		b := balancer[coin]
 		if b == nil {
