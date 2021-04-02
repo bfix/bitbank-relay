@@ -74,13 +74,12 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 
 	// start background process
 	ch := make(chan int64)
+	pid := 0
 	go func() {
 		for {
 			select {
 			// handle balance requests
 			case ID := <-ch:
-				logger.Printf(logger.DBG, "Balancer: request=%d", ID)
-
 				// close processor on negative row id
 				if ID < 0 {
 					return
@@ -92,16 +91,19 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					logger.Println(logger.ERROR, "=> "+err.Error())
 					continue
 				}
+				pid++
+				logger.Printf(logger.DBG, "Balancer[%d]: addr=%s, coin=%s", pid, addr, coin)
+
 				// get new address balance
-				go func() {
+				go func(pid int) {
 					hdlr, ok := HdlrList[coin]
 					if !ok {
-						logger.Printf(logger.ERROR, "Balancer: No handler for '%s'", coin)
+						logger.Printf(logger.ERROR, "Balancer[%d]: No handler for '%s'", pid, coin)
 						return
 					}
 					newBalance, err := hdlr.GetBalance(addr)
 					if err != nil {
-						logger.Println(logger.ERROR, "Balancer: "+err.Error())
+						logger.Printf(logger.ERROR, "Balancer[%d]: GetBalance: %s", pid, err.Error())
 						newBalance = 0.0
 					}
 					// update balance if increased
@@ -110,17 +112,17 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					}
 					// update balance
 					if err = db.UpdateBalance(ID, balance); err != nil {
-						logger.Println(logger.ERROR, "Balance update: "+err.Error())
+						logger.Printf(logger.ERROR, "Balancer[%d]: update: %s", pid, err.Error())
 					}
 					// check if account limit is reached...
 					if cfg.AccountLimit < balance*rate {
 						// yes: close address
-						logger.Printf(logger.INFO, "Closing address '%s' with balance=%f", addr, balance)
+						logger.Printf(logger.INFO, "Balancer[%d]: Closing address '%s' with balance=%f", pid, addr, balance)
 						if err = db.CloseAddress(ID); err != nil {
-							logger.Println(logger.ERROR, "Balancer: "+err.Error())
+							logger.Printf(logger.ERROR, "Balancer[%d] CloseAddress: %s", pid, err.Error())
 						}
 					}
-				}()
+				}(pid)
 
 			// cancel processor
 			case <-ctx.Done():
@@ -135,60 +137,31 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 // BTC (Bitcoin)
 //----------------------------------------------------------------------
 
-// BtcAddrInfo is a response from the blockchain.info API when
-// querying BTC address balances.
-type BtcAddrInfo struct {
-	Hash160       string `json:"hash160"`
-	Address       string `json:"address"`
-	NumTx         int    `json:"n_tx"`
-	NumUtxo       int    `json:"n_unredeemed"`
-	TotalReceived int64  `json:"total_received"`
-	TotalSend     int64  `json:"total_sent"`
-	FinalBalance  int64  `json:"final_balance"`
-	Txs           []struct {
-		ID          string `json:"hash"`
-		Version     int    `json:"ver"`
-		NumVin      int    `json:"vin_sz"`
-		NumVout     int    `json:"vout_sz"`
-		LockTime    int    `json:"lock_time"`
-		Size        int    `json:"size"`
-		RelayedBy   string `json:"relayed_by"`
-		BlockHeight int    `json:"block_height"`
-		TxIndex     int    `json:"tx_index"`
-		Inputs      []struct {
-			PrevOut struct {
-				ID      string `json:"hash"`
-				Value   int64  `json:"value"`
-				TxIndex int    `json:"tx_index"`
-				N       int    `json:"n"`
-			} `json:"prev_out"`
-			Script string `json:"script"`
-		} `json:"inputs"`
-		Outputs []struct {
-			ID     string `json:"hash"`
-			Value  int64  `json:"value"`
-			Script string `json:"script"`
-		} `json:"out"`
-	} `json:"txs"`
-}
+var btcLimiter = NewRateLimiter(0, 6)
 
 // BtcBalancer gets the balance of a Bitcoin address
 func BtcBalancer(addr string) (float64, error) {
-	query := fmt.Sprintf("https://blockchain.info/rawaddr/%s?limit=0", addr)
+	// honor rate limits
+	btcLimiter.Pass()
+
+	// assemble query
+	query := fmt.Sprintf("https://blockchain.info/q/addressbalance/%s?confirmations=0", addr)
 	resp, err := http.Get(query)
 	if err != nil {
 		return -1, err
 	}
 	defer resp.Body.Close()
+	// read and parse response
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
 	}
-	data := new(BtcAddrInfo)
-	if err = json.Unmarshal(body, &data); err != nil {
+	val, err := strconv.ParseFloat(string(body), 64)
+	if err != nil {
 		return -1, err
 	}
-	return float64(data.TotalReceived) / 1e8, nil
+	// return balance
+	return val / 1e8, nil
 }
 
 //----------------------------------------------------------------------
@@ -260,14 +233,21 @@ type ZecAddrInfo struct {
 	TotalRecv  float64 `json:"totalRecv"`
 }
 
+var zecLimiter = NewRateLimiter(5, 30, 0, 1440)
+
 // ZecBalancer gets the balance of a ZCash address
 func ZecBalancer(addr string) (float64, error) {
+	// honor rate limits
+	zecLimiter.Pass()
+
+	// assemble query
 	query := fmt.Sprintf("https://api.zcha.in/v2/mainnet/accounts/%s", addr)
 	resp, err := http.Get(query)
 	if err != nil {
 		return -1, err
 	}
 	defer resp.Body.Close()
+	// read and parse response
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
@@ -276,6 +256,7 @@ func ZecBalancer(addr string) (float64, error) {
 	if err = json.Unmarshal(body, &data); err != nil {
 		return -1, err
 	}
+	// return balance
 	return data.Balance, nil
 }
 
@@ -307,14 +288,21 @@ type BtgAddrInfo struct {
 	Transaction        []string `json:"transactions"`
 }
 
+var btgLimiter = NewRateLimiter(5, 30, 0, 1440)
+
 // BtgBalancer gets the balance of a Bitcoin Gold address
 func BtgBalancer(addr string) (float64, error) {
+	// honor rate limits
+	btgLimiter.Pass()
+
+	// assemble query
 	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
 	resp, err := http.Get(query)
 	if err != nil {
 		return -1, err
 	}
 	defer resp.Body.Close()
+	// read and parse response
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
@@ -327,6 +315,7 @@ func BtgBalancer(addr string) (float64, error) {
 	if err != nil {
 		return -1, err
 	}
+	// return balance
 	return val, nil
 }
 
@@ -472,7 +461,7 @@ type BlockchairAddrInfo struct {
 	} `json:"context"`
 }
 
-var bchairLimiter = NewRateLimiter(0, 1, 0, 1440)
+var bchairLimiter = NewRateLimiter(5, 30, 0, 1440)
 
 // BlockchairGet gets the balance of a Blockchair address
 func BlockchairGet(coin, addr string) (float64, error) {
