@@ -92,8 +92,9 @@ type DatabaseConfig struct {
 //----------------------------------------------------------------------
 
 type BalancerConfig struct {
-	AccountLimit float64 `json:"accountLimit"` // auto-close address balance limit
-	Rescan       int     `json:"rescan"`       // rescan time interval (in epochs)
+	AccountLimit float64           `json:"accountLimit"` // auto-close address balance limit
+	Rescan       int               `json:"rescan"`       // rescan time interval (in epochs)
+	APIKeys      map[string]string `json:"apikeys"`      // list of API keys
 }
 
 //----------------------------------------------------------------------

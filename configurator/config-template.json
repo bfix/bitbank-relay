@@ -13,7 +13,9 @@
   "balancer": {
     "accountLimit": 10000,
     "rescan": 48,
-    "apikey_blockchair": ""
+    "apikeys": {
+      "blockchair": ""
+    }
   },
   "market": {
     "fiat": "EUR",
