@@ -58,8 +58,8 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 			}
 		}()
 	}
-	// update market data (every 6 hrs)
-	if epoch%(21600/cfg.Service.Epoch) == 1 {
+	// update market data
+	if epoch%cfg.Market.Rescan == 1 {
 		// get new exchange rates
 		logger.Println(logger.INFO, "[periodic] Get market data...")
 		rates, err := lib.GetMarketData(cfg.Market.Fiat, coins, cfg.Market.APIKey)
@@ -76,9 +76,9 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 			}
 		}
 	}
-	// check balances of address if it is not closed and the last check
-	// is older than 6 hrs
-	addrIds, err := db.PendingAddresses(cfg.Balancer.Rescan)
+	// check balances of old address that are not closed
+	t := int64(cfg.Balancer.Rescan * cfg.Service.Epoch)
+	addrIds, err := db.PendingAddresses(t)
 	if err != nil {
 		logger.Println(logger.ERROR, "[periodic] rescan: "+err.Error())
 	} else {
