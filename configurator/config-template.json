@@ -12,10 +12,12 @@
   },
   "balancer": {
     "accountLimit": 10000,
-    "rescan": 14400
+    "rescan": 48,
+    "apikey_blockchair": ""
   },
   "market": {
     "fiat": "EUR",
+    "rescan": 72,
     "apikey": ""
   },
   "coins": [
