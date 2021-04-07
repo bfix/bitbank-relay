@@ -34,8 +34,14 @@ import (
 
 func main() {
 	// parse and process command-line options
-	var network string
+	var (
+		network string
+		inConf  string
+		outConf string
+	)
 	flag.StringVar(&network, "n", "main", "Network [main|test|reg]")
+	flag.StringVar(&inConf, "i", "config-template.json", "Configuration template file (default: config-template.json)")
+	flag.StringVar(&outConf, "o", "config.json", "Configuration output file (default: config.json)")
 	flag.Parse()
 	netw := lib.GetNetwork(network)
 
@@ -79,7 +85,7 @@ func main() {
 
 	// load config template
 	fmt.Println("<<< Generate configuration file...")
-	cfg, err := lib.ReadConfig("config-template.json")
+	cfg, err := lib.ReadConfig(inConf)
 	if err != nil {
 		fmt.Println("<<< ERROR: " + err.Error())
 		return
@@ -118,7 +124,7 @@ func main() {
 		}
 	}
 	// save to configuration file
-	if err = lib.WriteConfig("config.json", cfg); err != nil {
+	if err = lib.WriteConfig(outConf, cfg); err != nil {
 		fmt.Println("<<< ERROR: " + err.Error())
 		return
 	}
