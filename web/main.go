@@ -22,6 +22,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"os/signal"
 	"relay/lib"
@@ -41,12 +42,16 @@ var (
 
 // Application entry point
 func main() {
-	var err error
+	// handle command-line arguments
+	var confFile string
+	flag.StringVar(&confFile, "c", "config.json", "Name of config file (default: ./config.json)")
+	flag.Parse()
 
 	// read configuration
+	var err error
 	defer logger.Flush()
 	logger.Println(logger.INFO, "Reading configuration...")
-	if cfg, err = lib.ReadConfig("config.json"); err != nil {
+	if cfg, err = lib.ReadConfig(confFile); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
