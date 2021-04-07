@@ -32,6 +32,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// Error codes
+var (
+	ErrDatabaseNotAvailable = fmt.Errorf("Database not available")
+)
+
 // Database for persistent storage
 type Database struct {
 	inst *sql.DB
@@ -45,8 +50,11 @@ func Connect(cfg *DatabaseConfig) (db *Database, err error) {
 }
 
 // Close database connection
-func (db *Database) Close() error {
-	return db.inst.Close()
+func (db *Database) Close() (err error) {
+	if db.inst != nil {
+		err = db.inst.Close()
+	}
+	return
 }
 
 //----------------------------------------------------------------------
@@ -61,7 +69,13 @@ type CoinInfo struct {
 	Rate   float64 `json:"rate"`
 }
 
+// GetCoins returns a list of coins for a give account
 func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	// select coins for given account
 	rows, err := db.inst.Query("select coin,label,logo,rate from coins4account where account=?", account)
 	if err != nil {
 		return nil, err
@@ -80,6 +94,11 @@ func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
 
 // GetCoin get information for a given coin.
 func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	// select coin information
 	row := db.inst.QueryRow("select label,logo,rate from coin where symbol=?", symb)
 	ci = new(CoinInfo)
 	ci.Symbol = symb
@@ -89,6 +108,11 @@ func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
 
 // SetCoinLogo sets a base64-encoded SVG logo for a coin
 func (db *Database) SetCoinLogo(coin, logo string) error {
+	// check for valid database
+	if db.inst == nil {
+		return ErrDatabaseNotAvailable
+	}
+	// set new coin logo in database
 	_, err := db.inst.Exec("update coin set logo=? where symbol=?", logo, coin)
 	return err
 }
@@ -106,7 +130,10 @@ var (
 // coin/account pair. Creates a new address if none is available.
 // (Internal use for generating new transactions)
 func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr string, err error) {
-
+	// check for valid database
+	if db.inst == nil {
+		return "", ErrDatabaseNotAvailable
+	}
 	// do we have a unused address for given coin? if so, use that address.
 	row := dbtx.QueryRow(
 		"select val from v_addr where stat=0 and coin=? and account=?",
@@ -156,6 +183,11 @@ func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr s
 // PendingAddresses returns a list of open addresses with a balance check
 // older than 't' seconds.
 func (db *Database) PendingAddresses(t int64) ([]int64, error) {
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	// get list of pending addresses
 	now := time.Now().Unix()
 	rows, err := db.inst.Query("select id from addr where stat=0 and (?-lastCheck)>?", now, t)
 	if err != nil {
@@ -175,12 +207,22 @@ func (db *Database) PendingAddresses(t int64) ([]int64, error) {
 
 // CloseAddress locks an address; no further usage (except spending)
 func (db *Database) CloseAddress(ID int64) error {
+	// check for valid database
+	if db.inst == nil {
+		return ErrDatabaseNotAvailable
+	}
+	// close address in database
 	_, err := db.inst.Exec("update addr set stat=1, validTo=now() where id=?", ID)
 	return err
 }
 
 // GetAddressInfo returns basic info about an address
 func (db *Database) GetAddressInfo(ID int64) (addr, coin string, balance, rate float64, err error) {
+	// check for valid database
+	if db.inst == nil {
+		return "", "", 0, 0, ErrDatabaseNotAvailable
+	}
+	// get information about coin address
 	row := db.inst.QueryRow("select coin,val,balance,rate from v_addr where id=?", ID)
 	err = row.Scan(&coin, &addr, &balance, &rate)
 	return
@@ -188,6 +230,11 @@ func (db *Database) GetAddressInfo(ID int64) (addr, coin string, balance, rate f
 
 // UpdateBalance sets the new balance for an address
 func (db *Database) UpdateBalance(ID int64, balance float64) error {
+	// check for valid database
+	if db.inst == nil {
+		return ErrDatabaseNotAvailable
+	}
+	// update balance in database
 	_, err := db.inst.Exec(
 		"update addr set balance=?, lastCheck=? where id=?",
 		balance, time.Now().Unix(), ID)
@@ -215,7 +262,10 @@ type Transaction struct {
 
 // NewTransaction creates a new pending transaction for a given coin/account pair
 func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err error) {
-
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
 	// start database transaction
 	ctx := context.Background()
 	var dbtx *sql.Tx
@@ -271,6 +321,11 @@ func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err e
 
 // GetTransaction returns the Tx instance for a given identifier
 func (db *Database) GetTransaction(txid string) (tx *Transaction, err error) {
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	// get information about transaction from database
 	tx = new(Transaction)
 	tx.ID = txid
 	row := db.inst.QueryRow(
@@ -282,6 +337,11 @@ func (db *Database) GetTransaction(txid string) (tx *Transaction, err error) {
 // GetExpiredTransactions collects transactions that have expired.
 // Returns a mapping between transaction and associated address.
 func (db *Database) GetExpiredTransactions() (map[int64]int64, error) {
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	// collect expired transactions
 	t := time.Now().Unix()
 	rows, err := db.inst.Query("select id,addr from tx where stat=0 and validTo<?", t)
 	if err != nil {
@@ -302,6 +362,11 @@ func (db *Database) GetExpiredTransactions() (map[int64]int64, error) {
 
 // CloseTransaction closes a pending transaction.
 func (db *Database) CloseTransaction(txID int64) error {
+	// check for valid database
+	if db.inst == nil {
+		return ErrDatabaseNotAvailable
+	}
+	// close transaction in database
 	_, err := db.inst.Exec("update tx set stat=1 where id=?", txID)
 	return err
 }
@@ -313,6 +378,11 @@ func (db *Database) CloseTransaction(txID int64) error {
 // UpdateRate sets the new exchange rate (in market base currency) for
 // the given coin.
 func (db *Database) UpdateRate(coin string, rate float64) error {
+	// check for valid database
+	if db.inst == nil {
+		return ErrDatabaseNotAvailable
+	}
+	// update rate in coin record
 	_, err := db.inst.Exec("update coin set rate=? where symbol=?", rate, coin)
 	return err
 }
