@@ -31,6 +31,7 @@ import (
 	"github.com/bfix/gospel/logger"
 )
 
+// handle logo methods
 func logo(args []string) {
 	if len(args) == 0 {
 		logger.Println(logger.ERROR, "ERROR: logo: No sub-command specified")
@@ -38,25 +39,38 @@ func logo(args []string) {
 		return
 	}
 	switch args[0] {
+	// import logo
 	case "import":
 		logo_import(args[1:])
 	}
 }
 
+// handle logo import
 func logo_import(args []string) {
+	// parse arguments
 	fs := flag.NewFlagSet("logo_import", flag.ExitOnError)
 	var (
-		dir string
+		dir, file string
 	)
 	fs.StringVar(&dir, "i", "", "Folder with coin logos")
+	fs.StringVar(&dir, "f", "", "File with coin logo")
 	fs.Parse(args)
 
-	if len(dir) == 0 {
-		logger.Println(logger.ERROR, "ERROR: logo-import -- missing input folder")
+	// check arguments
+	if len(dir) == 0 && len(file) == 0 {
+		logger.Println(logger.ERROR, "ERROR: logo-import -- missing input file or folder")
 		fs.Usage()
 		return
 	}
-
+	// import single file?
+	if len(file) > 0 {
+		err := importSVG(file)
+		if err != nil {
+			logger.Println(logger.ERROR, "ERROR: "+err.Error())
+		}
+		return
+	}
+	// import all files in folder
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		logger.Println(logger.ERROR, "ERROR: "+err.Error())
@@ -67,24 +81,29 @@ func logo_import(args []string) {
 		if !strings.HasSuffix(fname, ".svg") {
 			continue
 		}
-		in, err := os.Open(fname)
+		err := importSVG(fname)
 		if err != nil {
 			logger.Println(logger.ERROR, "ERROR: "+err.Error())
 			continue
-		}
-		defer in.Close()
-		body, err := ioutil.ReadAll(in)
-		if err != nil {
-			logger.Println(logger.ERROR, "ERROR: "+err.Error())
-			continue
-		}
-		logo := base64.StdEncoding.EncodeToString(body)
-		base := filepath.Base(fname)
-		coin := base[:len(base)-4]
-
-		logger.Printf(logger.INFO, "Adding logo for coin '%s'\n", coin)
-		if err = db.SetCoinLogo(coin, logo); err != nil {
-			logger.Println(logger.ERROR, "ERROR: "+err.Error())
 		}
 	}
+}
+
+// import single SVG file
+func importSVG(fname string) error {
+	in, err := os.Open(fname)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	body, err := ioutil.ReadAll(in)
+	if err != nil {
+		return err
+	}
+	logo := base64.StdEncoding.EncodeToString(body)
+	base := filepath.Base(fname)
+	coin := base[:len(base)-4]
+
+	logger.Printf(logger.INFO, "Adding logo for coin '%s'\n", coin)
+	return db.SetCoinLogo(coin, logo)
 }
