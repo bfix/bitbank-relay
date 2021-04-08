@@ -21,6 +21,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"relay/lib"
 
@@ -33,8 +34,6 @@ var (
 )
 
 func main() {
-	var err error
-
 	// welcome
 	defer logger.Flush()
 	logger.Println(logger.INFO, "====================================")
@@ -42,9 +41,19 @@ func main() {
 	logger.Println(logger.INFO, "Copyright (c) 2021, Bernd Fix    >Y<")
 	logger.Println(logger.INFO, "====================================")
 
+	// parse arguments
+	args := os.Args[1:]
+	fs := flag.NewFlagSet("main", flag.ExitOnError)
+	var (
+		confFile string
+	)
+	fs.StringVar(&confFile, "c", "config.json", "Configuration file (default: config.json)")
+	fs.Parse(args)
+
 	// read configuration
+	var err error
 	logger.Println(logger.INFO, "Reading configuration...")
-	if cfg, err = lib.ReadConfig("config.json"); err != nil {
+	if cfg, err = lib.ReadConfig(confFile); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
@@ -58,11 +67,11 @@ func main() {
 	defer db.Close()
 
 	// parse command line arguments (top-level)
-	args := os.Args[1:]
-	if len(args) == 0 {
+	if fs.NArg() == 0 {
 		logger.Println(logger.ERROR, "ERROR: No command specified")
 		return
 	}
+	args = fs.Args()
 	switch args[0] {
 	case "logo":
 		logo(args[1:])
