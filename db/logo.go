@@ -53,7 +53,7 @@ func logo_import(args []string) {
 		dir, file string
 	)
 	fs.StringVar(&dir, "i", "", "Folder with coin logos")
-	fs.StringVar(&dir, "f", "", "File with coin logo")
+	fs.StringVar(&file, "f", "", "File with coin logo")
 	fs.Parse(args)
 
 	// check arguments
