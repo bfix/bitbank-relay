@@ -92,7 +92,7 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					continue
 				}
 				pid++
-				logger.Printf(logger.DBG, "Balancer[%d]: addr=%s, coin=%s", pid, addr, coin)
+				logger.Printf(logger.DBG, "Balancer[%d]: addr=%s, coin=%s, balance=%f", pid, addr, coin, balance)
 
 				// get new address balance
 				go func(pid int) {
@@ -108,6 +108,9 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					}
 					// update balance if increased
 					if newBalance >= balance {
+						if newBalance > 0 {
+							logger.Printf(logger.DBG, "Balancer[%d]: => new balance: %f", pid, newBalance)
+						}
 						balance = newBalance
 					}
 					// update balance
