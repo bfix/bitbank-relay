@@ -31,11 +31,11 @@ import (
 func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 
 	// check expired transactions
-	logger.Println(logger.INFO, "[periodic] Closing expired transactions...")
 	txList, err := db.GetExpiredTransactions()
 	if err != nil {
 		logger.Println(logger.ERROR, "[periodic] GetExpiredTxs: "+err.Error())
-	} else {
+	} else if len(txList) > 0 {
+		logger.Println(logger.INFO, "[periodic] Closing expired transactions...")
 		// build unique list of addresses from expired transaction
 		list := make(map[int64]bool)
 		for txID, addrID := range txList {
@@ -81,7 +81,7 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 	addrIds, err := db.PendingAddresses(t)
 	if err != nil {
 		logger.Println(logger.ERROR, "[periodic] rescan: "+err.Error())
-	} else {
+	} else if len(addrIds) > 0 {
 		logger.Printf(logger.INFO, "[periodic] Update %d pending address balances...", len(addrIds))
 		// check balance of all effected addresses
 		go func() {
