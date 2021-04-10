@@ -3,7 +3,7 @@
     "listen": "localhost:80",
     "epoch": 300,
     "logFile": "relay.log",
-    "logLevel": "DEBUG",
+    "logLevel": "DBG",
     "logRotate": 288
   },
   "database": {
