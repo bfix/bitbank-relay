@@ -128,7 +128,7 @@ func GetNetwork(netw string) int {
 // shared blockchain APIs
 //----------------------------------------------------------------------
 
-// Blockcyper works for: BTC, LTC, DASH, DOGE, ETH
+// Blockcypher works for: BTC, LTC, DASH, DOGE, ETH
 // Checks if an address is used (#tx > 0)
 func Blockcypher(coin, addr string) (bool, error) {
 	query := fmt.Sprintf("https://api.blockcypher.com/v1/%s/main/addrs/%s", coin, addr)

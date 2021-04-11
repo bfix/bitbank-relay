@@ -74,6 +74,7 @@ func (c *CoinConfig) GetXDVersion() uint32 {
 
 //----------------------------------------------------------------------
 
+// ServiceConfig for service-related settings
 type ServiceConfig struct {
 	Listen    string `json:"listen"`    // web service listener (host:port)
 	Epoch     int    `json:"epoch"`     // epoch time in seconds
@@ -84,6 +85,7 @@ type ServiceConfig struct {
 
 //----------------------------------------------------------------------
 
+// DatabaseConfig for database-related settings.
 type DatabaseConfig struct {
 	Mode    string `json:"mode"`    // mode (mysql, sqlite3, ...)
 	Connect string `json:"connect"` // database connect string
@@ -91,6 +93,7 @@ type DatabaseConfig struct {
 
 //----------------------------------------------------------------------
 
+// BalancerConfig for account balance processing
 type BalancerConfig struct {
 	AccountLimit float64           `json:"accountLimit"` // auto-close address balance limit
 	Rescan       int               `json:"rescan"`       // rescan time interval (in epochs)
@@ -99,6 +102,7 @@ type BalancerConfig struct {
 
 //----------------------------------------------------------------------
 
+// MarketConfig defines settings for cryptocurrency price retrieval.
 type MarketConfig struct {
 	Fiat   string `json:"fiat"`   // Fiat base currency
 	Rescan int    `json:"rescan"` // rescan time interval (in epochs)

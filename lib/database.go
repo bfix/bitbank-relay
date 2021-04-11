@@ -28,7 +28,9 @@ import (
 	"fmt"
 	"time"
 
+	// import MySQL driver
 	_ "github.com/go-sql-driver/mysql"
+	// import SQLite3 driver
 	_ "github.com/mattn/go-sqlite3"
 )
 

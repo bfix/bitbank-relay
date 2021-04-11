@@ -171,7 +171,7 @@ func BtcBalancer(addr string) (float64, error) {
 // ETH (Ethereum)
 //----------------------------------------------------------------------
 
-// EthAddressInfo is a response from the ethplorer.io API for an address query
+// EthAddrInfo is a response from the ethplorer.io API for an address query
 type EthAddrInfo struct {
 	Address string `json:"address"`
 	ETH     struct {
@@ -223,7 +223,7 @@ func EthBalancer(addr string) (float64, error) {
 // ZEC (ZCash)
 //----------------------------------------------------------------------
 
-// ZecAddressInfo is a response from the zcha.in API for an address query
+// ZecAddrInfo is a response from the zcha.in API for an address query
 type ZecAddrInfo struct {
 	Address    string  `json:"address"`
 	Balance    float64 `json:"balance"`
@@ -375,6 +375,7 @@ func DgbBalancer(addr string) (float64, error) {
 // 'nil' balancer (zero balance)
 //----------------------------------------------------------------------
 
+// NilBalancer always returns a balance of "0".
 func NilBalancer(addr string) (float64, error) {
 	return 0, nil
 }
