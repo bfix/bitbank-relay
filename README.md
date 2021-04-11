@@ -181,6 +181,36 @@ Either database is initialized with a SQL script found in the `db/` folder:
 * `db_create.mysql.sql` for MySQL database engine (adjust to your local env)
 * `fb_create.sqlite3.sql` for SQLite3 database file (add to deployment)
 
+### Initialize database
+
+You need to initialize the database with information about the accepted coins
+and the accounts you want to support. Each account has one or more
+crypto-currencies assigned to it; these are the coins that will be accepted
+for an account.
+
+```sql
+-- create list of supported coins
+insert into coin(symbol,label) values
+    ('btc',  'Bitcoin'),
+    ('ltc',  'Litecoin'),
+    ('doge', 'Dogecoin'),
+    ('dash', 'Dash'),
+    ('nmc',  'Namecoin'),
+    ('dgb',  'Digibyte'),
+    ('vtc',  'Vertcoin'),
+    ('eth',  'Ethereum'),
+    ('etc',  'Ethereum Classic'),
+    ('zec',  'ZCash'),
+    ('bch',  'Bitcoin Cash'),
+    ('btg',  'Bitcoin Gold');
+
+insert into account(label) values
+    ("Account #1"), ("Account #2");
+
+insert into accept(coin,accnt) values
+    (1, 1), (11, 1), (12, 1), ...;
+```
+
 To add the coin logos to the database, change into the `db/` folder and run:
 
 ```bash
@@ -188,3 +218,5 @@ To add the coin logos to the database, change into the `db/` folder and run:
 ```
 
 # Testing
+
+(to be described)
