@@ -41,12 +41,12 @@ func logo(args []string) {
 	switch args[0] {
 	// import logo
 	case "import":
-		logo_import(args[1:])
+		logoImport(args[1:])
 	}
 }
 
 // handle logo import
-func logo_import(args []string) {
+func logoImport(args []string) {
 	// parse arguments
 	fs := flag.NewFlagSet("logo_import", flag.ExitOnError)
 	var (
