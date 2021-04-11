@@ -121,7 +121,7 @@ type Config struct {
 }
 
 //----------------------------------------------------------------------
-// persistant configuration
+// persistent configuration
 
 // ReadConfig to parse configurations from file
 func ReadConfig(fname string) (*Config, error) {

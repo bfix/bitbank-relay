@@ -40,7 +40,7 @@ var (
 type Handler struct {
 	coin     int              // coin identifier
 	symb     string           // coin symbol
-	mode     int              // adress mode (P2PKH, P2SH, ...)
+	mode     int              // address mode (P2PKH, P2SH, ...)
 	netw     int              // network (Main, Test, Reg)
 	tree     *wallet.HDPublic // HDKD for public keys
 	balancer Balancer         // address balance handler for coin
