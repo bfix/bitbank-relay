@@ -1,5 +1,5 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/bfix/bb_relay)](https://goreportcard.com/report/github.com/bfix/bb_relay)
-[![GoDoc](https://godoc.org/github.com/bfix/bb_relay?status.svg)](https://godoc.org/github.com/bfix/bb_relay)
+[![Go Report Card](https://goreportcard.com/badge/github.com/bfix/bb_relay)](https://goreportcard.com/report/github.com/bfix/bitbank-relay)
+[![GoDoc](https://godoc.org/github.com/bfix/bb_relay?status.svg)](https://godoc.org/github.com/bfix/bitbank-relay)
 
 # Bitbank - Relay (bb_relay)
 
