@@ -75,6 +75,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 
 	accnt := r.FormValue("a")
 	if len(accnt) == 0 {
+		logger.Println(logger.INFO, "List[0]: no account")
 		io.WriteString(w, "[]")
 		return
 	}
@@ -119,13 +120,14 @@ func receiveHandler(w http.ResponseWriter, r *http.Request) {
 	// get address for given account and coin
 	accnt := r.FormValue("a")
 	coin := r.FormValue("c")
-	logger.Printf(logger.DBG, "receive: account=%s, coin=%s\n", accnt, coin)
-
 	tx, err := db.NewTransaction(coin, accnt)
 	if err != nil {
+		logger.Printf(logger.ERROR, "receive: account=%s, coin=%s failed: %s\n", accnt, coin, err.Error())
 		resp.Error = err.Error()
 		return
 	}
+	logger.Printf(logger.INFO, "receive: account=%s, coin=%s => %s\n", accnt, coin, tx.Addr)
+
 	// generate QR code of address
 	qr := "data:image/jpeg;base64,"
 	qrc, err := qrcode.New(tx.Addr)
