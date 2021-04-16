@@ -1,7 +1,65 @@
 {{define "main"}}
 <html>
+    <head>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 2em 10em 2em 10em;
+            }
+            .row::after {
+                content: "";
+                clear: both;
+                display: table;
+            }
+            div.db-coin,
+            div.db-accnt {
+                border: 2px solid black;
+                display: inline;
+                float: left;
+                margin: 0.5em;
+                padding: 0.5em;
+            }
+            div.coin-logo {
+                display: inline-grid;
+                float: left;
+                margin-right: 2em;
+            }
+            div.coin-balance {
+                width: 100px;
+                display: inline;
+            }
+            div.coin-name,
+            div.accnt-name {
+                font-size: 120%;
+                font-weight: bold;
+                color: blue;
+                margin-bottom: 0.5em;
+            }
+            span.balance {
+                font-size: 200%;
+                font-weight: bold;
+            }
+            span.coins {
+                font-size: 75%;
+                color: blue;
+            }
+            tr:nth-child(even) { background: #eef }
+            tr:nth-child(odd) { background: #ccf }
+            tr.header {
+                background: #33f;
+                color: white;
+                font-weight: bold;
+            }
+            td {
+                padding: 0.2em;
+            }
+        </style> 
+    </head>
     <body>
-        <a href="/close">Close</a>
+        <p style="text-align: right"><a href="/close">Close</a></p>
+        <h1>Bitbank Relay Management</h1>
         <hr/>
         {{.}}
     </body>
@@ -10,11 +68,69 @@
 
 {{define "dashboard"}}
 <div>
-    <h1>Dashboard</h1>
+    {{$fiat := .Fiat}}
 
-    <h3>Coins</h3>
+    <h1>Coins</h1>
+    <div class="row">
+        {{range .Coins}}
+        <div class="db-coin">
+            <div class="coin-name">
+                <a href="/coin/{{.Symbol}}">{{.Label}}</a>
+            </div>
+            <div class="coin-logo">
+                <img src="data:image/svg+xml;base64,{{.Logo}}" height="32px"/><br/>
+            </div>
+            <div class="coin-balance">
+                <span class="balance">{{mul .Total .Rate}}</span>&nbsp;{{$fiat}}<br/>
+                <span class="coins">({{trim .Total}} {{.Symbol}})</span>
+            </div>
+        </div>
+        {{end}}
+    </div>
 
-    <h3>Accounts</h3>
+    <h1>Accounts</h1>
+    <div class="row">
+        {{range .Accounts}}
+        <div class="db-accnt">
+            <div class="accnt-name">
+                <a href="/account/{{.Label}}">{{.Name}}</a>
+            </div>
+            <div class="accnt-balance">
+                <span class="balance">{{mul .Total 1}}</span>&nbsp;{{$fiat}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <h1>Adresses</h1>
+    <table>
+        <tr class="header">
+            <td>Address</td>
+            <td>Balance</td>
+            <td>Currency</td>
+            <td>Amount</td>
+            <td>Account</td>
+            <td>Status</td>
+            <td>Last check</td>
+            <td>RefCount</td>
+            <td>Since</td>
+            <td>Until</td>
+        </tr>
+        {{range .Addresses}}
+        <tr>
+            <td><a href="7addr/{{.Val}}">{{.Val}}</a></td>
+            <td>{{mul .Balance .Rate}}</td>
+            <td>{{.Coin}}</td>
+            <td>{{.Balance}}</td>
+            <td>{{.Account}}</td>
+            <td>{{.Status}}</td>
+            <td>{{.LastCheck}}</td>
+            <td>{{.RefCount}}</td>
+            <td>{{.ValidSince}}</td>
+            <td>{{.ValidUntil}}</td>
+        </tr>
+        {{end}}
+    </table>
 
 </div>
 {{end}}
