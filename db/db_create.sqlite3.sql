@@ -46,7 +46,10 @@ create table account (
     id integer primary key,
 
     -- account label
-    label varchar(31) not null
+    label varchar(7),
+
+    -- account name
+    name varchar(31) not null
 );
 
 -- accept list all account/coin pairs that can be processed
@@ -84,6 +87,7 @@ create table addr (
     -- status:
     --  0 = open (ready to be used)
     --  1 = closed (address was used; don't use again)
+    --  2 = removed (after balance is transfered)
     stat integer default 0,
 
     -- reference to account
