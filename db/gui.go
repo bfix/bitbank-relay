@@ -22,6 +22,7 @@ package main
 
 import (
 	"bytes"
+	"embed"
 	"flag"
 	"fmt"
 	"io"
@@ -33,6 +34,9 @@ import (
 	"github.com/bfix/gospel/logger"
 )
 
+//go:embed gui.htpl
+var fs embed.FS
+
 var (
 	tpl *template.Template // HTML templates
 	srv *http.Server       // HTTP server
@@ -41,12 +45,12 @@ var (
 // Start the GUI for database management and relay maintenance
 func gui(args []string) {
 	// parse arguments
-	fs := flag.NewFlagSet("gui", flag.ExitOnError)
+	flags := flag.NewFlagSet("gui", flag.ExitOnError)
 	var (
 		listen string
 	)
-	fs.StringVar(&listen, "l", "localhost:8080", "Listen address for web GUI")
-	fs.Parse(args)
+	flags.StringVar(&listen, "l", "localhost:8080", "Listen address for web GUI")
+	flags.Parse(args)
 
 	// read and prepare templates
 	tpl = template.New("gui")
@@ -58,7 +62,7 @@ func gui(args []string) {
 			return fmt.Sprintf("%.08f", a)
 		},
 	})
-	if _, err := tpl.ParseFiles("gui.htpl"); err != nil {
+	if _, err := tpl.ParseFS(fs, "gui.htpl"); err != nil {
 		logger.Println(logger.ERROR, "GUI templates: "+err.Error())
 		return
 	}
