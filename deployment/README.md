@@ -86,7 +86,7 @@ insert into account(label,name) values
 
 -- create a map of coins for each account
 insert into accept(coin,accnt) values
-    (1, 1), (11, 1), (12, 1), ...;
+    (1, 1), (11, 1), (3, 2), ...;
 ```
 
 To add the coin logos to the database, change into the `db/` folder and run:
@@ -185,7 +185,10 @@ like this:
             <div class="col-addr">
                 <p>Send your coins to the following address:</p>
                 <div class="addr">
-                    <img src="data:image/svg+xml;base64,<?php echo $info["logo"]; ?>" height="32px" title="<?php echo $info["label"]; ?>"/>&nbsp;
+                    <img
+                        src="data:image/svg+xml;base64,<?php echo $info["logo"]; ?>"
+                        height="32px" title="<?php echo $info["label"]; ?>"
+                    />&nbsp;
                     <?php echo $tx["addr"]; ?>
                 </div>
             </div>
@@ -193,3 +196,7 @@ like this:
     </body>
 </html>
 ```
+
+# Operation
+
+(to be done)
