@@ -49,7 +49,7 @@ create table account (
     label varchar(7),
 
     -- account name
-    name varchar(31) not null
+    name varchar(127) not null
 );
 
 -- accept list all account/coin pairs that can be processed
