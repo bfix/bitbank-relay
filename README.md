@@ -74,6 +74,12 @@ The deployment for `bb_relay` includes:
 A detailed description can be found in a separate
 [README](https://github.com/bfix/bitbank-relay/tree/master/deployment).
 
+# Maintenance
+
+The maintenance can either be done by directly interacting with the relay
+database via SQL commands or by using a GUI. The steps are described in detail
+in a separate [README](https://github.com/bfix/bitbank-relay/tree/master/db).
+
 # Testing
 
 (to be described)
