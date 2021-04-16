@@ -20,8 +20,131 @@ SPDX-License-Identifier: AGPL3.0-or-later
 # Configuration
 
 Change into the `configurator/` folder. The configuration program will use
-a template comnfiguration `config-template.json` and will store the result in a
+a template configuration `config-template.json` and will store the result in a
 file named `config.json` for productive use.
+
+## Template
+
+Make yourself familiar with the template as you might want to change settings
+(either in the template or in the generated `config.json`) to customize the
+software for your needs.
+
+There are five top-level sections named `service`, `database`, `balancer`,
+`market` and `coins`
+
+### "service"
+
+```json
+"service": {
+    "listen": "localhost:80",
+    "epoch": 300,
+    "logFile": "relay.log",
+    "logLevel": "DBG",
+    "logRotate": 288
+}
+```
+
+* **listen** specifies the listen address for the JSON API. You can specify a
+port and what external addresses to listen to.
+
+* **epoch** is the time between two "heart beats" in seconds; periodic tasks
+define their frequency in epochs.
+
+* **logFile** specifies the name of a log file; if it is missing, logging will
+be sent to the console.
+
+* **logLevel** defines the minimium level of a message to get logged (`DBG`,
+`INFO`, `WARN`, `ERROR`).
+
+* **logRotate** defines the number of epochs after which a logfile is rotated.
+
+### "database"
+
+```json
+"database": {
+    "mode": "mysql",
+    "connect": "bb_relay:bb_relay@tcp(127.0.0.1:3306)/BB_Relay"
+}
+```
+
+* **mode** defines which database engine to use (`mysql` or `sqlite3`).
+
+* **connect** specifies the connect string for the database; its format and
+content depends on the specific database engine used.
+
+### "balancer"
+
+```json
+"balancer": {
+    "accountLimit": 10000,
+    "rescan": 48,
+    "apikeys": {
+        "blockchair": ""
+    }
+}
+```
+
+* **accountLimit** specifies the amount of fiat currency (see `market`) when
+an address is closed automatically (not shown again as a receiving address).
+
+* **rescan** defines the number of epochs between address balance checks.
+
+* **apikeys** is reserved for defining API keys for services that return
+address balances for specific cryptocurrencies. Currently only an API key
+for "BlockChair.com" is used (and you only need it if you have more than
+1440 balance requests a day; watch the log files for messages that indicate
+you need an API key for that service).
+
+### "market"
+
+```json
+"market": {
+    "fiat": "EUR",
+    "rescan": 72,
+    "apikey": ""
+}
+```
+
+* **fiat** is the standard name for the fiat currency you want to use
+internally and should be specified in capital letters. This is the currency
+used in the `balancer` section for `accountLimit` field.
+
+* **rescan** is the number of epochs between market price retreival.
+
+* **apikey** is the API token you received after registering with
+[CoinAPI.io](https://coinapi.io).
+
+### "coins"
+
+```json
+"coins": [
+    {
+        "symb": "btc",
+        "path": "m/49'/0'/0'",
+        "mode": "P2SH",
+        "pk": "",
+        "addr": ""
+    },
+    :
+]
+```
+
+The coins supported are listed in an array; the template file contains all
+supported coins. If you don't want to use certain coins, just delete them
+from the list. Each coin has the following fields:
+
+* **symb** is the short name of the coin (in lower-case letters).
+
+* **path** is the HD base path to the account; you usually don't have to
+change that value during customization.
+
+* **mode** defines the address format by specifying the transaction mode
+(currently either `P2PKH` or `P2SH`).
+
+* **pk** is the `xpub` key of the base account
+
+* **addr** is the first address withn an account (index 0). This value is used
+to verify a coin setup at start-up.
 
 ## Semi-automatic configuration
 
