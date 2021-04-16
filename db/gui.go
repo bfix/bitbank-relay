@@ -23,6 +23,7 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io"
 	"net/http"
 	"relay/lib"
@@ -47,15 +48,24 @@ func gui(args []string) {
 	fs.StringVar(&listen, "l", "localhost:8080", "Listen address for web GUI")
 	fs.Parse(args)
 
-	// read templates
-	var err error
-	if tpl, err = template.ParseFiles("gui.htpl"); err != nil {
+	// read and prepare templates
+	tpl = template.New("gui")
+	tpl.Funcs(template.FuncMap{
+		"mul": func(a, b float64) string {
+			return fmt.Sprintf("%.02f", a*b)
+		},
+		"trim": func(a float64) string {
+			return fmt.Sprintf("%.08f", a)
+		},
+	})
+	if _, err := tpl.ParseFiles("gui.htpl"); err != nil {
 		logger.Println(logger.ERROR, "GUI templates: "+err.Error())
+		return
 	}
 
 	// define request handlers
 	mux := http.NewServeMux()
-	mux.HandleFunc("/coins/", coinHandler)
+	mux.HandleFunc("/coin/", coinHandler)
 	mux.HandleFunc("/account/", accountHandler)
 	mux.HandleFunc("/addr/", addressHandler)
 	mux.HandleFunc("/tx/", transactionHandler)
@@ -84,9 +94,10 @@ func gui(args []string) {
 
 // DashboardData holds all information to render the dashboard view.
 type DashboardData struct {
-	Fiat     string             // name of the fiat currency to use
-	Coins    []*lib.AccCoinInfo // list of active coins
-	Accounts []*lib.AccntInfo   // list of active accounts
+	Fiat      string             // name of the fiat currency to use
+	Coins     []*lib.AccCoinInfo // list of active coins
+	Accounts  []*lib.AccntInfo   // list of active accounts
+	Addresses []*lib.AddrInfo    // list of (active) addresses
 }
 
 func guiHandler(w http.ResponseWriter, r *http.Request) {
@@ -102,6 +113,11 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// collect account info
 	if dd.Accounts, err = db.GetAccounts(); err != nil {
+		io.WriteString(w, "ERROR: "+err.Error())
+		return
+	}
+	// collect address info
+	if dd.Addresses, err = db.GetAddresses(); err != nil {
 		io.WriteString(w, "ERROR: "+err.Error())
 		return
 	}
