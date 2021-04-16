@@ -272,6 +272,62 @@ func (db *Database) GetAddressInfo(ID int64) (addr, coin string, balance, rate f
 	return
 }
 
+// AddrInfo holds information about an address
+type AddrInfo struct {
+	Status     int
+	Coin       string
+	Account    string
+	Val        string
+	Balance    float64
+	Rate       float64
+	RefCount   int
+	LastCheck  string
+	ValidSince string
+	ValidUntil string
+}
+
+// GetAddress returns a list of active adresses
+func (db *Database) GetAddresses() (ai []*AddrInfo, err error) {
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	// get information about active addresses
+	var rows *sql.Rows
+	query := `
+		select coin,val,balance,rate,stat,account,cnt,lastCheck,validFrom,validTo
+		from v_addr
+		where stat < 2
+		order by balance*rate desc
+	`
+	if rows, err = db.inst.Query(query); err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		addr := new(AddrInfo)
+		var (
+			last     sql.NullInt64
+			from, to sql.NullString
+		)
+		if err = rows.Scan(
+			&addr.Coin, &addr.Val, &addr.Balance, &addr.Rate, &addr.Status,
+			&addr.Account, &addr.RefCount, &last, &from, &to); err != nil {
+			return
+		}
+		if last.Valid {
+			addr.LastCheck = time.Unix(last.Int64, 0).Format(time.RFC1123)
+		}
+		if from.Valid {
+			addr.ValidSince = from.String
+		}
+		if to.Valid {
+			addr.ValidUntil = to.String
+		}
+		ai = append(ai, addr)
+	}
+	return
+}
+
 // UpdateBalance sets the new balance for an address
 func (db *Database) UpdateBalance(ID int64, balance float64) error {
 	// check for valid database
