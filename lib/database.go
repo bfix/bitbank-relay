@@ -68,7 +68,14 @@ type CoinInfo struct {
 	Symbol string  `json:"symb"`
 	Label  string  `json:"label"`
 	Logo   string  `json:"logo"`
-	Rate   float64 `json:"rate"`
+	Rate   float64 `json:"rate"` // price of coin in fiat currency
+}
+
+// AccCoinInfo holds information about a coin and the
+// accumulated balance of the coin over all accounts.
+type AccCoinInfo struct {
+	CoinInfo
+	Total float64 `json:"total"` // total balance in coins
 }
 
 // GetCoins returns a list of coins for a give account
@@ -105,6 +112,41 @@ func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
 	ci = new(CoinInfo)
 	ci.Symbol = symb
 	err = row.Scan(&ci.Label, &ci.Logo, &ci.Rate)
+	return
+}
+
+// GetAccumulatedCoins returns information about a coin and its accumulated
+// balance over all accounts.
+func (db *Database) GetAccumulatedCoins() (aci []*AccCoinInfo, err error) {
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	// select coin information
+	query := `
+		select
+			c.symbol as symbol,
+			c.label as label,
+			c.logo as logo,
+			c.rate as rate,
+			sum(a.balance) as total
+		from
+			coin c, addr a
+		where
+			c.id = a.coin
+		group by c.id
+	`
+	var rows *sql.Rows
+	if rows, err = db.inst.Query(query); err != nil {
+		return
+	}
+	for rows.Next() {
+		ci := new(AccCoinInfo)
+		if err = rows.Scan(&ci.Symbol, &ci.Label, &ci.Logo, &ci.Rate, &ci.Total); err != nil {
+			return
+		}
+		aci = append(aci, ci)
+	}
 	return
 }
 
@@ -246,6 +288,46 @@ func (db *Database) UpdateBalance(ID int64, balance float64) error {
 //----------------------------------------------------------------------
 // Account-related methods
 //----------------------------------------------------------------------
+
+// AccntInfo holds information about an account in the database.
+type AccntInfo struct {
+	Label string  // account label
+	Name  string  // account name
+	Total float64 // total balance of account (in fiat currency)
+}
+
+// GetAccounts list all accounts with their total balance (in fiat currency)
+func (db *Database) GetAccounts() (accnts []*AccntInfo, err error) {
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	// select account information
+	query := `
+		select
+			a.label as label,
+			a.name as name,
+			sum(b.balance*c.rate) as total
+		from
+			account a, addr b, coin c
+		where
+			a.id = b.accnt and
+			c.id = b.coin
+		group by a.id
+	`
+	var rows *sql.Rows
+	if rows, err = db.inst.Query(query); err != nil {
+		return
+	}
+	for rows.Next() {
+		ai := new(AccntInfo)
+		if err = rows.Scan(&ai.Label, &ai.Name, &ai.Total); err != nil {
+			return
+		}
+		accnts = append(accnts, ai)
+	}
+	return
+}
 
 //----------------------------------------------------------------------
 // Transaction-related methods
