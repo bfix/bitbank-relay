@@ -1,0 +1,20 @@
+{{define "main"}}
+<html>
+    <body>
+        <a href="/close">Close</a>
+        <hr/>
+        {{.}}
+    </body>
+</html>
+{{end}}
+
+{{define "dashboard"}}
+<div>
+    <h1>Dashboard</h1>
+
+    <h3>Coins</h3>
+
+    <h3>Accounts</h3>
+
+</div>
+{{end}}
