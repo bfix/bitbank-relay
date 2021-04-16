@@ -57,10 +57,10 @@ create table account (
     id integer auto_increment primary key,
 
     -- account label
-    label varchar(7),
+    label varchar(7) not null,
 
     -- account name
-    name varchar(127) not null
+    name varchar(127) default null
 );
 
 -- accept list all account/coin pairs that can be processed
