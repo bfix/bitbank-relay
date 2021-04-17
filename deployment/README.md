@@ -95,6 +95,17 @@ To add the coin logos to the database, change into the `db/` folder and run:
 ./db -c config.json logo import -i images
 ```
 
+Coin logos have to be SVG files (minimized to keep their size smaller than
+10kB) and their name must match the coin symbol in the database - otherwise
+the import will fail.
+
+If you add new coins make sure you create logos for the coins too. You can
+add individual logo files by running:
+
+```bash
+./db -c config.json logo import -f images/coin.svg
+```
+
 The database is now set-up for productive use.
 
 ## (4) Integration into a website for use
@@ -199,4 +210,4 @@ like this:
 
 # Operation
 
-(to be done)
+(to be described)
