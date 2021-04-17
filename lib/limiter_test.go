@@ -29,7 +29,7 @@ func TestRateLimiter(t *testing.T) {
 
 	print := func(stats *RateStats) {
 		t.Log("-----------------------------------")
-		t.Log("Second Minute Hour   Day    Week")
+		t.Log(" Second Minute   Hour    Day   Week")
 		t.Logf("%7d%7d%7d%7d%7d\n", stats.pSec, stats.pMin, stats.pHr, stats.pDay, stats.pWeek)
 		t.Logf("%7d%7d%7d%7d%7d\n", stats.rSec, stats.rMin, stats.rHr, stats.rDay, stats.rWeek)
 		t.Log("-----------------------------------")

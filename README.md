@@ -82,4 +82,20 @@ in a separate [README](https://github.com/bfix/bitbank-relay/tree/master/db).
 
 # Testing
 
-(to be described)
+To run the unit tests in `lib/`, you need to set environment variables:
+
+```bash
+export COINAPI_APIKEY="..."
+export BLOCKCHAIR_APIKEY="..."
+```
+
+The `COINAPI_APIKEY` is mandatory; the `BLOCKCHAIR_APIKEY` is optional. If
+you see API errors while retreiving address balances, you might re-consider
+using an API key for the Blockchair service.
+
+```bash
+cd lib/
+go test -v
+```
+
+WARNING: The rate limiter test is running for some minutes; be patient.
