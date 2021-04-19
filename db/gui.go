@@ -28,6 +28,8 @@ import (
 	"io"
 	"net/http"
 	"relay/lib"
+	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -111,7 +113,7 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 
 	// collect coin info
 	var err error
-	if dd.Coins, err = db.GetAccumulatedCoins(); err != nil {
+	if dd.Coins, err = db.GetAccumulatedCoins(0); err != nil {
 		io.WriteString(w, "ERROR: "+err.Error())
 		return
 	}
@@ -133,7 +135,85 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 // handle coin-related GUI requests
 //======================================================================
 
+type CoinData struct {
+	Fiat string           `json:"fiat"` // fiat currency
+	Coin *lib.AccCoinInfo `json:"coin"` // info about coin
+}
+
 func coinHandler(w http.ResponseWriter, r *http.Request) {
+	// show coin info
+	query := r.URL.Query()
+	cd := new(CoinData)
+	cd.Fiat = cfg.Market.Fiat
+	if id := query.Get("id"); len(id) > 0 {
+		if val, err := strconv.ParseInt(id, 10, 64); err == nil {
+			// check if we switch assignments
+			if accept := query.Get("accept"); len(accept) > 0 {
+				on, off, err := parseOnOffList(accept)
+				if err != nil {
+					logger.Println(logger.ERROR, "coinHandler: "+err.Error())
+					return
+				}
+				for _, accnt := range on {
+					if err := db.ChangeAssignment(val, accnt, true); err != nil {
+						return
+					}
+				}
+				for _, accnt := range off {
+					if err := db.ChangeAssignment(val, accnt, false); err != nil {
+						return
+					}
+				}
+			}
+			// get assignments from database
+			if res, err := db.GetAccumulatedCoins(val); err == nil {
+				if len(res) > 0 {
+					cd.Coin = res[0]
+				} else {
+					logger.Println(logger.WARN, "coinHandler: no coin infos")
+					return
+				}
+			} else {
+				logger.Println(logger.ERROR, "coinHandler: "+err.Error())
+				return
+			}
+		} else {
+			logger.Println(logger.ERROR, "coinHandler: "+err.Error())
+			return
+		}
+	} else {
+		logger.Println(logger.WARN, "coinHandler: No ID in query")
+		return
+	}
+	// show coin page
+	renderPage(w, cd, "coin")
+}
+
+// parse an on/off list of form "id1,id2,id3|id4,id5" and return two lists
+// of integers
+func parseOnOffList(list string) (on, off []int64, err error) {
+	parse := func(s string) (list []int64, err error) {
+		if len(s) == 0 {
+			return
+		}
+		for _, elem := range strings.Split(s, ",") {
+			var val int64
+			if val, err = strconv.ParseInt(elem, 10, 64); err != nil {
+				return
+			}
+			list = append(list, val)
+		}
+		return
+	}
+	parts := strings.Split(list, "|")
+	if len(parts) != 2 {
+		return nil, nil, fmt.Errorf("parseOnOffList")
+	}
+	if on, err = parse(parts[0]); err != nil {
+		return
+	}
+	off, err = parse(parts[1])
+	return
 }
 
 //======================================================================

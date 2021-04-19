@@ -1,6 +1,8 @@
 {{define "main"}}
-<html>
+<!doctype html>
+<html lang="en">
     <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <style>
             * {
                 box-sizing: border-box;
@@ -8,57 +10,61 @@
             body {
                 margin: 2em 10em 2em 10em;
             }
-            .row::after {
+            div.row::after {
                 content: "";
                 clear: both;
                 display: table;
             }
-            div.db-coin,
-            div.db-accnt {
-                border: 2px solid black;
+            div.cell {
                 display: inline;
                 float: left;
+            }
+            div.box {
+                border: 2px solid black;
                 margin: 0.5em;
                 padding: 0.5em;
             }
-            div.coin-logo {
-                display: inline-grid;
-                float: left;
-                margin-right: 2em;
-            }
-            div.coin-balance {
-                width: 100px;
-                display: inline;
-            }
-            div.coin-name,
-            div.accnt-name {
+
+            .label {
+                text-align: right;
+                vertical-align: top;
+                font-weight: bold;
+            }            
+            .title {
                 font-size: 120%;
                 font-weight: bold;
-                color: blue;
                 margin-bottom: 0.5em;
             }
-            span.balance {
+            .large {
                 font-size: 200%;
                 font-weight: bold;
             }
-            span.coins {
+            .small {
                 font-size: 75%;
+            }
+            .blue {
                 color: blue;
             }
-            tr:nth-child(even) { background: #eef }
-            tr:nth-child(odd) { background: #ccf }
+            .spacer-right {
+                margin-right: 2em;
+            }
+            .changed {
+                background-color: #fee;
+            }
+
+            tr.row:nth-child(even) { background: #eef }
+            tr.row:nth-child(odd) { background: #ccf }
             tr.header {
                 background: #33f;
                 color: white;
                 font-weight: bold;
             }
             td {
-                padding: 0.2em;
+                padding: 0.5em;
             }
         </style> 
     </head>
     <body>
-        <p style="text-align: right"><a href="/close">Close</a></p>
         <h1>Bitbank Relay Management</h1>
         <hr/>
         {{.}}
@@ -73,16 +79,21 @@
     <h1>Coins</h1>
     <div class="row">
         {{range .Coins}}
-        <div class="db-coin">
-            <div class="coin-name">
-                <a href="/coin/{{.Symbol}}">{{.Label}}</a>
+        <div class="cell box">
+            <div class="title">
+                <a href="/coin/?id={{.ID}}">{{.Label}}</a>
             </div>
-            <div class="coin-logo">
-                <img src="data:image/svg+xml;base64,{{.Logo}}" height="32px"/><br/>
+            <div class="cell spacer-right">
+                <img src="data:image/svg+xml;base64,{{.Logo}}" height="32px"/>
             </div>
-            <div class="coin-balance">
-                <span class="balance">{{mul .Total .Rate}}</span>&nbsp;{{$fiat}}<br/>
-                <span class="coins">({{trim .Total}} {{.Symbol}})</span>
+            <div class="cell">
+                <span class="large">
+                    {{mul .Total .Rate}}
+                </span>&nbsp;{{$fiat}}<br/>
+                <span class="small">
+                    ({{trim .Total}} {{.Symbol}})<br/>
+                    @{{.Rate}}&nbsp;{{$fiat}}
+                </span>
             </div>
         </div>
         {{end}}
@@ -91,11 +102,11 @@
     <h1>Accounts</h1>
     <div class="row">
         {{range .Accounts}}
-        <div class="db-accnt">
-            <div class="accnt-name">
-                <a href="/account/{{.Label}}">{{.Name}}</a>
+        <div class="cell box">
+            <div class="title">
+                <a href="/account/?id={{.ID}}">{{.Name}}</a>
             </div>
-            <div class="accnt-balance">
+            <div class="large">
                 <span class="balance">{{mul .Total 1}}</span>&nbsp;{{$fiat}}
             </div>
         </div>
@@ -117,8 +128,8 @@
             <td>Until</td>
         </tr>
         {{range .Addresses}}
-        <tr>
-            <td><a href="7addr/{{.Val}}">{{.Val}}</a></td>
+        <tr class="row">
+            <td><a href="/addr/?id={{.ID}}">{{.Val}}</a></td>
             <td>{{mul .Balance .Rate}}</td>
             <td>{{.Coin}}</td>
             <td>{{.Balance}}</td>
@@ -133,4 +144,91 @@
     </table>
 
 </div>
+{{end}}
+
+{{define "coin"}}
+<div class="row">
+    <div class="cell spacer-right">
+        <img src="data:image/svg+xml;base64,{{.Coin.Logo}}" height="96px"/>
+    </div>
+    <div class="cell">
+        <span class="large">{{.Coin.Label}} ({{.Coin.Symbol}})</span><br>
+        <a href="#"><input type="button" value="Upload new logo"/></a>
+    </div>
+</div>
+<hr/>
+<table>
+    <tr>
+        <td class="label">Current fiat balance:</td>
+        <td><span class="large">{{mul .Coin.Total .Coin.Rate}}</span>&nbsp;{{.Fiat}}</td>
+    </tr>
+    <tr>
+        <td class="label">Amount of coins:</td>
+        <td><span class="large">{{trim .Coin.Total}} {{.Coin.Symbol}}</span></td>
+    </tr>
+    <tr>
+        <td class="label">Market value per coin:</td>
+        <td><span class="large">{{mul .Coin.Rate 1}}&nbsp;{{.Fiat}}</span></td>
+    </tr>
+    <tr>
+        <td class="label">Assigned accounts:</td>
+        <td>
+            <script>
+                var data = [
+                {{range $index, $item := .Coin.Accnts}}
+                    {{if ne $index 0}} , {{end}}
+                    { 'id': {{$item.ID}}, 'flag': {{$item.Status}}, 'old': {{$item.Status}} }
+                {{end}}
+                ];
+                function onToggle(elem) {
+                    changed = false;
+                    for (let i = 0; i < data.length; i++) {
+                        item = data[i];
+                        if (item.id == elem.value) {
+                            item.flag = !item.flag;
+                            label = document.getElementById('accnt'+elem.value);
+                            if (item.flag != item.old) {
+                                label.classList.add("changed");
+                            } else {
+                                label.classList.remove("changed");
+                            }
+                        }
+                        if (item.flag != item.old) {
+                            changed = true;
+                        }
+                    }
+                    document.getElementById('accnt-apply').disabled = !changed;
+
+                    var on = []
+                    var off = []
+                    for (let i = 0; i < data.length; i++) {
+                        item = data[i];
+                        if (item.flag != item.old) {
+                            if (item.flag) {
+                                on.push(item.id);
+                            } else {
+                                off.push(item.id);
+                            }
+                        }
+                    }
+                    accept = on + "|" + off;
+                    if (accept.length > 1) {
+                        accept = "&accept=" + accept;
+                    } else
+                        accept = "";
+                    document.getElementById('accnt-btn').href = "/coin/?id={{.Coin.ID}}" + accept;
+                }
+            </script>
+            {{range .Coin.Accnts}}
+                <input type="checkbox" value="{{.ID}}" {{if .Status}}checked{{end}} onChange="onToggle(this)">
+                <span id="accnt{{.ID}}">{{.Name}}</span><br/>
+            {{end}}
+            <br/>
+            <a id="accnt-btn" href="/coin/?id={{.Coin.ID}}"><input id="accnt-apply" type="button" value="Apply changes" disabled onClick="submit()" /></a>
+        </td>
+    </tr>
+</table>
+<hr/>
+<a href="/"><input type="button" value="Back"/></a>
+
 {{end}}
