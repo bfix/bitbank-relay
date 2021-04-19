@@ -427,7 +427,7 @@ func (db *Database) CountAssignments(coin, accnt int64) int {
 // ChangeAssignment adds or removes coin/account assignments
 func (db *Database) ChangeAssignment(coin, accnt int64, add bool) (err error) {
 	if add {
-		_, err = db.inst.Exec("insert into accept(coin,accnt) values(?,?)", coin, accnt)
+		_, err = db.inst.Exec("insert ignore into accept(coin,accnt) values(?,?)", coin, accnt)
 	} else {
 		_, err = db.inst.Exec("delete from accept where coin=? and accnt=?", coin, accnt)
 	}

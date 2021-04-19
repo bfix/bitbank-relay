@@ -66,7 +66,8 @@ create table account (
 -- accept list all account/coin pairs that can be processed
 create table accept (
     accnt integer references account(id) on delete cascade,
-    coin integer references coin(id) on delete cascade
+    coin integer references coin(id) on delete cascade,
+    unique key (accnt, coin) 
 );
 
 -- id-less view on account/coin pairs that are accepted
