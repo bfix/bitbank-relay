@@ -60,10 +60,12 @@ create table accept (
 
 -- id-less view on account/coin pairs that are accepted
 create view coins4account as select
+    c.id as coinId,
     c.symbol as coin,
     c.label as label,
     c.logo as logo,
     c.rate as rate,
+    a.id as accntid,
     a.label as account
 from
     coin c, account a, accept x
