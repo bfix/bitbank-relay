@@ -28,8 +28,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bfix/gospel/logger"
+
 	// import MySQL driver
 	_ "github.com/go-sql-driver/mysql"
+
 	// import SQLite3 driver
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -60,6 +63,38 @@ func (db *Database) Close() (err error) {
 }
 
 //----------------------------------------------------------------------
+// Generic item
+//----------------------------------------------------------------------
+
+// Item represents either a coin or an account. ID is refering to the record
+// in the database, Name is the common name and Status indicates if a condition
+// for the item is statisfied. A coin condition is "assigned to account" and
+// an account condition is "assigned to a coin"
+type Item struct {
+	ID     int64
+	Name   string
+	Status bool
+}
+
+// Get a list of items from a query; the query must return three columns
+// corresponding with the fields of the Item struct.
+func (db *Database) getItems(query string, id int64) (list []*Item, err error) {
+	var rows *sql.Rows
+	if rows, err = db.inst.Query(query, id); err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		item := new(Item)
+		if err = rows.Scan(&item.ID, &item.Name, &item.Status); err != nil {
+			return
+		}
+		list = append(list, item)
+	}
+	return
+}
+
+//----------------------------------------------------------------------
 // Coin-related methods
 //----------------------------------------------------------------------
 
@@ -75,7 +110,9 @@ type CoinInfo struct {
 // accumulated balance of the coin over all accounts.
 type AccCoinInfo struct {
 	CoinInfo
-	Total float64 `json:"total"` // total balance in coins
+	ID     int64   `json:"id"`     // database ID of coin entry
+	Total  float64 `json:"total"`  // total balance in coins
+	Accnts []*Item `json:"accnts"` // (assigned) accounts
 }
 
 // GetCoins returns a list of coins for a give account
@@ -116,8 +153,8 @@ func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
 }
 
 // GetAccumulatedCoins returns information about a coin and its accumulated
-// balance over all accounts.
-func (db *Database) GetAccumulatedCoins() (aci []*AccCoinInfo, err error) {
+// balance over all accounts. If "coin" is "0", all coins are returned.
+func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err error) {
 	// check for valid database
 	if db.inst == nil {
 		return nil, ErrDatabaseNotAvailable
@@ -125,6 +162,7 @@ func (db *Database) GetAccumulatedCoins() (aci []*AccCoinInfo, err error) {
 	// select coin information
 	query := `
 		select
+			c.id as id,
 			c.symbol as symbol,
 			c.label as label,
 			c.logo as logo,
@@ -133,16 +171,25 @@ func (db *Database) GetAccumulatedCoins() (aci []*AccCoinInfo, err error) {
 		from
 			coin c, addr a
 		where
-			c.id = a.coin
-		group by c.id
-	`
+			c.id = a.coin`
+	if coin != 0 {
+		query += fmt.Sprintf(" and c.id=%d", coin)
+	}
+	query += " group by c.id"
+
 	var rows *sql.Rows
 	if rows, err = db.inst.Query(query); err != nil {
 		return
 	}
+	defer rows.Close()
 	for rows.Next() {
 		ci := new(AccCoinInfo)
-		if err = rows.Scan(&ci.Symbol, &ci.Label, &ci.Logo, &ci.Rate, &ci.Total); err != nil {
+		if err = rows.Scan(&ci.ID, &ci.Symbol, &ci.Label, &ci.Logo, &ci.Rate, &ci.Total); err != nil {
+			return
+		}
+		if ci.Accnts, err = db.getItems(
+			"select id,name,(id in (select accnt from accept where coin=?)) as used from account",
+			ci.ID); err != nil {
 			return
 		}
 		aci = append(aci, ci)
@@ -274,16 +321,17 @@ func (db *Database) GetAddressInfo(ID int64) (addr, coin string, balance, rate f
 
 // AddrInfo holds information about an address
 type AddrInfo struct {
-	Status     int
-	Coin       string
-	Account    string
-	Val        string
-	Balance    float64
-	Rate       float64
-	RefCount   int
-	LastCheck  string
-	ValidSince string
-	ValidUntil string
+	ID         int64   `json:"id"`         // database id of address entry
+	Status     int     `json:"status"`     // address status
+	Coin       string  `json:"coin"`       // name of coin
+	Account    string  `json:"account"`    // name of account
+	Val        string  `json:"value"`      // address value
+	Balance    float64 `json:"balance"`    // address balance
+	Rate       float64 `json:"rate"`       // coin value (price per coin)
+	RefCount   int     `json:"refCount"`   // number of transactions
+	LastCheck  string  `json:"lastCheck"`  // last balance check
+	ValidSince string  `json:"validSince"` // start of active period
+	ValidUntil string  `json:"validUntil"` // end of active period
 }
 
 // GetAddress returns a list of active adresses
@@ -295,7 +343,7 @@ func (db *Database) GetAddresses() (ai []*AddrInfo, err error) {
 	// get information about active addresses
 	var rows *sql.Rows
 	query := `
-		select coin,val,balance,rate,stat,account,cnt,lastCheck,validFrom,validTo
+		select id,coin,val,balance,rate,stat,account,cnt,lastCheck,validFrom,validTo
 		from v_addr
 		where stat < 2
 		order by balance*rate desc
@@ -303,6 +351,7 @@ func (db *Database) GetAddresses() (ai []*AddrInfo, err error) {
 	if rows, err = db.inst.Query(query); err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		addr := new(AddrInfo)
 		var (
@@ -310,7 +359,7 @@ func (db *Database) GetAddresses() (ai []*AddrInfo, err error) {
 			from, to sql.NullString
 		)
 		if err = rows.Scan(
-			&addr.Coin, &addr.Val, &addr.Balance, &addr.Rate, &addr.Status,
+			&addr.ID, &addr.Coin, &addr.Val, &addr.Balance, &addr.Rate, &addr.Status,
 			&addr.Account, &addr.RefCount, &last, &from, &to); err != nil {
 			return
 		}
@@ -342,14 +391,60 @@ func (db *Database) UpdateBalance(ID int64, balance float64) error {
 }
 
 //----------------------------------------------------------------------
+// Assignement-related methods.
+//----------------------------------------------------------------------
+
+// CountAssignments returns the number of assignments between coins and
+// accounts. An ID of "0" means "all".
+func (db *Database) CountAssignments(coin, accnt int64) int {
+	// assemble WHERE clause
+	clause := ""
+	addClause := func(id int64, field string) {
+		if id != 0 {
+			if len(clause) > 0 {
+				clause += " and"
+			}
+			clause += fmt.Sprintf(" %s=%d", field, id)
+		}
+	}
+	addClause(coin, "coin")
+	addClause(accnt, "accnt")
+
+	// assemble query
+	query := "select count(*) from accept"
+	if len(clause) > 0 {
+		query += " where" + clause
+	}
+	row := db.inst.QueryRow(query)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		logger.Printf(logger.ERROR, "CountAssign: "+err.Error())
+		count = -1
+	}
+	return count
+}
+
+// ChangeAssignment adds or removes coin/account assignments
+func (db *Database) ChangeAssignment(coin, accnt int64, add bool) (err error) {
+	if add {
+		_, err = db.inst.Exec("insert into accept(coin,accnt) values(?,?)", coin, accnt)
+	} else {
+		_, err = db.inst.Exec("delete from accept where coin=? and accnt=?", coin, accnt)
+	}
+	return
+}
+
+//----------------------------------------------------------------------
 // Account-related methods
 //----------------------------------------------------------------------
 
 // AccntInfo holds information about an account in the database.
 type AccntInfo struct {
-	Label string  // account label
-	Name  string  // account name
-	Total float64 // total balance of account (in fiat currency)
+	ID    int64   `json:"id"`    // database ID of account record
+	Label string  `json:"label"` // account label
+	Name  string  `json:"name"`  // account name
+	Total float64 `json:"total"` // total balance of account (in fiat currency)
+	Coins []*Item `json:"coins"` // (assigned) coins
 }
 
 // GetAccounts list all accounts with their total balance (in fiat currency)
@@ -361,6 +456,7 @@ func (db *Database) GetAccounts() (accnts []*AccntInfo, err error) {
 	// select account information
 	query := `
 		select
+			a.id as id,
 			a.label as label,
 			a.name as name,
 			sum(b.balance*c.rate) as total
@@ -375,9 +471,15 @@ func (db *Database) GetAccounts() (accnts []*AccntInfo, err error) {
 	if rows, err = db.inst.Query(query); err != nil {
 		return
 	}
+	defer rows.Close()
 	for rows.Next() {
 		ai := new(AccntInfo)
-		if err = rows.Scan(&ai.Label, &ai.Name, &ai.Total); err != nil {
+		if err = rows.Scan(&ai.ID, &ai.Label, &ai.Name, &ai.Total); err != nil {
+			return
+		}
+		if ai.Coins, err = db.getItems(
+			"select id,label,(id in (select coin from accept where accnt=?)) as used from coin",
+			ai.ID); err != nil {
 			return
 		}
 		accnts = append(accnts, ai)
