@@ -529,12 +529,12 @@ type AccntInfo struct {
 }
 
 // GetAccounts list all accounts with their total balance (in fiat currency)
-func (db *Database) GetAccounts() (accnts []*AccntInfo, err error) {
+func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 	// check for valid database
 	if db.inst == nil {
 		return nil, ErrDatabaseNotAvailable
 	}
-	// select account information
+	// assemble query
 	query := `
 		select
 			a.id as id,
@@ -545,31 +545,47 @@ func (db *Database) GetAccounts() (accnts []*AccntInfo, err error) {
 			account a, addr b, coin c
 		where
 			a.id = b.accnt and
-			c.id = b.coin
-		group by a.id
-		order by total desc`
+			c.id = b.coin`
+	if id != 0 {
+		query += fmt.Sprintf(" and a.id = %d", id)
+	}
+	query += " group by a.id order by total desc"
+
+	// select account information
 	var rows *sql.Rows
 	if rows, err = db.inst.Query(query); err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
+		// parse basic information
 		ai := new(AccntInfo)
 		if err = rows.Scan(&ai.ID, &ai.Label, &ai.Name, &ai.Total); err != nil {
 			return
 		}
+		// get associated coins for account
 		if ai.Coins, err = db.getItems(`
 			select
   				coin.id as id,
   				coin.label as name,
   				(coin.id in (select coin from accept where accnt=?)) as status,
   				coin.rate as rate,
-  				sum(addr.balance) as balance
+  				sum(addr.balance) as balance,
+				coin.symbol as symbol
 			from coin
 			left join addr on addr.coin = coin.id and addr.accnt = ?
 			group by coin.id`, ai.ID, ai.ID); err != nil {
 			return
 		}
+		// sort coins by descending fiat balance
+		sort.Slice(ai.Coins, func(i, j int) bool {
+			ri, _ := strconv.ParseFloat(ai.Coins[i].Dict["rate"], 64)
+			bi, _ := strconv.ParseFloat(ai.Coins[i].Dict["balance"], 64)
+			rj, _ := strconv.ParseFloat(ai.Coins[j].Dict["rate"], 64)
+			bj, _ := strconv.ParseFloat(ai.Coins[j].Dict["balance"], 64)
+			return rj*bj < ri*bi
+		})
+		// add to list
 		accnts = append(accnts, ai)
 	}
 	return

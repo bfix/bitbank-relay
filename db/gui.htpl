@@ -92,7 +92,7 @@
                 </span>&nbsp;{{$fiat}}<br/>
                 <span class="small">
                     ({{trim .Total}} {{.Symbol}})<br/>
-                    @{{.Rate}}&nbsp;{{$fiat}}
+                    @{{mul .Rate 1}}&nbsp;{{$fiat}}
                 </span>
             </div>
         </div>
@@ -240,5 +240,87 @@
 </table>
 <hr/>
 <a href="/"><input type="button" value="Back"/></a>
+{{end}}
 
+{{define "account"}}
+<div class="row">
+    <div class="cell">
+        <span class="large">{{.Accnt.Name}} ({{.Accnt.Label}})</span><br>
+    </div>
+</div>
+<hr/>
+{{$fiat := .Fiat}}
+<table>
+    <tr>
+        <td class="label">Current fiat balance:</td>
+        <td><span class="large">{{mul .Accnt.Total 1}}</span>&nbsp;{{$fiat}}</td>
+    </tr>
+    <tr>
+        <td class="label">Assigned coins:</td>
+        <td>
+            <script>
+                var data = [
+                {{range $index, $item := .Accnt.Coins}}
+                    {{if ne $index 0}} , {{end}}
+                    { 'id': {{$item.ID}}, 'flag': {{$item.Status}}, 'old': {{$item.Status}} }
+                {{end}}
+                ];
+                function onToggle(elem) {
+                    changed = false;
+                    for (let i = 0; i < data.length; i++) {
+                        item = data[i];
+                        if (item.id == elem.value) {
+                            item.flag = !item.flag;
+                            label = document.getElementById('coin'+elem.value);
+                            if (item.flag != item.old) {
+                                label.classList.add("changed");
+                            } else {
+                                label.classList.remove("changed");
+                            }
+                        }
+                        if (item.flag != item.old) {
+                            changed = true;
+                        }
+                    }
+                    document.getElementById('coin-apply').disabled = !changed;
+
+                    var on = []
+                    var off = []
+                    for (let i = 0; i < data.length; i++) {
+                        item = data[i];
+                        if (item.flag != item.old) {
+                            if (item.flag) {
+                                on.push(item.id);
+                            } else {
+                                off.push(item.id);
+                            }
+                        }
+                    }
+                    accept = on + "|" + off;
+                    if (accept.length > 1) {
+                        accept = "&accept=" + accept;
+                    } else
+                        accept = "";
+                    document.getElementById('coin-btn').href = "/account/?id={{.Accnt.ID}}" + accept;
+                }
+            </script>
+            <table>
+            {{range .Accnt.Coins}}
+                {{$balance := asFloat (index .Dict "balance")}}
+                {{$rate := asFloat (index .Dict "rate")}}
+                <tr id="coin{{.ID}}">
+                    <td><input type="checkbox" value="{{.ID}}" {{if .Status}}checked{{end}} onChange="onToggle(this)"></td>
+                    <td><span>{{.Name}}</span></td>
+                    <td><span>{{mul $balance $rate}} {{$fiat}}</span></td>
+                    <td><span>{{$balance}} {{index .Dict "symbol"}} @ {{$rate}} {{$fiat}}</span></td>
+                </tr>
+            {{end}}
+            </table>
+            <br/>
+            <a id="coin-btn" href="/account/?id={{.Accnt.ID}}"><input id="coin-apply" type="button" value="Apply changes" disabled onClick="submit()" /></a>
+        </td>
+    </tr>
+</table>
+<hr/>
+<a href="/"><input type="button" value="Back"/></a>
 {{end}}

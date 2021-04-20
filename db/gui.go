@@ -110,6 +110,7 @@ type DashboardData struct {
 	Addresses []*lib.AddrInfo    // list of (active) addresses
 }
 
+// handle dashboard (main entry page)
 func guiHandler(w http.ResponseWriter, r *http.Request) {
 	// collect information for the dashboard
 	dd := new(DashboardData)
@@ -122,7 +123,7 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// collect account info
-	if dd.Accounts, err = db.GetAccounts(); err != nil {
+	if dd.Accounts, err = db.GetAccounts(0); err != nil {
 		io.WriteString(w, "ERROR: "+err.Error())
 		return
 	}
@@ -139,11 +140,13 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 // handle coin-related GUI requests
 //======================================================================
 
+// CoinData holds the information needed to render a coin page
 type CoinData struct {
 	Fiat string           `json:"fiat"` // fiat currency
 	Coin *lib.AccCoinInfo `json:"coin"` // info about coin
 }
 
+// process "coin" page request
 func coinHandler(w http.ResponseWriter, r *http.Request) {
 	// show coin info
 	query := r.URL.Query()
@@ -224,8 +227,60 @@ func parseOnOffList(list string) (on, off []int64, err error) {
 // handle account-related GUI requests
 //======================================================================
 
-func accountHandler(w http.ResponseWriter, r *http.Request) {
+// AccountData holds the information needed to render an "account" page.
+type AccountData struct {
+	Fiat  string         `json:"fiat"`  // fiat currency
+	Accnt *lib.AccntInfo `json:"accnt"` // info about account
+}
 
+// handle "account" page
+func accountHandler(w http.ResponseWriter, r *http.Request) {
+	// show coin info
+	query := r.URL.Query()
+	ad := new(AccountData)
+	ad.Fiat = cfg.Market.Fiat
+	if id := query.Get("id"); len(id) > 0 {
+		if val, err := strconv.ParseInt(id, 10, 64); err == nil {
+			// check if we switch assignments
+			if accept := query.Get("accept"); len(accept) > 0 {
+				on, off, err := parseOnOffList(accept)
+				if err != nil {
+					logger.Println(logger.ERROR, "accountHandler: "+err.Error())
+					return
+				}
+				for _, coin := range on {
+					if err := db.ChangeAssignment(coin, val, true); err != nil {
+						return
+					}
+				}
+				for _, coin := range off {
+					if err := db.ChangeAssignment(coin, val, false); err != nil {
+						return
+					}
+				}
+			}
+			// get assignments from database
+			if res, err := db.GetAccounts(val); err == nil {
+				if len(res) > 0 {
+					ad.Accnt = res[0]
+				} else {
+					logger.Println(logger.WARN, "accountHandler: no account infos")
+					return
+				}
+			} else {
+				logger.Println(logger.ERROR, "accountHandler: "+err.Error())
+				return
+			}
+		} else {
+			logger.Println(logger.ERROR, "accountHandler: "+err.Error())
+			return
+		}
+	} else {
+		logger.Println(logger.WARN, "accountHandler: No ID in query")
+		return
+	}
+	// show coin page
+	renderPage(w, ad, "account")
 }
 
 //======================================================================
