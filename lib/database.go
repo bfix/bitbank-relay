@@ -21,11 +21,15 @@
 package lib
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"reflect"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/bfix/gospel/logger"
@@ -69,25 +73,94 @@ func (db *Database) Close() (err error) {
 // Item represents either a coin or an account. ID is refering to the record
 // in the database, Name is the common name and Status indicates if a condition
 // for the item is statisfied. A coin condition is "assigned to account" and
-// an account condition is "assigned to a coin"
+// an account condition is "assigned to a coin". The item can have additional
+// attributes (for display) in the Dictionary field.
 type Item struct {
 	ID     int64
 	Name   string
 	Status bool
+	Dict   map[string]string
+}
+
+// String returns a human-readable item
+func (i *Item) String() string {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "{ID: %d,", i.ID)
+	fmt.Fprintf(buf, "Name: '%s',", i.Name)
+	fmt.Fprintf(buf, "Status: %v,", i.Status)
+	for k, v := range i.Dict {
+		fmt.Fprintf(buf, "%s: %s,", k, v)
+	}
+	fmt.Fprintf(buf, "}")
+	return buf.String()
 }
 
 // Get a list of items from a query; the query must return three columns
-// corresponding with the fields of the Item struct.
-func (db *Database) getItems(query string, id int64) (list []*Item, err error) {
+// corresponding with the fields of the Item struct. The first three returned
+// columns MUST be named "id", "name" and "status" and are assigned to the
+// first three fields of the Item; additional coulmns are added to the
+// dictionary).
+func (db *Database) getItems(query string, args ...interface{}) (list []*Item, err error) {
+	// perform query
 	var rows *sql.Rows
-	if rows, err = db.inst.Query(query, id); err != nil {
+	if rows, err = db.inst.Query(query, args...); err != nil {
 		return
 	}
 	defer rows.Close()
+
+	// get returned columns
+	var columns []string
+	if columns, err = rows.Columns(); err != nil {
+		return
+	}
+	numCols := len(columns)
+
+	// assemble value pointers
+	var (
+		_id     sql.NullInt64
+		_name   sql.NullString
+		_status sql.NullBool
+		_dict   = make([]sql.NullString, numCols-3)
+	)
+	values := make([]interface{}, numCols)
+	values[0] = _id
+	values[1] = _name
+	values[2] = _status
+	for i := range values[3:] {
+		values[3+i] = _dict[i]
+	}
+	ptrs := make([]interface{}, numCols)
+	for i := range values {
+		ptrs[i] = &values[i]
+	}
+
+	// parse rows
 	for rows.Next() {
-		item := new(Item)
-		if err = rows.Scan(&item.ID, &item.Name, &item.Status); err != nil {
+		// scan column values
+		if err = rows.Scan(ptrs...); err != nil {
 			return
+		}
+		// assemble item
+		item := new(Item)
+		item.ID = values[0].(int64)
+		item.Name = string(values[1].([]uint8))
+		item.Status = (values[2].(int64) != 0)
+		item.Dict = make(map[string]string)
+		for i := range values[3:] {
+			val := "<n/a>"
+			if values[3+i] != nil {
+				switch v := values[3+i].(type) {
+				case []uint8:
+					val = string(v)
+				case int32, int64:
+					val = fmt.Sprintf("%d", v)
+				case float32, float64:
+					val = fmt.Sprintf("%f", v)
+				default:
+					logger.Printf(logger.WARN, "Unknown column type for item: %s", reflect.TypeOf(v))
+				}
+			}
+			item.Dict[columns[3+i]] = val
 		}
 		list = append(list, item)
 	}
@@ -175,7 +248,7 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
 	if coin != 0 {
 		query += fmt.Sprintf(" and c.id=%d", coin)
 	}
-	query += " group by c.id"
+	query += " group by c.id order by total desc"
 
 	var rows *sql.Rows
 	if rows, err = db.inst.Query(query); err != nil {
@@ -187,11 +260,23 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
 		if err = rows.Scan(&ci.ID, &ci.Symbol, &ci.Label, &ci.Logo, &ci.Rate, &ci.Total); err != nil {
 			return
 		}
-		if ci.Accnts, err = db.getItems(
-			"select id,name,(id in (select accnt from accept where coin=?)) as used from account",
-			ci.ID); err != nil {
+		if ci.Accnts, err = db.getItems(`
+			select
+  				account.id as id,
+  				account.name as name,
+  				(account.id in (select accnt from accept where coin=?)) as status,
+  				sum(addr.balance) as balance
+			from account
+			left join addr on addr.coin=? and addr.accnt = account.id
+			group by account.id`, ci.ID, ci.ID); err != nil {
 			return
 		}
+		sort.Slice(ci.Accnts, func(i, j int) bool {
+			vi, _ := strconv.ParseFloat(ci.Accnts[i].Dict["balance"], 64)
+			vj, _ := strconv.ParseFloat(ci.Accnts[j].Dict["balance"], 64)
+			return vj < vi
+		})
+		// logger.Printf(logger.DBG, "Items: %v", ci.Accnts)
 		aci = append(aci, ci)
 	}
 	return
@@ -466,7 +551,7 @@ func (db *Database) GetAccounts() (accnts []*AccntInfo, err error) {
 			a.id = b.accnt and
 			c.id = b.coin
 		group by a.id
-	`
+		order by total desc`
 	var rows *sql.Rows
 	if rows, err = db.inst.Query(query); err != nil {
 		return
@@ -477,9 +562,16 @@ func (db *Database) GetAccounts() (accnts []*AccntInfo, err error) {
 		if err = rows.Scan(&ai.ID, &ai.Label, &ai.Name, &ai.Total); err != nil {
 			return
 		}
-		if ai.Coins, err = db.getItems(
-			"select id,label,(id in (select coin from accept where accnt=?)) as used from coin",
-			ai.ID); err != nil {
+		if ai.Coins, err = db.getItems(`
+			select
+  				coin.id as id,
+  				coin.label as name,
+  				(coin.id in (select coin from accept where accnt=?)) as status,
+  				coin.rate as rate,
+  				sum(addr.balance) as balance
+			from coin
+			left join addr on addr.coin = coin.id and addr.accnt = ?
+			group by coin.id`, ai.ID, ai.ID); err != nil {
 			return
 		}
 		accnts = append(accnts, ai)

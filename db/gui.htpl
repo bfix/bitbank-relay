@@ -157,18 +157,21 @@
     </div>
 </div>
 <hr/>
+{{$rate := .Coin.Rate}}
+{{$fiat := .Fiat}}
+{{$symb := .Coin.Symbol}}
 <table>
     <tr>
         <td class="label">Current fiat balance:</td>
-        <td><span class="large">{{mul .Coin.Total .Coin.Rate}}</span>&nbsp;{{.Fiat}}</td>
+        <td><span class="large">{{mul .Coin.Total $rate}}</span>&nbsp;{{$fiat}}</td>
     </tr>
     <tr>
         <td class="label">Amount of coins:</td>
-        <td><span class="large">{{trim .Coin.Total}} {{.Coin.Symbol}}</span></td>
+        <td><span class="large">{{trim .Coin.Total}} {{$symb}}</span></td>
     </tr>
     <tr>
         <td class="label">Market value per coin:</td>
-        <td><span class="large">{{mul .Coin.Rate 1}}&nbsp;{{.Fiat}}</span></td>
+        <td><span class="large">{{mul $rate 1}} {{$fiat}}</span></td>
     </tr>
     <tr>
         <td class="label">Assigned accounts:</td>
@@ -219,10 +222,17 @@
                     document.getElementById('accnt-btn').href = "/coin/?id={{.Coin.ID}}" + accept;
                 }
             </script>
+            <table>
             {{range .Coin.Accnts}}
-                <input type="checkbox" value="{{.ID}}" {{if .Status}}checked{{end}} onChange="onToggle(this)">
-                <span id="accnt{{.ID}}">{{.Name}}</span><br/>
+                {{$balance := asFloat (index .Dict "balance")}}
+                <tr id="accnt{{.ID}}">
+                    <td><input type="checkbox" value="{{.ID}}" {{if .Status}}checked{{end}} onChange="onToggle(this)"></td>
+                    <td><span>{{.Name}}</span></td>
+                    <td><span>{{mul $balance $rate}} {{$fiat}}</span></td>
+                    <td><span>{{$balance}} {{$symb}}</span></td>
+                </tr>
             {{end}}
+            </table>
             <br/>
             <a id="accnt-btn" href="/coin/?id={{.Coin.ID}}"><input id="accnt-apply" type="button" value="Apply changes" disabled onClick="submit()" /></a>
         </td>

@@ -63,6 +63,10 @@ func gui(args []string) {
 		"trim": func(a float64) string {
 			return fmt.Sprintf("%.08f", a)
 		},
+		"asFloat": func(a string) float64 {
+			val, _ := strconv.ParseFloat(a, 64)
+			return val
+		},
 	})
 	if _, err := tpl.ParseFS(fs, "gui.htpl"); err != nil {
 		logger.Println(logger.ERROR, "GUI templates: "+err.Error())
