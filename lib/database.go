@@ -27,7 +27,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"reflect"
 	"sort"
 	"strconv"
 	"time"
@@ -116,21 +115,11 @@ func (db *Database) getItems(query string, args ...interface{}) (list []*Item, e
 	numCols := len(columns)
 
 	// assemble value pointers
-	var (
-		_id     sql.NullInt64
-		_name   sql.NullString
-		_status sql.NullBool
-		_dict   = make([]sql.NullString, numCols-3)
-	)
 	values := make([]interface{}, numCols)
-	values[0] = _id
-	values[1] = _name
-	values[2] = _status
-	for i := range values[3:] {
-		values[3+i] = _dict[i]
-	}
 	ptrs := make([]interface{}, numCols)
 	for i := range values {
+		var stub interface{}
+		values[i] = stub
 		ptrs[i] = &values[i]
 	}
 
@@ -157,7 +146,7 @@ func (db *Database) getItems(query string, args ...interface{}) (list []*Item, e
 				case float32, float64:
 					val = fmt.Sprintf("%f", v)
 				default:
-					logger.Printf(logger.WARN, "Unknown column type for item: %s", reflect.TypeOf(v))
+					logger.Printf(logger.WARN, "Unknown column type for item")
 				}
 			}
 			item.Dict[columns[3+i]] = val
@@ -248,7 +237,7 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
 	if coin != 0 {
 		query += fmt.Sprintf(" and c.id=%d", coin)
 	}
-	query += " group by c.id order by total desc"
+	query += " group by c.id"
 
 	var rows *sql.Rows
 	if rows, err = db.inst.Query(query); err != nil {
@@ -256,10 +245,12 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
 	}
 	defer rows.Close()
 	for rows.Next() {
+		// get basic coin info
 		ci := new(AccCoinInfo)
 		if err = rows.Scan(&ci.ID, &ci.Symbol, &ci.Label, &ci.Logo, &ci.Rate, &ci.Total); err != nil {
 			return
 		}
+		// get account items
 		if ci.Accnts, err = db.getItems(`
 			select
   				account.id as id,
@@ -271,6 +262,7 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
 			group by account.id`, ci.ID, ci.ID); err != nil {
 			return
 		}
+		// order account by descending balance
 		sort.Slice(ci.Accnts, func(i, j int) bool {
 			vi, _ := strconv.ParseFloat(ci.Accnts[i].Dict["balance"], 64)
 			vj, _ := strconv.ParseFloat(ci.Accnts[j].Dict["balance"], 64)
@@ -279,6 +271,10 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
 		// logger.Printf(logger.DBG, "Items: %v", ci.Accnts)
 		aci = append(aci, ci)
 	}
+	// sort coins by descending fiat balance
+	sort.Slice(aci, func(i, j int) bool {
+		return aci[j].Rate*aci[j].Total < aci[i].Rate*aci[i].Total
+	})
 	return
 }
 
