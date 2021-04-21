@@ -110,12 +110,14 @@ create table addr (
 -- view on address records
 create view v_addr as select
     a.id as id,
-    c.symbol as coin,
+    c.id as coinId,
+    c.label as coin,
     a.val as val,
     a.balance as balance,
     c.rate as rate,
     a.stat as stat,
-    b.label as account,
+    b.id as accntId,
+    b.name as account,
     a.refCnt as cnt,
     a.lastCheck as lastCheck,
     a.validFrom as validFrom,

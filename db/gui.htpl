@@ -45,6 +45,12 @@
             .blue {
                 color: blue;
             }
+            .heading {
+                color: white;
+                background-color: orange;
+                font-weight: bold;
+                padding: 0.3em;
+            }
             .spacer-right {
                 margin-right: 2em;
             }
@@ -362,4 +368,42 @@
 </table>
 <hr/>
 <a href="/"><input type="button" value="Back"/></a>
+{{end}}
+
+{{define "address"}}
+{{$fiat := .Fiat}}
+<div class="row">
+    {{range .Addrs}}
+    <div class="cell box">
+        <h1 class="heading">{{.Val}}</h1>
+        <table>
+            <tr>
+                <td class="label">Status:</td>
+                <td><span>{{.Status}}</td>
+            </tr>
+            <tr>
+                <td class="label">Current fiat balance:</td>
+                <td><span class="large">{{trim (mul .Balance .Rate) 2}} {{$fiat}}</td>
+            </tr>
+            <tr>
+                <td class="label">Coins:</td>
+                <td><span>{{.Balance}} {{.Coin}} (last checked at {{.LastCheck}})</td>
+            </tr>
+            <tr>
+                <td class="label">Account:</td>
+                <td><span>{{.Account}}</td>
+            </tr>
+            <tr>
+                <td class="label">Life span:</td>
+                <td><span>{{.ValidSince}} - {{.ValidUntil}}</td>
+            </tr>
+            <tr>
+                <td class="label">Transactions:</td>
+                <td>
+                </td>
+            </tr>
+        </table>
+    </div>
+    {{end}}
+</div>
 {{end}}

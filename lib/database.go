@@ -426,19 +426,39 @@ type AddrInfo struct {
 }
 
 // GetAddress returns a list of active adresses
-func (db *Database) GetAddresses() (ai []*AddrInfo, err error) {
+func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInfo, err error) {
 	// check for valid database
 	if db.inst == nil {
 		return nil, ErrDatabaseNotAvailable
 	}
+	// assemble WHERE clause
+	clause := ""
+	if !all {
+		clause = " stat < 2"
+	}
+	addClause := func(id int64, field string) {
+		if id != 0 {
+			if len(clause) > 0 {
+				clause += " and"
+			}
+			clause += fmt.Sprintf(" %s=%d", field, id)
+		}
+	}
+	if id != 0 {
+		addClause(id, "id")
+	} else {
+		addClause(coin, "coinId")
+		addClause(accnt, "accntId")
+	}
+	// assemble SELECT statement
+	query := "select id,coin,val,balance,rate,stat,account,cnt,lastCheck,validFrom,validTo from v_addr"
+	if len(clause) > 0 {
+		query += " where" + clause
+	}
+	query += " order by balance*rate desc,cnt desc"
+
 	// get information about active addresses
 	var rows *sql.Rows
-	query := `
-		select id,coin,val,balance,rate,stat,account,cnt,lastCheck,validFrom,validTo
-		from v_addr
-		where stat < 2
-		order by balance*rate desc
-	`
 	if rows, err = db.inst.Query(query); err != nil {
 		return nil, err
 	}

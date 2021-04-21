@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"relay/lib"
 	"strconv"
 	"strings"
@@ -58,7 +59,7 @@ func gui(args []string) {
 	tpl = template.New("gui")
 	tpl.Funcs(template.FuncMap{
 		"mul": func(a, b float64) float64 {
-			return a*b
+			return a * b
 		},
 		"trim": func(a float64, b int) string {
 			return fmt.Sprintf("%.[2]*[1]f", a, b)
@@ -77,8 +78,6 @@ func gui(args []string) {
 	mux.HandleFunc("/coin/", coinHandler)
 	mux.HandleFunc("/account/", accountHandler)
 	mux.HandleFunc("/addr/", addressHandler)
-	mux.HandleFunc("/tx/", transactionHandler)
-	mux.HandleFunc("/close/", closeHandler)
 	mux.HandleFunc("/", guiHandler)
 
 	// prepare HTTP server
@@ -127,7 +126,7 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// collect address info
-	if dd.Addresses, err = db.GetAddresses(); err != nil {
+	if dd.Addresses, err = db.GetAddresses(0, 0, 0, false); err != nil {
 		io.WriteString(w, "ERROR: "+err.Error())
 		return
 	}
@@ -195,6 +194,122 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 	renderPage(w, cd, "coin")
 }
 
+//======================================================================
+// handle account-related GUI requests
+//======================================================================
+
+// AccountData holds the information needed to render an "account" page.
+type AccountData struct {
+	Fiat  string         `json:"fiat"`  // fiat currency
+	Accnt *lib.AccntInfo `json:"accnt"` // info about account
+}
+
+// handle "account" page
+func accountHandler(w http.ResponseWriter, r *http.Request) {
+	// show account info
+	query := r.URL.Query()
+	ad := new(AccountData)
+	ad.Fiat = cfg.Market.Fiat
+	if id, ok := queryInt(query, "id"); ok {
+		// check if we switch assignments
+		if accept := query.Get("accept"); len(accept) > 0 {
+			on, off, err := parseOnOffList(accept)
+			if err != nil {
+				logger.Println(logger.ERROR, "accountHandler: "+err.Error())
+				return
+			}
+			for _, coin := range on {
+				if err := db.ChangeAssignment(coin, id, true); err != nil {
+					return
+				}
+			}
+			for _, coin := range off {
+				if err := db.ChangeAssignment(coin, id, false); err != nil {
+					return
+				}
+			}
+		}
+		// get assignments from database
+		if res, err := db.GetAccounts(id); err == nil {
+			if len(res) > 0 {
+				ad.Accnt = res[0]
+			} else {
+				logger.Println(logger.WARN, "accountHandler: no account infos")
+				return
+			}
+		} else {
+			logger.Println(logger.ERROR, "accountHandler: "+err.Error())
+			return
+		}
+	} else {
+		logger.Println(logger.WARN, "accountHandler: No ID in query")
+		return
+	}
+	// show account page
+	renderPage(w, ad, "account")
+}
+
+//======================================================================
+// handle address-related GUI requests
+//======================================================================
+
+// AddressData holds the information needed to render an "address" page.
+type AddressData struct {
+	Fiat  string          `json:"fiat"`  // fiat currency
+	Addrs []*lib.AddrInfo `json:"addrs"` // info about addresses
+}
+
+// handle "address" page
+func addressHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	// show address info
+	query := r.URL.Query()
+	ad := new(AddressData)
+	ad.Fiat = cfg.Market.Fiat
+	if id, ok := queryInt(query, "id"); ok {
+		ad.Addrs, err = db.GetAddresses(id, 0, 0, true)
+	} else {
+		accnt, _ := queryInt(query, "accnt")
+		coin, _ := queryInt(query, "coin")
+		ad.Addrs, err = db.GetAddresses(0, accnt, coin, true)
+	}
+	if err != nil {
+		logger.Println(logger.ERROR, "addressHandler: "+err.Error())
+		return
+	}
+	// show address page
+	renderPage(w, ad, "address")
+}
+
+//======================================================================
+// Helper methods
+//======================================================================
+
+// render a webpage with given data and template reference
+func renderPage(w io.Writer, data interface{}, page string) {
+	// create content section
+	t := tpl.Lookup(page)
+	if t == nil {
+		io.WriteString(w, "No template '"+page+"' found")
+		return
+	}
+	content := new(bytes.Buffer)
+	if err := t.Execute(content, data); err != nil {
+		io.WriteString(w, err.Error())
+		return
+	}
+	// emit final page
+	t = tpl.Lookup("main")
+	if t == nil {
+		io.WriteString(w, "No main template found")
+		return
+	}
+	if err := t.Execute(w, content.String()); err != nil {
+		io.WriteString(w, err.Error())
+	}
+}
+
 // parse an on/off list of form "id1,id2,id3|id4,id5" and return two lists
 // of integers
 func parseOnOffList(list string) (on, off []int64, err error) {
@@ -222,114 +337,12 @@ func parseOnOffList(list string) (on, off []int64, err error) {
 	return
 }
 
-//======================================================================
-// handle account-related GUI requests
-//======================================================================
-
-// AccountData holds the information needed to render an "account" page.
-type AccountData struct {
-	Fiat  string         `json:"fiat"`  // fiat currency
-	Accnt *lib.AccntInfo `json:"accnt"` // info about account
-}
-
-// handle "account" page
-func accountHandler(w http.ResponseWriter, r *http.Request) {
-	// show coin info
-	query := r.URL.Query()
-	ad := new(AccountData)
-	ad.Fiat = cfg.Market.Fiat
-	if id := query.Get("id"); len(id) > 0 {
+// return an integer URL query value
+func queryInt(query url.Values, key string) (int64, bool) {
+	if id := query.Get(key); len(id) > 0 {
 		if val, err := strconv.ParseInt(id, 10, 64); err == nil {
-			// check if we switch assignments
-			if accept := query.Get("accept"); len(accept) > 0 {
-				on, off, err := parseOnOffList(accept)
-				if err != nil {
-					logger.Println(logger.ERROR, "accountHandler: "+err.Error())
-					return
-				}
-				for _, coin := range on {
-					if err := db.ChangeAssignment(coin, val, true); err != nil {
-						return
-					}
-				}
-				for _, coin := range off {
-					if err := db.ChangeAssignment(coin, val, false); err != nil {
-						return
-					}
-				}
-			}
-			// get assignments from database
-			if res, err := db.GetAccounts(val); err == nil {
-				if len(res) > 0 {
-					ad.Accnt = res[0]
-				} else {
-					logger.Println(logger.WARN, "accountHandler: no account infos")
-					return
-				}
-			} else {
-				logger.Println(logger.ERROR, "accountHandler: "+err.Error())
-				return
-			}
-		} else {
-			logger.Println(logger.ERROR, "accountHandler: "+err.Error())
-			return
+			return val, true
 		}
-	} else {
-		logger.Println(logger.WARN, "accountHandler: No ID in query")
-		return
 	}
-	// show coin page
-	renderPage(w, ad, "account")
-}
-
-//======================================================================
-// handle address-related GUI requests
-//======================================================================
-
-func addressHandler(w http.ResponseWriter, r *http.Request) {
-
-}
-
-//======================================================================
-// handle transaction-related GUI requests
-//======================================================================
-
-func transactionHandler(w http.ResponseWriter, r *http.Request) {
-
-}
-
-//======================================================================
-// handle coin-related GUI requests
-//======================================================================
-
-func closeHandler(w http.ResponseWriter, r *http.Request) {
-	// close the server
-	srv.Close()
-	io.WriteString(w, "Bye")
-}
-
-//======================================================================
-//======================================================================
-
-func renderPage(w io.Writer, data interface{}, page string) {
-	// create content section
-	t := tpl.Lookup(page)
-	if t == nil {
-		io.WriteString(w, "No template '"+page+"' found")
-		return
-	}
-	content := new(bytes.Buffer)
-	if err := t.Execute(content, data); err != nil {
-		io.WriteString(w, err.Error())
-		return
-	}
-	// emit final page
-	t = tpl.Lookup("main")
-	if t == nil {
-		io.WriteString(w, "No main template found")
-		return
-	}
-	if err := t.Execute(w, content.String()); err != nil {
-		io.WriteString(w, err.Error())
-	}
+	return 0, false
 }
