@@ -567,19 +567,14 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 	// assemble query
 	query := `
 		select
-			a.id as id,
-			a.label as label,
-			a.name as name,
-			sum(b.balance*c.rate) as total
-		from
-			account a, addr b, coin c
-		where
-			a.id = b.accnt and
-			c.id = b.coin`
-	if id != 0 {
-		query += fmt.Sprintf(" and a.id = %d", id)
-	}
-	query += " group by a.id order by total desc"
+			account.id as id,
+			account.label as label,
+			account.name as name,
+			sum(addr.balance*coin.rate) as total
+		from account
+		left join addr on addr.accnt=account.id
+		left join coin on addr.coin=coin.id
+		group by account.id`
 
 	// select account information
 	var rows *sql.Rows
@@ -590,8 +585,17 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 	for rows.Next() {
 		// parse basic information
 		ai := new(AccntInfo)
-		if err = rows.Scan(&ai.ID, &ai.Label, &ai.Name, &ai.Total); err != nil {
+		var total sql.NullFloat64
+		if err = rows.Scan(&ai.ID, &ai.Label, &ai.Name, &total); err != nil {
 			return
+		}
+		// filter for ID
+		if id != 0 && ai.ID != id {
+			continue
+		}
+		ai.Total = 0
+		if total.Valid {
+			ai.Total = total.Float64
 		}
 		// get associated coins for account
 		if ai.Coins, err = db.getItems(`
@@ -628,6 +632,10 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 		// add to list
 		accnts = append(accnts, ai)
 	}
+	// sort coins by descending fiat balance
+	sort.Slice(accnts, func(i, j int) bool {
+		return accnts[j].Total < accnts[i].Total
+	})
 	return
 }
 
