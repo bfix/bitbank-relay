@@ -57,15 +57,14 @@ func gui(args []string) {
 	// read and prepare templates
 	tpl = template.New("gui")
 	tpl.Funcs(template.FuncMap{
-		"mul": func(a, b float64) string {
-			return fmt.Sprintf("%.02f", a*b)
+		"mul": func(a, b float64) float64 {
+			return a*b
 		},
-		"trim": func(a float64) string {
-			return fmt.Sprintf("%.08f", a)
+		"trim": func(a float64, b int) string {
+			return fmt.Sprintf("%.[2]*[1]f", a, b)
 		},
-		"asFloat": func(a string) float64 {
-			val, _ := strconv.ParseFloat(a, 64)
-			return val
+		"valid": func(a interface{}) bool {
+			return a != nil
 		},
 	})
 	if _, err := tpl.ParseFS(fs, "gui.htpl"); err != nil {

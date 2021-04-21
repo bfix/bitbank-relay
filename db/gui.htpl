@@ -52,8 +52,20 @@
                 background-color: #fee;
             }
 
-            tr.row:nth-child(even) { background: #eef }
-            tr.row:nth-child(odd) { background: #ccf }
+            table.rowed {
+                border-collapse: collapse;
+            }
+            table.rowed > tbody > tr {
+                border: solid;
+                border-width: 1px 0;
+                border-color: #ccc;
+            }
+            tr.row:nth-child(even) {
+                background: #eef;
+            }
+            tr.row:nth-child(odd) {
+                background: #ccf;
+            }
             tr.header {
                 background: #33f;
                 color: white;
@@ -88,11 +100,11 @@
             </div>
             <div class="cell">
                 <span class="large">
-                    {{mul .Total .Rate}}
+                    {{trim (mul .Total .Rate) 2}}
                 </span>&nbsp;{{$fiat}}<br/>
                 <span class="small">
-                    ({{trim .Total}} {{.Symbol}})<br/>
-                    @{{mul .Rate 1}}&nbsp;{{$fiat}}
+                    ({{trim .Total 8}} {{.Symbol}})<br/>
+                    @{{trim .Rate 2}}&nbsp;{{$fiat}}
                 </span>
             </div>
         </div>
@@ -107,7 +119,7 @@
                 <a href="/account/?id={{.ID}}">{{.Name}}</a>
             </div>
             <div class="large">
-                <span class="balance">{{mul .Total 1}}</span>&nbsp;{{$fiat}}
+                <span class="balance">{{trim .Total 2}}</span>&nbsp;{{$fiat}}
             </div>
         </div>
         {{end}}
@@ -130,7 +142,7 @@
         {{range .Addresses}}
         <tr class="row">
             <td><a href="/addr/?id={{.ID}}">{{.Val}}</a></td>
-            <td>{{mul .Balance .Rate}}</td>
+            <td>{{trim (mul .Balance .Rate) 2}}</td>
             <td>{{.Coin}}</td>
             <td>{{.Balance}}</td>
             <td>{{.Account}}</td>
@@ -157,21 +169,20 @@
     </div>
 </div>
 <hr/>
-{{$rate := .Coin.Rate}}
+{{$coin := .Coin}}
 {{$fiat := .Fiat}}
-{{$symb := .Coin.Symbol}}
 <table>
     <tr>
         <td class="label">Current fiat balance:</td>
-        <td><span class="large">{{mul .Coin.Total $rate}}</span>&nbsp;{{$fiat}}</td>
+        <td><span class="large">{{trim (mul .Coin.Total .Coin.Rate) 2}}</span>&nbsp;{{$fiat}}</td>
     </tr>
     <tr>
         <td class="label">Amount of coins:</td>
-        <td><span class="large">{{trim .Coin.Total}} {{$symb}}</span></td>
+        <td><span class="large">{{trim .Coin.Total 8}} {{.Coin.Symbol}}</span></td>
     </tr>
     <tr>
         <td class="label">Market value per coin:</td>
-        <td><span class="large">{{mul $rate 1}} {{$fiat}}</span></td>
+        <td><span class="large">{{trim .Coin.Rate 2}} {{$fiat}}</span></td>
     </tr>
     <tr>
         <td class="label">Assigned accounts:</td>
@@ -222,14 +233,27 @@
                     document.getElementById('accnt-btn').href = "/coin/?id={{.Coin.ID}}" + accept;
                 }
             </script>
-            <table>
+            <table class="rowed">
             {{range .Coin.Accnts}}
-                {{$balance := asFloat (index .Dict "balance")}}
+                {{$balance := index .Dict "balance"}}
                 <tr id="accnt{{.ID}}">
                     <td><input type="checkbox" value="{{.ID}}" {{if .Status}}checked{{end}} onChange="onToggle(this)"></td>
                     <td><span>{{.Name}}</span></td>
-                    <td><span>{{mul $balance $rate}} {{$fiat}}</span></td>
-                    <td><span>{{$balance}} {{$symb}}</span></td>
+                    {{if valid $balance}}
+                        <td><span>{{trim (mul $balance $coin.Rate) 2}} {{$fiat}}</span></td>
+                        <td><span>{{trim $balance 8}} {{$coin.Symbol}}</span></td>
+                    {{else}}
+                        <td><span></span></td>
+                        <td><span></span></td>
+                    {{end}}
+                    <td><span>
+                        {{$addrs := index .Dict "addrs"}}
+                        {{if gt $addrs 0}}
+                            <a href="/addr/?accnt={{.ID}}&coin={{$coin.ID}}">
+                                <input type="button" value="{{$addrs}} address(es)"/>
+                            </a>
+                        {{end}}
+                    </span></td>
                 </tr>
             {{end}}
             </table>
@@ -250,10 +274,11 @@
 </div>
 <hr/>
 {{$fiat := .Fiat}}
+{{$accnt := .Accnt}}
 <table>
     <tr>
         <td class="label">Current fiat balance:</td>
-        <td><span class="large">{{mul .Accnt.Total 1}}</span>&nbsp;{{$fiat}}</td>
+        <td><span class="large">{{trim .Accnt.Total 2}}</span>&nbsp;{{$fiat}}</td>
     </tr>
     <tr>
         <td class="label">Assigned coins:</td>
@@ -304,15 +329,29 @@
                     document.getElementById('coin-btn').href = "/account/?id={{.Accnt.ID}}" + accept;
                 }
             </script>
-            <table>
+            <table class="rowed">
             {{range .Accnt.Coins}}
-                {{$balance := asFloat (index .Dict "balance")}}
-                {{$rate := asFloat (index .Dict "rate")}}
+                {{$balance := index .Dict "balance"}}
+                {{$rate := index .Dict "rate"}}
                 <tr id="coin{{.ID}}">
                     <td><input type="checkbox" value="{{.ID}}" {{if .Status}}checked{{end}} onChange="onToggle(this)"></td>
+                    <td><img src="data:image/svg+xml;base64,{{index .Dict "logo"}}" height="16px"/></td>
                     <td><span>{{.Name}}</span></td>
-                    <td><span>{{mul $balance $rate}} {{$fiat}}</span></td>
-                    <td><span>{{$balance}} {{index .Dict "symbol"}} @ {{$rate}} {{$fiat}}</span></td>
+                    {{if valid $balance}}
+                        <td><span>{{trim (mul $balance $rate) 2}} {{$fiat}}</span></td>
+                        <td><span>{{trim $balance 8}} {{index .Dict "symbol"}} @ {{trim $rate 2}} {{$fiat}}</span></td>
+                    {{else}}
+                        <td><span></span></td>
+                        <td><span></span></td>
+                    {{end}}
+                    <td><span>
+                        {{$addrs := index .Dict "addrs"}}
+                        {{if gt $addrs 0}}
+                            <a href="/addr/?accnt={{$accnt.ID}}&coin={{.ID}}">
+                                <input type="button" value="{{$addrs}} address(es)"/>
+                            </a>
+                        {{end}}
+                    </span></td>
                 </tr>
             {{end}}
             </table>

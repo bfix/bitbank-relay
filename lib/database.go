@@ -28,7 +28,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/bfix/gospel/logger"
@@ -78,7 +77,7 @@ type Item struct {
 	ID     int64
 	Name   string
 	Status bool
-	Dict   map[string]string
+	Dict   map[string]interface{}
 }
 
 // String returns a human-readable item
@@ -86,9 +85,9 @@ func (i *Item) String() string {
 	buf := new(bytes.Buffer)
 	fmt.Fprintf(buf, "{ID: %d,", i.ID)
 	fmt.Fprintf(buf, "Name: '%s',", i.Name)
-	fmt.Fprintf(buf, "Status: %v,", i.Status)
+	fmt.Fprintf(buf, "Status: %v", i.Status)
 	for k, v := range i.Dict {
-		fmt.Fprintf(buf, "%s: %s,", k, v)
+		fmt.Fprintf(buf, ", %s: '%v'", k, v)
 	}
 	fmt.Fprintf(buf, "}")
 	return buf.String()
@@ -134,20 +133,22 @@ func (db *Database) getItems(query string, args ...interface{}) (list []*Item, e
 		item.ID = values[0].(int64)
 		item.Name = string(values[1].([]uint8))
 		item.Status = (values[2].(int64) != 0)
-		item.Dict = make(map[string]string)
+		item.Dict = make(map[string]interface{})
 		for i := range values[3:] {
-			val := "<n/a>"
+			var val interface{} = nil
 			if values[3+i] != nil {
 				switch v := values[3+i].(type) {
 				case []uint8:
 					val = string(v)
-				case int32, int64:
-					val = fmt.Sprintf("%d", v)
-				case float32, float64:
-					val = fmt.Sprintf("%f", v)
+				case int32:
+					val = int64(v)
+				case float32:
+					val = float64(v)
 				default:
-					logger.Printf(logger.WARN, "Unknown column type for item")
+					val = v
 				}
+			} else {
+
 			}
 			item.Dict[columns[3+i]] = val
 		}
@@ -256,7 +257,8 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
   				account.id as id,
   				account.name as name,
   				(account.id in (select accnt from accept where coin=?)) as status,
-  				sum(addr.balance) as balance
+  				sum(addr.balance) as balance,
+				count(addr.id) as addrs
 			from account
 			left join addr on addr.coin=? and addr.accnt = account.id
 			group by account.id`, ci.ID, ci.ID); err != nil {
@@ -264,9 +266,17 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
 		}
 		// order account by descending balance
 		sort.Slice(ci.Accnts, func(i, j int) bool {
-			vi, _ := strconv.ParseFloat(ci.Accnts[i].Dict["balance"], 64)
-			vj, _ := strconv.ParseFloat(ci.Accnts[j].Dict["balance"], 64)
-			return vj < vi
+			xi := ci.Accnts[i].Dict["balance"]
+			bi := -1.
+			if xi != nil {
+				bi = xi.(float64)
+			}
+			xj := ci.Accnts[j].Dict["balance"]
+			bj := -1.
+			if xj != nil {
+				bj = xj.(float64)
+			}
+			return bj < bi
 		})
 		// logger.Printf(logger.DBG, "Items: %v", ci.Accnts)
 		aci = append(aci, ci)
@@ -571,7 +581,9 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
   				(coin.id in (select coin from accept where accnt=?)) as status,
   				coin.rate as rate,
   				sum(addr.balance) as balance,
-				coin.symbol as symbol
+				count(addr.id) as addrs,
+				coin.symbol as symbol,
+				coin.logo as logo
 			from coin
 			left join addr on addr.coin = coin.id and addr.accnt = ?
 			group by coin.id`, ai.ID, ai.ID); err != nil {
@@ -579,10 +591,18 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 		}
 		// sort coins by descending fiat balance
 		sort.Slice(ai.Coins, func(i, j int) bool {
-			ri, _ := strconv.ParseFloat(ai.Coins[i].Dict["rate"], 64)
-			bi, _ := strconv.ParseFloat(ai.Coins[i].Dict["balance"], 64)
-			rj, _ := strconv.ParseFloat(ai.Coins[j].Dict["rate"], 64)
-			bj, _ := strconv.ParseFloat(ai.Coins[j].Dict["balance"], 64)
+			xi := ai.Coins[i].Dict["balance"]
+			bi := -1.
+			if xi != nil {
+				bi = xi.(float64)
+			}
+			xj := ai.Coins[j].Dict["balance"]
+			bj := -1.
+			if xj != nil {
+				bj = xj.(float64)
+			}
+			ri := ai.Coins[i].Dict["rate"].(float64)
+			rj := ai.Coins[j].Dict["rate"].(float64)
 			return rj*bj < ri*bi
 		})
 		// add to list
