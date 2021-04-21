@@ -46,10 +46,18 @@
                 color: blue;
             }
             .heading {
-                color: white;
-                background-color: orange;
                 font-weight: bold;
                 padding: 0.3em;
+                color: white;
+            }
+            .status-0 {
+                background-color: green;
+            }
+            .status-1 {
+                background-color: orange;
+            }
+            .status-2 {
+                background-color: red;
             }
             .spacer-right {
                 margin-right: 2em;
@@ -79,6 +87,20 @@
             }
             td {
                 padding: 0.5em;
+            }
+
+            label[for=toggle] {
+                cursor: pointer;
+                border: 1px solid black;
+                border-radius: 0.2em;
+                background-color: #eeeeee;
+                padding: 0.1em;
+            }
+            #toggle {
+                display: none;
+            }
+            #toggle:not(:checked) ~ #toggled {
+                display: none;
             }
         </style> 
     </head>
@@ -160,7 +182,6 @@
         </tr>
         {{end}}
     </table>
-
 </div>
 {{end}}
 
@@ -170,8 +191,13 @@
         <img src="data:image/svg+xml;base64,{{.Coin.Logo}}" height="96px"/>
     </div>
     <div class="cell">
-        <span class="large">{{.Coin.Label}} ({{.Coin.Symbol}})</span><br>
-        <a href="#"><input type="button" value="Upload new logo"/></a>
+        <p><span class="large">{{.Coin.Label}} ({{.Coin.Symbol}})</span></p>
+        <form method="POST" action="/logo/" enctype="multipart/form-data">
+            <input type="hidden" name="id" value="{{.Coin.ID}}"/>
+            <input type="hidden" name="coin" value="{{.Coin.Symbol}}"/>
+            <input type="file" name="logo" accept="image/svg+xml"/>
+            <input type="submit" value="Upload new logo"/>
+        </form>
     </div>
 </div>
 <hr/>
@@ -375,12 +401,8 @@
 <div class="row">
     {{range .Addrs}}
     <div class="cell box">
-        <h1 class="heading">{{.Val}}</h1>
+        <h1 class="heading status-{{.Status}}">{{.Val}}</h1>
         <table>
-            <tr>
-                <td class="label">Status:</td>
-                <td><span>{{.Status}}</td>
-            </tr>
             <tr>
                 <td class="label">Current fiat balance:</td>
                 <td><span class="large">{{trim (mul .Balance .Rate) 2}} {{$fiat}}</td>
@@ -398,6 +420,14 @@
                 <td><span>{{.ValidSince}} - {{.ValidUntil}}</td>
             </tr>
             <tr>
+                <td class="label">Blockchain explorer:</td>
+                <td>
+                    <a href="" target="_blank">
+                        <input type="button" value="View"/>
+                    </a>
+                </td>
+            </tr>
+            <tr>
                 <td class="label">Transactions:</td>
                 <td>
                 </td>
@@ -406,4 +436,6 @@
     </div>
     {{end}}
 </div>
+<hr/>
+<a href="/"><input type="button" value="Back"/></a>
 {{end}}

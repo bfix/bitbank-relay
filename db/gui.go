@@ -23,9 +23,11 @@ package main
 import (
 	"bytes"
 	"embed"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"relay/lib"
@@ -78,6 +80,7 @@ func gui(args []string) {
 	mux.HandleFunc("/coin/", coinHandler)
 	mux.HandleFunc("/account/", accountHandler)
 	mux.HandleFunc("/addr/", addressHandler)
+	mux.HandleFunc("/logo/", logoHandler)
 	mux.HandleFunc("/", guiHandler)
 
 	// prepare HTTP server
@@ -150,36 +153,34 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	cd := new(CoinData)
 	cd.Fiat = cfg.Market.Fiat
-	if id := query.Get("id"); len(id) > 0 {
-		if val, err := strconv.ParseInt(id, 10, 64); err == nil {
-			// check if we switch assignments
-			if accept := query.Get("accept"); len(accept) > 0 {
-				on, off, err := parseOnOffList(accept)
-				if err != nil {
-					logger.Println(logger.ERROR, "coinHandler: "+err.Error())
+	if id, ok := queryInt(query, "id"); ok {
+		// check if we switch assignments
+		if accept := query.Get("accept"); len(accept) > 0 {
+			on, off, err := parseOnOffList(accept)
+			if err != nil {
+				logger.Println(logger.ERROR, "coinHandler: "+err.Error())
+				return
+			}
+			for _, accnt := range on {
+				if err := db.ChangeAssignment(id, accnt, true); err != nil {
 					return
-				}
-				for _, accnt := range on {
-					if err := db.ChangeAssignment(val, accnt, true); err != nil {
-						return
-					}
-				}
-				for _, accnt := range off {
-					if err := db.ChangeAssignment(val, accnt, false); err != nil {
-						return
-					}
 				}
 			}
-			// get assignments from database
-			if res, err := db.GetAccumulatedCoins(val); err == nil {
-				if len(res) > 0 {
-					cd.Coin = res[0]
-				} else {
-					logger.Println(logger.WARN, "coinHandler: no coin infos")
+			for _, accnt := range off {
+				if err := db.ChangeAssignment(id, accnt, false); err != nil {
 					return
 				}
+			}
+			// do a redirect after switching assignments
+			http.Redirect(w, r, fmt.Sprintf("/coin/?id=%d", id), http.StatusFound)
+			return
+		}
+		// get assignments from database
+		if res, err := db.GetAccumulatedCoins(id); err == nil {
+			if len(res) > 0 {
+				cd.Coin = res[0]
 			} else {
-				logger.Println(logger.ERROR, "coinHandler: "+err.Error())
+				logger.Println(logger.WARN, "coinHandler: no coin infos")
 				return
 			}
 		} else {
@@ -228,6 +229,9 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
+			// do a redirect after switch assignments
+			http.Redirect(w, r, fmt.Sprintf("/account/?id=%d", id), http.StatusFound)
+			return
 		}
 		// get assignments from database
 		if res, err := db.GetAccounts(id); err == nil {
@@ -280,6 +284,40 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// show address page
 	renderPage(w, ad, "address")
+}
+
+//======================================================================
+// handle upload of new coin logo
+//======================================================================
+
+func logoHandler(w http.ResponseWriter, r *http.Request) {
+	// get POST parameters
+	if err := r.ParseMultipartForm(0); err != nil {
+		logger.Printf(logger.ERROR, "ParseForm() err: %v", err)
+		return
+	}
+	id := r.FormValue("id")
+	coin := r.FormValue("coin")
+	file, _, err := r.FormFile("logo")
+	if err != nil {
+		logger.Printf(logger.ERROR, "ParseForm() err: %v", err)
+		return
+	}
+	defer file.Close()
+	// get logo data
+	body, err := ioutil.ReadAll(file)
+	if err != nil {
+		logger.Printf(logger.ERROR, "ParseForm() err: %v", err)
+		return
+	}
+	logo := base64.StdEncoding.EncodeToString(body)
+	// save logo to database
+	if err := db.SetCoinLogo(coin, logo); err != nil {
+		logger.Printf(logger.ERROR, "ParseForm() err: %v", err)
+		return
+	}
+	// redirect back to coin page
+	http.Redirect(w, r, "/coin/?id="+id, http.StatusFound)
 }
 
 //======================================================================
