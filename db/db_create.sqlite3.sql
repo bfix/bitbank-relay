@@ -111,6 +111,7 @@ create table addr (
 create view v_addr as select
     a.id as id,
     c.id as coinId,
+    c.symbol as symbol,
     c.label as coin,
     a.val as val,
     a.balance as balance,
@@ -153,9 +154,12 @@ create table tx (
 -- id-less view on a transaction
 create view v_tx as select
     t.txid as txid,
+    a.id as addrId,
     a.val as addr,
-    c.symbol as coin,
-    b.label as account,
+    c.id as coinId,
+    c.label as coin,
+    b.id as accntId,
+    b.name as account,
     t.stat as stat,
     t.validFrom as validFrom,
     t.validTo as validTo

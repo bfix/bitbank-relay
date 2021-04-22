@@ -113,9 +113,12 @@
 {{end}}
 
 {{define "dashboard"}}
+<script>
+var callstack = [ "/" ];
+window.localStorage.setItem("callstack", callstack);
+</script>
 <div>
     {{$fiat := .Fiat}}
-
     <h1>Coins</h1>
     <div class="row">
         {{range .Coins}}
@@ -217,6 +220,14 @@
         <td><span class="large">{{trim .Coin.Rate 2}} {{$fiat}}</span></td>
     </tr>
     <tr>
+        <td class="label">Transactions:</td>
+        <td>
+            <a href="/tx/?coin={{.Coin.ID}}">
+                <input type="button" value="{{ .Coin.NumTx}} transactions"/>
+            </a>
+        </td>
+    </tr>
+    <tr>
         <td class="label">Assigned accounts:</td>
         <td>
             <script>
@@ -313,6 +324,14 @@
         <td><span class="large">{{trim .Accnt.Total 2}}</span>&nbsp;{{$fiat}}</td>
     </tr>
     <tr>
+        <td class="label">Transactions:</td>
+        <td>
+            <a href="/tx/?accnt={{.Accnt.ID}}">
+                <input type="button" value="{{ .Accnt.NumTx}} transactions"/>
+            </a>
+        </td>
+    </tr>
+    <tr>
         <td class="label">Assigned coins:</td>
         <td>
             <script>
@@ -398,6 +417,7 @@
 
 {{define "address"}}
 {{$fiat := .Fiat}}
+<h1>{{.Title}}</h1>
 <div class="row">
     {{range .Addrs}}
     <div class="cell box">
@@ -422,7 +442,7 @@
             <tr>
                 <td class="label">Blockchain explorer:</td>
                 <td>
-                    <a href="" target="_blank">
+                    <a href="{{.Explorer}}" target="_blank">
                         <input type="button" value="View"/>
                     </a>
                 </td>
@@ -430,6 +450,9 @@
             <tr>
                 <td class="label">Transactions:</td>
                 <td>
+                    <a href="/tx/?addr={{.ID}}">
+                        <input type="button" value="{{.RefCount}} transactions"/>
+                    </a>
                 </td>
             </tr>
         </table>
@@ -437,5 +460,51 @@
     {{end}}
 </div>
 <hr/>
-<a href="/"><input type="button" value="Back"/></a>
+{{range $label,$url := .Links}}
+<a href="{{$url}}"><input type="button" value="{{$label}}"/></a>&nbsp;
+{{end}}
+{{end}}
+
+{{define "tx"}}
+<h1>{{.Title}}</h1>
+<h3>{{.SubTitle}}</h3>
+{{$mode := .Mode}}
+<table>
+    <tr class="header">
+	    <td>ID</td>
+        {{if ne $mode 1}}
+	    <td>Address</td>
+        {{end}}
+        {{if ne $mode 2}}
+        <td>Account</td>
+        {{end}}
+        {{if ne $mode 3}}
+	    <td>Currency</td>
+        {{end}}
+	    <td>Status</td>
+	    <td>Started</td>
+	    <td>Ended</td>
+    </tr>
+    {{range .Txs}}
+    <tr class="row">
+        <td><span title="{{.ID}}">...</span></td>
+        {{if ne $mode 1}}
+        <td>{{.Addr}}</td>
+        {{end}}
+        {{if ne $mode 2}}
+        <td>{{.Accnt}}</td>
+        {{end}}
+        {{if ne $mode 3}}
+        <td>{{.Coin}}</td>
+        {{end}}
+        <td>{{.Status}}</td>
+        <td>{{date .ValidFrom}}</td>
+        <td>{{date .ValidTo}}</td>
+    </tr>
+    {{end}}
+</table>
+<hr/>
+{{range $label,$url := .Links}}
+<a href="{{$url}}"><input type="button" value="{{$label}}"/></a>&nbsp;
+{{end}}
 {{end}}

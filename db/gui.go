@@ -69,6 +69,9 @@ func gui(args []string) {
 		"valid": func(a interface{}) bool {
 			return a != nil
 		},
+		"date": func(ts int64) string {
+			return time.Unix(ts, 0).Format(time.RFC1123)
+		},
 	})
 	if _, err := tpl.ParseFS(fs, "gui.htpl"); err != nil {
 		logger.Println(logger.ERROR, "GUI templates: "+err.Error())
@@ -81,6 +84,7 @@ func gui(args []string) {
 	mux.HandleFunc("/account/", accountHandler)
 	mux.HandleFunc("/addr/", addressHandler)
 	mux.HandleFunc("/logo/", logoHandler)
+	mux.HandleFunc("/tx/", transactionHandler)
 	mux.HandleFunc("/", guiHandler)
 
 	// prepare HTTP server
@@ -105,10 +109,10 @@ func gui(args []string) {
 
 // DashboardData holds all information to render the dashboard view.
 type DashboardData struct {
-	Fiat      string             // name of the fiat currency to use
-	Coins     []*lib.AccCoinInfo // list of active coins
-	Accounts  []*lib.AccntInfo   // list of active accounts
-	Addresses []*lib.AddrInfo    // list of (active) addresses
+	Fiat      string             `json:"fiat"`      // name of the fiat currency to use
+	Coins     []*lib.AccCoinInfo `json:"coins"`     // list of active coins
+	Accounts  []*lib.AccntInfo   `json:"accounts"`  // list of active accounts
+	Addresses []*lib.AddrInfo    `json:"addresses"` // list of (active) addresses
 }
 
 // handle dashboard (main entry page)
@@ -119,7 +123,7 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 
 	// collect coin info
 	var err error
-	if dd.Coins, err = db.GetAccumulatedCoins(0); err != nil {
+	if dd.Coins, err = db.GetAccumulatedCoin(0); err != nil {
 		io.WriteString(w, "ERROR: "+err.Error())
 		return
 	}
@@ -153,6 +157,7 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	cd := new(CoinData)
 	cd.Fiat = cfg.Market.Fiat
+
 	if id, ok := queryInt(query, "id"); ok {
 		// check if we switch assignments
 		if accept := query.Get("accept"); len(accept) > 0 {
@@ -176,7 +181,7 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// get assignments from database
-		if res, err := db.GetAccumulatedCoins(id); err == nil {
+		if res, err := db.GetAccumulatedCoin(id); err == nil {
 			if len(res) > 0 {
 				cd.Coin = res[0]
 			} else {
@@ -211,6 +216,7 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	ad := new(AccountData)
 	ad.Fiat = cfg.Market.Fiat
+
 	if id, ok := queryInt(query, "id"); ok {
 		// check if we switch assignments
 		if accept := query.Get("accept"); len(accept) > 0 {
@@ -259,8 +265,10 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 
 // AddressData holds the information needed to render an "address" page.
 type AddressData struct {
-	Fiat  string          `json:"fiat"`  // fiat currency
-	Addrs []*lib.AddrInfo `json:"addrs"` // info about addresses
+	Title string            `json:"title"` // title for collection
+	Fiat  string            `json:"fiat"`  // fiat currency
+	Addrs []*lib.AddrInfo   `json:"addrs"` // info about addresses
+	Links map[string]string `json:"links"` // links
 }
 
 // handle "address" page
@@ -271,19 +279,121 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	ad := new(AddressData)
 	ad.Fiat = cfg.Market.Fiat
+	ad.Links = make(map[string]string)
+
 	if id, ok := queryInt(query, "id"); ok {
 		ad.Addrs, err = db.GetAddresses(id, 0, 0, true)
+		if len(ad.Addrs) == 0 {
+			ad.Title = "No address(es) found..."
+		} else {
+			accnt := ad.Addrs[0].Account
+			coin := ad.Addrs[0].Coin
+			ad.Title = fmt.Sprintf("Address for %s (%s)", accnt, coin)
+		}
 	} else {
-		accnt, _ := queryInt(query, "accnt")
-		coin, _ := queryInt(query, "coin")
-		ad.Addrs, err = db.GetAddresses(0, accnt, coin, true)
+		accntId, _ := queryInt(query, "accnt")
+		coinId, _ := queryInt(query, "coin")
+		if accntId != 0 {
+			ad.Links["&#9654; Account"] = fmt.Sprintf("/account/?id=%d", accntId)
+		}
+		if coinId != 0 {
+			ad.Links["&#9654; Coin"] = fmt.Sprintf("/coin/?id=%d", accntId)
+		}
+		ad.Addrs, err = db.GetAddresses(0, accntId, coinId, true)
+		if len(ad.Addrs) == 0 {
+			ad.Title = "No address(es) found..."
+		} else {
+			accnt := "*"
+			if accntId != 0 {
+				accnt = ad.Addrs[0].Account
+			}
+			coin := "*"
+			if coinId != 0 {
+				coin = ad.Addrs[0].Coin
+			}
+			ad.Title = fmt.Sprintf("Address(es) for %s (%s)", accnt, coin)
+		}
 	}
 	if err != nil {
 		logger.Println(logger.ERROR, "addressHandler: "+err.Error())
 		return
 	}
+	// provide fallback for empty link list
+	if len(ad.Links) == 0 {
+		ad.Links["Home"] = "/"
+	}
 	// show address page
 	renderPage(w, ad, "address")
+}
+
+//======================================================================
+// transaction handler
+//======================================================================
+
+// TxData holds information needed to rended a transaction page
+type TxData struct {
+	Title    string             `json:"title"`    // page title
+	SubTitle string             `json:"subTitle"` // page subtitle
+	Mode     int                `json:"mode"`     // 0=all, 1=addr, 2=account, 3=coin
+	Txs      []*lib.Transaction `json:"txs"`      // list of transactions
+	Links    map[string]string  `json:"links"`    // links
+}
+
+// handle transaction requests
+func transactionHandler(w http.ResponseWriter, r *http.Request) {
+	// show transaction infos
+	var (
+		err               error
+		addr, accnt, coin int64
+		ok                bool
+	)
+	query := r.URL.Query()
+	td := new(TxData)
+	td.Mode = 0
+	td.Links = make(map[string]string)
+
+	// get transaction based on query parameters
+	if addr, ok = queryInt(query, "addr"); ok {
+		td.Mode = 1
+		td.Links["&#9654; Address"] = fmt.Sprintf("/addr/?id=%d", addr)
+	} else if accnt, ok = queryInt(query, "accnt"); ok {
+		td.Mode = 2
+		td.Links["&#9654; Account"] = fmt.Sprintf("/account/?id=%d", accnt)
+	}
+	if coin, ok = queryInt(query, "coin"); ok {
+		if td.Mode == 0 {
+			td.Mode = 3
+		}
+		td.Links["&#9654; Coin"] = fmt.Sprintf("/coin/?id=%d", coin)
+	}
+	if td.Txs, err = db.GetTransactions(addr, accnt, coin); err != nil {
+		logger.Println(logger.ERROR, "txHandler: "+err.Error())
+		return
+	}
+	// set page title
+	td.Title = "No transactions found..."
+	if td.Txs != nil && len(td.Txs) > 0 {
+		addr := td.Txs[0].Addr
+		accnt := td.Txs[0].Accnt
+		coin := td.Txs[0].Coin
+		switch td.Mode {
+		case 0:
+			td.Title = "All transactions"
+		case 1:
+			td.Title = fmt.Sprintf("Transactions for %s", addr)
+			td.SubTitle = fmt.Sprintf("%s: '%s'", coin, accnt)
+		case 2:
+			td.Title = fmt.Sprintf("Transactions for '%s'", accnt)
+		case 3:
+			td.Title = fmt.Sprintf("Transactions for %s", coin)
+		}
+	}
+	// provide fallback for empty link list
+	if len(td.Links) == 0 {
+		td.Links["Home"] = "/"
+	}
+	// show address page
+	renderPage(w, td, "tx")
 }
 
 //======================================================================

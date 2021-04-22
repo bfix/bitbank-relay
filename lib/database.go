@@ -175,6 +175,7 @@ type AccCoinInfo struct {
 	CoinInfo
 	ID     int64   `json:"id"`     // database ID of coin entry
 	Total  float64 `json:"total"`  // total balance in coins
+	NumTx  int     `json:"numTx"`  // number of transactions for this coin
 	Accnts []*Item `json:"accnts"` // (assigned) accounts
 }
 
@@ -217,7 +218,7 @@ func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
 
 // GetAccumulatedCoins returns information about a coin and its accumulated
 // balance over all accounts. If "coin" is "0", all coins are returned.
-func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err error) {
+func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err error) {
 	// check for valid database
 	if db.inst == nil {
 		return nil, ErrDatabaseNotAvailable
@@ -230,7 +231,8 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
 			c.label as label,
 			c.logo as logo,
 			c.rate as rate,
-			sum(a.balance) as total
+			sum(a.balance) as total,
+			sum(a.refCnt) as refs
 		from
 			coin c, addr a
 		where
@@ -248,7 +250,7 @@ func (db *Database) GetAccumulatedCoins(coin int64) (aci []*AccCoinInfo, err err
 	for rows.Next() {
 		// get basic coin info
 		ci := new(AccCoinInfo)
-		if err = rows.Scan(&ci.ID, &ci.Symbol, &ci.Label, &ci.Logo, &ci.Rate, &ci.Total); err != nil {
+		if err = rows.Scan(&ci.ID, &ci.Symbol, &ci.Label, &ci.Logo, &ci.Rate, &ci.Total, &ci.NumTx); err != nil {
 			return
 		}
 		// get account items
@@ -423,6 +425,7 @@ type AddrInfo struct {
 	LastCheck  string  `json:"lastCheck"`  // last balance check
 	ValidSince string  `json:"validSince"` // start of active period
 	ValidUntil string  `json:"validUntil"` // end of active period
+	Explorer   string  `json:"explorer"`   // URL to address in blockchain explorer
 }
 
 // GetAddress returns a list of active adresses
@@ -451,7 +454,7 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 		addClause(accnt, "accntId")
 	}
 	// assemble SELECT statement
-	query := "select id,coin,val,balance,rate,stat,account,cnt,lastCheck,validFrom,validTo from v_addr"
+	query := "select id,symbol,coin,val,balance,rate,stat,account,cnt,lastCheck,validFrom,validTo from v_addr"
 	if len(clause) > 0 {
 		query += " where" + clause
 	}
@@ -468,9 +471,10 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 		var (
 			last     sql.NullInt64
 			from, to sql.NullString
+			symbol   string
 		)
 		if err = rows.Scan(
-			&addr.ID, &addr.Coin, &addr.Val, &addr.Balance, &addr.Rate, &addr.Status,
+			&addr.ID, &symbol, &addr.Coin, &addr.Val, &addr.Balance, &addr.Rate, &addr.Status,
 			&addr.Account, &addr.RefCount, &last, &from, &to); err != nil {
 			return
 		}
@@ -483,6 +487,9 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 		if to.Valid {
 			addr.ValidUntil = to.String
 		}
+		// set explorer link
+		addr.Explorer = explore(addr.Val, symbol)
+		// add address info to list
 		ai = append(ai, addr)
 	}
 	return
@@ -499,6 +506,41 @@ func (db *Database) UpdateBalance(ID int64, balance float64) error {
 		"update addr set balance=?, lastCheck=? where id=?",
 		balance, time.Now().Unix(), ID)
 	return err
+}
+
+// Get the URL for an address on the appropriate blockchain explorer.
+func explore(addr, coin string) string {
+	tpl := ""
+	switch coin {
+	case "btc":
+		tpl = "https://www.blockchain.com/btc/address/%s"
+	case "bch":
+		tpl = "https://www.blockchain.com/bch/address/%s"
+	case "eth":
+		tpl = "https://www.blockchain.com/eth/address/%s"
+	case "btg":
+		tpl = "https://explorer.bitcoingold.org/insight/address/%s"
+	case "doge":
+		tpl = "https://dogechain.info/address/%s"
+	case "dash":
+		tpl = "https://chainz.cryptoid.info/dash/address.dws?%s.htm"
+	case "ltc":
+		tpl = "https://chainz.cryptoid.info/ltc/address.dws?%s.htm"
+	case "vtc":
+		tpl = "https://chainz.cryptoid.info/vtc/address.dws?%s.htm"
+	case "dgb":
+		tpl = "https://chainz.cryptoid.info/dgb/address.dws?%s.htm"
+	case "nmc":
+		tpl = "https://nmc.tokenview.com/en/address/%s"
+	case "zec":
+		tpl = "https://zecblockexplorer.com/address/%s"
+	case "etc":
+		tpl = "https://etcblockexplorer.com/address/%s"
+	}
+	if len(tpl) == 0 {
+		return ""
+	}
+	return fmt.Sprintf(tpl, addr)
 }
 
 //----------------------------------------------------------------------
@@ -555,6 +597,7 @@ type AccntInfo struct {
 	Label string  `json:"label"` // account label
 	Name  string  `json:"name"`  // account name
 	Total float64 `json:"total"` // total balance of account (in fiat currency)
+	NumTx int64   `json:"numTx"` // number of transactions for account
 	Coins []*Item `json:"coins"` // (assigned) coins
 }
 
@@ -570,7 +613,8 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 			account.id as id,
 			account.label as label,
 			account.name as name,
-			sum(addr.balance*coin.rate) as total
+			sum(addr.balance*coin.rate) as total,
+			sum(addr.refCnt) as refs
 		from account
 		left join addr on addr.accnt=account.id
 		left join coin on addr.coin=coin.id
@@ -585,8 +629,11 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 	for rows.Next() {
 		// parse basic information
 		ai := new(AccntInfo)
-		var total sql.NullFloat64
-		if err = rows.Scan(&ai.ID, &ai.Label, &ai.Name, &total); err != nil {
+		var (
+			total sql.NullFloat64
+			refs  sql.NullInt64
+		)
+		if err = rows.Scan(&ai.ID, &ai.Label, &ai.Name, &total, &refs); err != nil {
 			return
 		}
 		// filter for ID
@@ -596,6 +643,10 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 		ai.Total = 0
 		if total.Valid {
 			ai.Total = total.Float64
+		}
+		ai.NumTx = 0
+		if refs.Valid {
+			ai.NumTx = refs.Int64
 		}
 		// get associated coins for account
 		if ai.Coins, err = db.getItems(`
@@ -710,6 +761,51 @@ func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err e
 	}
 	// commit database transaction
 	err = dbtx.Commit()
+	return
+}
+
+// GetTransactions returns a list of Tx instances for a given address
+func (db *Database) GetTransactions(addrId, accntId, coinId int64) (txs []*Transaction, err error) {
+	// check for valid database
+	if db.inst == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	// assemble WHERE clause
+	clause := ""
+	addClause := func(id int64, field string) {
+		if id != 0 {
+			if len(clause) > 0 {
+				clause += " and"
+			}
+			clause += fmt.Sprintf(" %s=%d", field, id)
+		}
+	}
+	addClause(addrId, "addrId")
+	addClause(accntId, "accntId")
+	addClause(coinId, "coinId")
+
+	// assemble SELECT statement
+	query := "select txid,addr,coin,account,stat,validFrom,validTo from v_tx"
+	if len(clause) > 0 {
+		query += " where" + clause
+	}
+	query += " order by validFrom desc"
+
+	// query database for transactions of given address
+	var rows *sql.Rows
+	if rows, err = db.inst.Query(query); err != nil {
+		return
+	}
+	defer rows.Close()
+
+	// assemble list
+	for rows.Next() {
+		tx := new(Transaction)
+		if err = rows.Scan(&tx.ID, &tx.Addr, &tx.Coin, &tx.Accnt, &tx.Status, &tx.ValidFrom, &tx.ValidTo); err != nil {
+			return
+		}
+		txs = append(txs, tx)
+	}
 	return
 }
 
