@@ -297,7 +297,7 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 			ad.Links["&#9654; Account"] = fmt.Sprintf("/account/?id=%d", accntId)
 		}
 		if coinId != 0 {
-			ad.Links["&#9654; Coin"] = fmt.Sprintf("/coin/?id=%d", accntId)
+			ad.Links["&#9654; Coin"] = fmt.Sprintf("/coin/?id=%d", coinId)
 		}
 		ad.Addrs, err = db.GetAddresses(0, accntId, coinId, true)
 		if len(ad.Addrs) == 0 {
