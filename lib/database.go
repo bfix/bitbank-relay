@@ -454,7 +454,7 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 		addClause(accnt, "accntId")
 	}
 	// assemble SELECT statement
-	query := "select id,coin,coinName,val,balance,rate,stat,account,cnt,lastCheck,validFrom,validTo from v_addr"
+	query := "select id,coin,coinName,val,balance,rate,stat,accountName,cnt,lastCheck,validFrom,validTo from v_addr"
 	if len(clause) > 0 {
 		query += " where" + clause
 	}
