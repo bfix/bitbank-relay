@@ -35,107 +35,92 @@ flush privileges;
 
 -- coin describes a cryptocurrency accepted by the relay
 create table coin (
-    -- database record id
-    id integer auto_increment primary key,
-
-    -- coin symbol (lowercase short name)
-    symbol varchar(7) not null,
-
-    -- coin long name / description
-    label varchar(63) default null,
-
-    -- coin logo (base64-encoded SVG)
-    logo text default null,
-
-    -- market data for coin
-    rate float default 0.0
+    id     integer     auto_increment primary key, -- database record id
+    symbol varchar(7)  not null unique key,        -- coin symbol (lowercase short name)
+    label  varchar(63) default null,               -- coin long name / description
+    logo   text        default null,               -- coin logo (base64-encoded SVG)
+    rate   float       default 0.0                 -- market data for coin
 );
 
 -- account is a receiver for cryptocoins
 create table account (
-    -- database record id
-    id integer auto_increment primary key,
-
-    -- account label
-    label varchar(7) not null,
-
-    -- account name
-    name varchar(127) default null
+    id    integer      auto_increment primary key, -- database record id
+    label varchar(7)   not null unique key,        -- account label
+    name  varchar(127) default null                -- account name
 );
 
 -- accept list all account/coin pairs that can be processed
 create table accept (
-    accnt integer references account(id) on delete cascade,
-    coin integer references coin(id) on delete cascade,
-    unique key (accnt, coin) 
+    accnt integer references account(id) on delete cascade, -- reference to account
+    coin  integer references coin(id) on delete cascade,    -- reference to coin
+    unique key (accnt, coin)                                -- unique combinations
 );
 
+-- addr is a cryptocurrency address that can receive coins
+create table addr (
+    id        integer      auto_increment primary key,               -- database record id
+    coin      integer      references coin(id) on delete cascade,    -- associated coin
+    idx       integer,                                               -- BIP32/39/44 address index
+    val       varchar(127) not null,                                 -- address as string
+    stat      integer      default 0,                                -- status:
+                                                                     --  0 = open (valid; ready to be used)
+                                                                     --  1 = closed (address was used; don't use again)
+                                                                     --  2 = removed (after balance is transfered)
+    accnt     integer      references account(id) on delete cascade, -- reference to account
+    refCnt    integer      default 0,                                -- reference count (transactions)
+    balance   float        default 0.0,                              -- address balance
+    lastCheck integer      default 0,                                -- last balance check timestamp
+    validFrom timestamp    default current_timestamp,                -- address life-span start
+    validTo   timestamp    null default null                         -- address life-span end
+);
+
+-- transaction
+create table tx (
+    id        integer     auto_increment primary key,            -- database record id
+    txid      varchar(32) unique key,                            -- 256-bit transaction identifier
+    addr      integer     references addr(id) on delete cascade, -- reference to address used in transaction
+    stat      integer     default 0,                             -- status:
+                                                                 --  0 = pending
+                                                                 --  1 = expired
+    validFrom integer     not null,                              -- transaction life-span (start)
+    validTo   integer     not null                               -- transaction life-span (end)
+);
+
+-- ---------------------------------------------------------------------
+-- create views
+-- ---------------------------------------------------------------------
+
 -- id-less view on account/coin pairs that are accepted
-create view coins4account as select
-    c.id as coinId,
-    c.symbol as coin,
-    c.label as label,
-    c.logo as logo,
-    c.rate as rate,
-    a.id as accntid,
-    a.label as account
+create view v_coin_accnt as select
+    c.id     as coinId,   -- coin database ID
+    c.symbol as coin,     -- coin symbol
+    c.label  as label,    -- coin name/label
+    c.logo   as logo,     -- coin logo (as b64-encoded SVG)
+    c.rate   as rate,     -- current market price for coin
+    a.id     as accntid,  -- account database ID
+    a.label  as account
 from
     coin c, account a, accept x
 where
     x.accnt = a.id and x.coin = c.id;
 
--- addr is a cryptocurrency address that can receive coins
-create table addr (
-    -- database record id
-    id integer auto_increment primary key,
-
-    -- associated coin
-    coin integer references coin(id) on delete cascade,
-
-    -- BIP32/39/44 address index
-    idx integer,
-
-    -- address as string
-    val varchar(127) not null,
-
-    -- status:
-    --  0 = open (ready to be used)
-    --  1 = closed (address was used; don't use again)
-    --  2 = removed (after balance is transfered)
-    stat integer default 0,
-
-    -- reference to account
-    accnt integer references account(id) on delete cascade,
-
-    -- reference count (transactions)
-    refCnt integer default 0,
-
-    -- address balance
-    balance float default 0.0,
-    lastCheck integer default 0,
-
-    -- address life-span
-    validFrom timestamp default current_timestamp,
-    validTo timestamp null default null
-);
-
 -- view on address records
 create view v_addr as select
-    a.id as id,
-    c.id as coinId,
-    c.symbol as coin,
-    c.label as coinName,
-    a.val as val,
-    a.balance as balance,
-    c.rate as rate,
-    a.stat as stat,
-    b.id as accntId,
-    b.label as account,
-    b.name as accountName,
-    a.refCnt as cnt,
-    a.lastCheck as lastCheck,
-    a.validFrom as validFrom,
-    a.validTo as validTo
+    a.id        as id,           -- address database ID
+    c.id        as coinId,       -- coin database ID
+    c.symbol    as coin,         -- coin ticker symbol
+    c.label     as coinName,     -- coin name
+    a.val       as val,          -- address string
+    a.balance   as balance,      -- balance in coins
+    c.rate      as rate,         -- current market price for coin
+    a.stat      as stat,         -- address status
+    b.id        as accntId,      -- account database ID
+    b.label     as account,      -- account label/slug
+    b.name      as accountName,  -- account name
+    a.refCnt    as cnt,          -- ref. count for address
+    a.lastCheck as lastCheck,    -- timestamp of last balance check
+    a.validFrom as validFrom,    -- address life-span (start)
+    a.validTo   as validTo       -- address life-span (end)
 from
     addr a
 inner join
@@ -143,39 +128,18 @@ inner join
 left join
     account b on b.id = a.accnt;
 
--- transaction
-create table tx (
-    -- database record id
-    id integer auto_increment primary key,
-
-    -- 256-bit transaction identifier
-    txid varchar(64),
-
-    -- reference to address used in transaction
-    addr integer references addr(id) on delete cascade,
-
-    -- status:
-    --  0 = pending
-    --  1 = expired
-    stat integer default 0,
-
-    -- transaction life-span
-    validFrom integer not null,
-    validTo integer not null
-);
-
 -- id-less view on a transaction
 create view v_tx as select
-    t.txid as txid,
-    a.id as addrId,
-    a.val as addr,
-    c.id as coinId,
-    c.label as coin,
-    b.id as accntId,
-    b.name as account,
-    t.stat as stat,
-    t.validFrom as validFrom,
-    t.validTo as validTo
+    t.txid      as txid,      -- transaction ID
+    a.id        as addrId,    -- addrress database ID
+    a.val       as addr,      -- address string
+    c.id        as coinId,    -- coin database ID
+    c.label     as coin,      -- coin name
+    b.id        as accntId,   -- account database ID
+    b.name      as account,   -- account name
+    t.stat      as stat,      -- transaction status
+    t.validFrom as validFrom, -- transaction life-span (start)
+    t.validTo   as validTo    -- transaction life-span (end)
 from
     tx t, addr a, account b, coin c
 where

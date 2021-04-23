@@ -186,7 +186,7 @@ func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
 		return nil, ErrDatabaseNotAvailable
 	}
 	// select coins for given account
-	rows, err := db.inst.Query("select coin,label,logo,rate from coins4account where account=?", account)
+	rows, err := db.inst.Query("select coin,label,logo,rate from v_coin_accnt where account=?", account)
 	if err != nil {
 		return nil, err
 	}
@@ -361,6 +361,7 @@ func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr s
 		return
 	}
 	_, err = dbtx.Exec("insert into addr(coin,accnt,idx,val) values(?,?,?,?)", coinID, accntID, idx, addr)
+	logger.Printf(logger.INFO, "[addr] New address '%s' for account '%s'", addr, account)
 	return
 }
 
