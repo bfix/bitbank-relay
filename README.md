@@ -20,6 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 SPDX-License-Identifier: AGPL3.0-or-later
 
+# WARNING
+
+This software is not yet ready for productive use.
+
 # Introduction
 
 The `bb_relay` software enables individuals and small organizations to accept
