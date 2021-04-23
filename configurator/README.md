@@ -19,9 +19,34 @@ SPDX-License-Identifier: AGPL3.0-or-later
 
 # Configuration
 
-Change into the `configurator/` folder. The configuration program will use
-a template configuration `config-template.json` and will store the result in a
-file named `config.json` for productive use.
+The configuration program `bitbank-relay-configurator` will use a template
+configuration `config-template.json` (either embedded or external) and will
+store the result in a file named `config.json` for productive use:
+
+```bash
+bitbank-relay-configurator [-n <network>] [-i <template>] [-o <output>]
+```
+
+The command-line options are:
+
+* **-n &lt;network&gt;**: [`main`,`test`] The blockchain network to use; the
+default is 'main' (N.B.: 'test' will not work on all coins!)
+
+* **-i &lt;template&gt;**: Name of the external configuration template. If
+not used, the embedded template will be used.
+
+* **-o &lt;output&gt;**: Name of the rsulting configuration file. Defaults
+to `config.json`.
+
+You can export the embedded configuration template to the current directory by
+using the special option `-export`:
+
+```bash
+bitbank-relay-configurator -export
+```
+
+You might want to modify the template and use it with the `-i` option during
+a configuration run...
 
 ## Template
 
@@ -156,9 +181,9 @@ device. This is the standard procedure for most setups.
 As a security measure it is recommended to run this step on an air-gapped
 computer or at least in a safe environment (e.g. in a secure system like
 [Tails](https://tails.boum.org)). Just copy the `configurator` executable
-and the `config-template.json` file to the system; the configurator program
-will use the `config-template.json` file and generates a new `config.json`
-file you need to deploy later on. Run the configurator:
+to the target system; the configurator program will use the embedded
+`config-template.json` file and generates a new `config.json` file you need
+to deploy later on. Run the configurator:
 
 ```bash
 ./configurator | tee config.log

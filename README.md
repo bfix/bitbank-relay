@@ -45,7 +45,22 @@ you pull a newer version), you should update the dependencies for `bb_relay`:
 go mod tidy
 ```
 
-To build the three components (configurator, db and web):
+To build the three components (configurator, db and web), you can either use
+the GNU Makefile (recommended) or build it manually.
+
+## GNU Makefile
+
+Using the GNU Makefile will incorporate the latest Git tag (version) into the
+binaries and is the recommended way of building the executables:
+
+```bash
+make
+```
+
+## Manual build
+
+No version information ("v0.0.0") is inserted into the binaries during manual
+build:
 
 ```bash
 cd configurator

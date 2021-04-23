@@ -21,12 +21,15 @@ SPDX-License-Identifier: AGPL3.0-or-later
 
 The deployment for `bb_relay` includes:
 
-1. `web` executable (from the `web/` folder)
-2. `config.json` (the genrated/edited configuration file)
-3. an initialized relay database (MySQL or SQLite3)
-4. integration into a website for use
+1. `bitbank-relay-web` executable (if build with GNU make, or the file
+`web/web` if build manually)
+1. `bitbank-relay-db` executable (if build with GNU make, or the file
+`db/db` if build manually)
+1. `config.json` (the genrated/edited configuration file)
+1. an initialized relay database (MySQL (recommended) or SQLite3 (testing only))
+1. integration into a website for use
 
-Steps 3 and 4 are described in detail below; as an amendment some words
+Steps 4 and 5 are described in detail below; as an amendment some words
 about running and maintaining the bitbank-relay can be found in the
 "Operation" section.
 
@@ -92,7 +95,7 @@ insert into accept(coin,accnt) values
 To add the coin logos to the database, change into the `db/` folder and run:
 
 ```bash
-./db -c config.json logo import -i images
+./bitbank-relay-db -c config.json logo import -i images
 ```
 
 Coin logos have to be SVG files (minimized to keep their size smaller than
@@ -103,7 +106,7 @@ If you add new coins make sure you create logos for the coins too. You can
 add individual logo files by running:
 
 ```bash
-./db -c config.json logo import -f images/coin.svg
+./bitbank-relay-db -c config.json logo import -f images/coin.svg
 ```
 
 The database is now set-up for productive use.
@@ -210,4 +213,33 @@ like this:
 
 # Operation
 
-(to be described)
+The two executables in the deployment set (`bitbank-relay-web` and
+`bitbank-relay-db`) are each providing their own services. They share the same
+database and can run on separate systems/container/jails if desired.
+
+You need to write startup/shutdown scripts for the services and the integration
+of these scripts into your operating system yourself; the following description
+only covers how to start the services from the command-line directly.
+
+## bitbank-relay-web
+
+This service provides a JSON-API for serving cryptocurrency addresses for
+accounts on a website. It is started by the following command:
+
+```bash
+bitbank-relay-web -c config.json &
+```
+
+## bitbank-relay-db
+
+This service provides a browser-based GUI for auditing and managing `bb_relay`.
+It is started with the following command:
+
+```bash
+bitbank-relay-db -c config.json gui -l 0.0.0.0:8080 &
+```
+The service will listen on port `8080` and will accept any source IP
+(`0.0.0.0`) for connections.
+
+Once the service is started, visit the management webpages with a decent
+modern browser.
