@@ -32,6 +32,7 @@ import (
 	"relay/lib"
 
 	"github.com/bfix/gospel/bitcoin/wallet"
+	"github.com/bfix/gospel/logger"
 )
 
 //go:embed config-template.json
@@ -43,18 +44,45 @@ func main() {
 		network string
 		inConf  string
 		outConf string
+		export  bool
 	)
+	flag.BoolVar(&export, "export", false, "Export embedded files")
 	flag.StringVar(&network, "n", "main", "Network [main|test|reg]")
-	flag.StringVar(&inConf, "i", "", "Configuration template file (default: config-template.json)")
+	flag.StringVar(&inConf, "i", "", "Configuration template file (default: embedded config)")
 	flag.StringVar(&outConf, "o", "config.json", "Configuration output file (default: config.json)")
 	flag.Parse()
-	netw := lib.GetNetwork(network)
+
+	// special function "export embedded files"
+	if export {
+		dir, err := fsys.ReadDir(".")
+		if err != nil {
+			logger.Println(logger.ERROR, "Export failed: "+err.Error())
+			return
+		}
+		for _, f := range dir {
+			fname := f.Name()
+			body, err := fsys.ReadFile(fname)
+			if err != nil {
+				logger.Printf(logger.ERROR, "Export failed (r:%s): %s", fname, err.Error())
+				continue
+			}
+			fOut, err := os.Create(fname)
+			if err != nil {
+				logger.Printf(logger.ERROR, "Export failed (c:%s): %s", fname, err.Error())
+				continue
+			}
+			if _, err = fOut.Write(body); err != nil {
+				logger.Printf(logger.ERROR, "Export failed (w:%s): %s", fname, err.Error())
+			}
+			fOut.Close()
+		}
+		return
+	}
 
 	// Ask for passphrase
 	// N.B.: This is not a BIP39 password added to the list of seed words,
 	// but a passphrase used to generate the seed words for a BIP39 wallet.
 	fmt.Printf(">>> Passphrase: ")
-
 	rdr := bufio.NewReader(os.Stdin)
 	in, _, err := rdr.ReadLine()
 	if err != nil {
@@ -104,6 +132,7 @@ func main() {
 		return
 	}
 	// process all entries
+	netw := lib.GetNetwork(network)
 	for _, coin := range cfg.Coins {
 		fmt.Printf("<<<    Processing '%s'...\n", coin.Symb)
 
