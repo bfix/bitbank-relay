@@ -23,14 +23,19 @@ package main
 import (
 	"bufio"
 	"crypto/sha256"
+	"embed"
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"relay/lib"
 
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
+
+//go:embed config-template.json
+var fsys embed.FS
 
 func main() {
 	// parse and process command-line options
@@ -40,7 +45,7 @@ func main() {
 		outConf string
 	)
 	flag.StringVar(&network, "n", "main", "Network [main|test|reg]")
-	flag.StringVar(&inConf, "i", "config-template.json", "Configuration template file (default: config-template.json)")
+	flag.StringVar(&inConf, "i", "", "Configuration template file (default: config-template.json)")
 	flag.StringVar(&outConf, "o", "config.json", "Configuration output file (default: config.json)")
 	flag.Parse()
 	netw := lib.GetNetwork(network)
@@ -85,7 +90,15 @@ func main() {
 
 	// load config template
 	fmt.Println("<<< Generate configuration file...")
-	cfg, err := lib.ReadConfig(inConf)
+	var cfg *lib.Config
+	if len(inConf) > 0 {
+		cfg, err = lib.ReadConfigFile(inConf)
+	} else {
+		var f fs.File
+		if f, err = fsys.Open("config-template.json"); err == nil {
+			cfg, err = lib.ReadConfig(f)
+		}
+	}
 	if err != nil {
 		fmt.Println("<<< ERROR: " + err.Error())
 		return
@@ -124,7 +137,7 @@ func main() {
 		}
 	}
 	// save to configuration file
-	if err = lib.WriteConfig(outConf, cfg); err != nil {
+	if err = lib.WriteConfigFile(outConf, cfg); err != nil {
 		fmt.Println("<<< ERROR: " + err.Error())
 		return
 	}
