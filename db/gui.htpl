@@ -472,67 +472,75 @@ function confirmLock(id) {
     }
 }
 </script>
-{{$fiat := .Fiat}}
-<h1>{{.Title}}</h1>
-<div class="row">
-    {{range .Addrs}}
-    <div class="cell box">
-        <h1 class="headline status-{{.Status}}">{{.Val}}</h1>
-        {{if eq .Status 0}}
-            {{if gt .Balance 0.0}}
+{{if eq .Mode 0}}
+    <h1>No addresses found...</h1>
+{{else}}
+    {{$fiat := .Fiat}}
+    {{if eq .Mode 1}}
+        <h1>Address for '{{.Account}}' ({{.Coin}})</h1>
+    {{else if eq .Mode 2}}
+        <h1>Addresses for '{{.Account}}' ({{.Coin}})</h1>
+    {{end}}
+    <div class="row">
+        {{range .Addrs}}
+        <div class="cell box">
+            <h1 class="headline status-{{.Status}}">{{.Val}}</h1>
+            {{if eq .Status 0}}
+                {{if gt .Balance 0.0}}
+                    <div style="float: right;">
+                        <a href="javascript:confirmClose({{.ID}});"><input type="button" value="Close address"/></a>
+                    </div>
+                {{end}}
+            {{else if eq .Status 1}}
                 <div style="float: right;">
-                    <a href="javascript:confirmClose({{.ID}});"><input type="button" value="Close address"/></a>
+                    <a href="javascript:confirmLock({{.ID}});"><input type="button" value="Lock address"/></a>
                 </div>
             {{end}}
-        {{else if eq .Status 1}}
-            <div style="float: right;">
-                <a href="javascript:confirmLock({{.ID}});"><input type="button" value="Lock address"/></a>
-            </div>
+            <table>
+                <tr>
+                    <td class="label">Current fiat balance:</td>
+                    <td><span class="large">{{trim (mul .Balance .Rate) 2}} {{$fiat}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Coins:</td>
+                    <td>
+                        <span>{{.Balance}} {{.Coin}}</span>
+                        {{if eq .LastCheck ""}}
+                        (not checked yet)
+                        {{else}}
+                        (last checked at {{.LastCheck}})
+                        {{end}}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Account:</td>
+                    <td><span>{{.Account}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Life span:</td>
+                    <td><span>{{.ValidSince}} - {{.ValidUntil}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Blockchain explorer:</td>
+                    <td>
+                        <a href="{{.Explorer}}" target="_blank">
+                            <input type="button" value="View"/>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Transactions:</td>
+                    <td>
+                        <a href="/tx/?addr={{.ID}}">
+                            <input type="button" value="{{.RefCount}} transactions"/>
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </div>
         {{end}}
-        <table>
-            <tr>
-                <td class="label">Current fiat balance:</td>
-                <td><span class="large">{{trim (mul .Balance .Rate) 2}} {{$fiat}}</td>
-            </tr>
-            <tr>
-                <td class="label">Coins:</td>
-                <td>
-                    <span>{{.Balance}} {{.Coin}}</span>
-                    {{if eq .LastCheck ""}}
-                    (not checked yet)
-                    {{else}}
-                    (last checked at {{.LastCheck}})
-                    {{end}}
-                </td>
-            </tr>
-            <tr>
-                <td class="label">Account:</td>
-                <td><span>{{.Account}}</td>
-            </tr>
-            <tr>
-                <td class="label">Life span:</td>
-                <td><span>{{.ValidSince}} - {{.ValidUntil}}</td>
-            </tr>
-            <tr>
-                <td class="label">Blockchain explorer:</td>
-                <td>
-                    <a href="{{.Explorer}}" target="_blank">
-                        <input type="button" value="View"/>
-                    </a>
-                </td>
-            </tr>
-            <tr>
-                <td class="label">Transactions:</td>
-                <td>
-                    <a href="/tx/?addr={{.ID}}">
-                        <input type="button" value="{{.RefCount}} transactions"/>
-                    </a>
-                </td>
-            </tr>
-        </table>
     </div>
-    {{end}}
-</div>
+{{end}}
 <hr/>
 {{range $label,$url := .Links}}
 <a href="{{$url}}"><input type="button" value="{{$label}}"/></a>&nbsp;
@@ -540,49 +548,62 @@ function confirmLock(id) {
 {{end}}
 
 {{define "tx"}}
-<h1>{{.Title}}</h1>
-<h3>{{.SubTitle}}</h3>
-{{$mode := .Mode}}
-<table width="100%">
-    <tr class="header">
-	    <td>ID</td>
-        {{if ne $mode 1}}
-	    <td>Address</td>
-        {{end}}
-        {{if ne $mode 2}}
-        <td>Account</td>
-        {{end}}
-        {{if ne $mode 3}}
-	    <td>Currency</td>
-        {{end}}
-	    <td>Status</td>
-	    <td>Started</td>
-	    <td>Ended</td>
-    </tr>
-    {{range .Txs}}
-    <tr class="row">
-        <td>{{.ID}}</td>
-        {{if ne $mode 1}}
-        <td>{{.Addr}}</td>
-        {{end}}
-        {{if ne $mode 2}}
-        <td>{{.Accnt}}</td>
-        {{end}}
-        {{if ne $mode 3}}
-        <td>{{.Coin}}</td>
-        {{end}}
-        <td>
-        {{if eq .Status 0}}
-            <span style="color: green">&#x2714;</span>
-        {{else if eq .Status 1}}
-            <span style="color: red">&#x2718;</span>
-        {{end}}
-        </td>
-        <td>{{date .ValidFrom}}</td>
-        <td>{{date .ValidTo}}</td>
-    </tr>
+{{if not .Txs}}
+    <h1>No transactions found...</h1>
+{{else}}
+    {{if eq .Mode 0}}
+        <h1>All transactions</h1>
+    {{else if eq .Mode 1}}
+    	<h1>Transactions for '{{.Address}}'</h1>
+		<h3>{{.Coin}}: '{{.Account}}'</h3>
+    {{else if eq .Mode 2}}
+		<h1>Transactions for '{{.Account}}'</h1>
+    {{else if eq .Mode 3}}
+		<h1>Transactions for '{{.Coin}}'</h1>
     {{end}}
-</table>
+
+    {{$mode := .Mode}}
+    <table width="100%">
+        <tr class="header">
+            <td>ID</td>
+            {{if ne $mode 1}}
+            <td>Address</td>
+            {{end}}
+            {{if and (ne $mode 2) (ne $mode 4)}}
+            <td>Account</td>
+            {{end}}
+            {{if and (ne $mode 3) (ne $mode 4)}}
+            <td>Currency</td>
+            {{end}}
+            <td>Status</td>
+            <td>Started</td>
+            <td>Expired</td>
+        </tr>
+        {{range .Txs}}
+        <tr class="row">
+            <td>{{.ID}}</td>
+            {{if ne $mode 1}}
+            <td>{{.Addr}}</td>
+            {{end}}
+            {{if ne $mode 2}}
+            <td>{{.Accnt}}</td>
+            {{end}}
+            {{if ne $mode 3}}
+            <td>{{.Coin}}</td>
+            {{end}}
+            <td>
+            {{if eq .Status 0}}
+                <span style="color: green">&#x2714;</span>
+            {{else if eq .Status 1}}
+                <span style="color: red">&#x2718;</span>
+            {{end}}
+            </td>
+            <td>{{date .ValidFrom}}</td>
+            <td>{{date .ValidTo}}</td>
+        </tr>
+        {{end}}
+    </table>
+{{end}}
 <hr/>
 {{range $label,$url := .Links}}
 <a href="{{$url}}"><input type="button" value="{{$label}}"/></a>&nbsp;
