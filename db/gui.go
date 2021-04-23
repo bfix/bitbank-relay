@@ -70,7 +70,7 @@ func gui(args []string) {
 			return a != nil
 		},
 		"date": func(ts int64) string {
-			return time.Unix(ts, 0).Format(time.RFC1123)
+			return time.Unix(ts, 0).Format("02 Jan 06 15:04")
 		},
 	})
 	if _, err := tpl.ParseFS(fs, "gui.htpl"); err != nil {
@@ -288,7 +288,7 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			accnt := ad.Addrs[0].Account
 			coin := ad.Addrs[0].Coin
-			ad.Title = fmt.Sprintf("Address for %s (%s)", accnt, coin)
+			ad.Title = fmt.Sprintf("Address for '%s' (%s)", accnt, coin)
 		}
 	} else {
 		accntId, _ := queryInt(query, "accnt")
@@ -380,12 +380,12 @@ func transactionHandler(w http.ResponseWriter, r *http.Request) {
 		case 0:
 			td.Title = "All transactions"
 		case 1:
-			td.Title = fmt.Sprintf("Transactions for %s", addr)
+			td.Title = fmt.Sprintf("Transactions for '%s'", addr)
 			td.SubTitle = fmt.Sprintf("%s: '%s'", coin, accnt)
 		case 2:
 			td.Title = fmt.Sprintf("Transactions for '%s'", accnt)
 		case 3:
-			td.Title = fmt.Sprintf("Transactions for %s", coin)
+			td.Title = fmt.Sprintf("Transactions for '%s'", coin)
 		}
 	}
 	// provide fallback for empty link list

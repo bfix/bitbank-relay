@@ -480,7 +480,10 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 			return
 		}
 		if last.Valid {
-			addr.LastCheck = time.Unix(last.Int64, 0).Format(time.RFC1123)
+			addr.LastCheck = ""
+			if last.Int64 > 0 {
+				addr.LastCheck = time.Unix(last.Int64, 0).Format("02 Jan 06 15:04")
+			}
 		}
 		if from.Valid {
 			addr.ValidSince = from.String

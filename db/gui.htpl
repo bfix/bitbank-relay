@@ -24,6 +24,14 @@
                 margin: 0.5em;
                 padding: 0.5em;
             }
+            div.heading {
+                color: white;
+                background-color: orange;
+                font-size: 200%;
+                font-weight: bold;
+                padding: 0.3em;
+                margin: 1em 0 1em 0;
+            }
 
             .label {
                 text-align: right;
@@ -45,10 +53,9 @@
             .blue {
                 color: blue;
             }
-            .heading {
-                font-weight: bold;
-                padding: 0.3em;
+            .headline {
                 color: white;
+                padding: 0.3em;
             }
             .status-0 {
                 background-color: green;
@@ -119,7 +126,7 @@ window.localStorage.setItem("callstack", callstack);
 </script>
 <div>
     {{$fiat := .Fiat}}
-    <h1>Coins</h1>
+    <div class="heading">Cryptocurrencies</div>
     <div class="row">
         {{range .Coins}}
         <div class="cell box">
@@ -142,7 +149,7 @@ window.localStorage.setItem("callstack", callstack);
         {{end}}
     </div>
 
-    <h1>Accounts</h1>
+    <div class="heading">Accounts</div>
     <div class="row">
         {{range .Accounts}}
         <div class="cell box">
@@ -156,19 +163,17 @@ window.localStorage.setItem("callstack", callstack);
         {{end}}
     </div>
 
-    <h1>Adresses</h1>
-    <table>
+    <div class="heading">Active addresses</div>
+    <table width="100%">
         <tr class="header">
             <td>Address</td>
             <td>Balance</td>
             <td>Currency</td>
             <td>Amount</td>
             <td>Account</td>
-            <td>Status</td>
             <td>Last check</td>
             <td>RefCount</td>
             <td>Since</td>
-            <td>Until</td>
         </tr>
         {{range .Addresses}}
         <tr class="row">
@@ -177,19 +182,9 @@ window.localStorage.setItem("callstack", callstack);
             <td>{{.Coin}}</td>
             <td>{{.Balance}}</td>
             <td>{{.Account}}</td>
-            <td>
-            {{if eq .Status 0}}
-                <span style="color: green">&#x2714;</span>
-            {{else if eq .Status 1}}
-                <span style="color: orange">&#x2756;</span>
-            {{else if eq .Status 2}}
-                <span style="color: red">&#x2718;</span>
-            {{end}}
-            </td>
             <td>{{.LastCheck}}</td>
             <td>{{.RefCount}}</td>
             <td>{{.ValidSince}}</td>
-            <td>{{.ValidUntil}}</td>
         </tr>
         {{end}}
     </table>
@@ -429,7 +424,7 @@ window.localStorage.setItem("callstack", callstack);
 <div class="row">
     {{range .Addrs}}
     <div class="cell box">
-        <h1 class="heading status-{{.Status}}">{{.Val}}</h1>
+        <h1 class="headline status-{{.Status}}">{{.Val}}</h1>
         <table>
             <tr>
                 <td class="label">Current fiat balance:</td>
@@ -437,7 +432,14 @@ window.localStorage.setItem("callstack", callstack);
             </tr>
             <tr>
                 <td class="label">Coins:</td>
-                <td><span>{{.Balance}} {{.Coin}} (last checked at {{.LastCheck}})</td>
+                <td>
+                    <span>{{.Balance}} {{.Coin}}</span>
+                    {{if eq .LastCheck ""}}
+                    (not checked yet)
+                    {{else}}
+                    (last checked at {{.LastCheck}})
+                    {{end}}
+                </td>
             </tr>
             <tr>
                 <td class="label">Account:</td>
@@ -477,7 +479,7 @@ window.localStorage.setItem("callstack", callstack);
 <h1>{{.Title}}</h1>
 <h3>{{.SubTitle}}</h3>
 {{$mode := .Mode}}
-<table>
+<table width="100%">
     <tr class="header">
 	    <td>ID</td>
         {{if ne $mode 1}}
@@ -495,7 +497,7 @@ window.localStorage.setItem("callstack", callstack);
     </tr>
     {{range .Txs}}
     <tr class="row">
-        <td><span title="{{.ID}}">...</span></td>
+        <td>{{.ID}}</td>
         {{if ne $mode 1}}
         <td>{{.Addr}}</td>
         {{end}}
