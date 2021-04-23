@@ -39,11 +39,11 @@ import (
 var fsys embed.FS
 
 // build-time injected settings
-var Version string = "0.0.0"
+var Version string = "v0.0.0"
 
 func main() {
 	fmt.Println("=================================")
-	fmt.Println("bitbank-relay-configurator v" + Version)
+	fmt.Println("bitbank-relay-configurator " + Version)
 	fmt.Println("(c) 2021, Bernd Fix           >Y<")
 	fmt.Println("=================================")
 

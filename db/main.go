@@ -31,14 +31,14 @@ import (
 var (
 	cfg     *lib.Config
 	db      *lib.Database
-	Version string = "0.0.0"
+	Version string = "v0.0.0"
 )
 
 func main() {
 	// welcome
 	defer logger.Flush()
 	logger.Println(logger.INFO, "==========================")
-	logger.Println(logger.INFO, "bitbank-relay-db    v"+Version)
+	logger.Println(logger.INFO, "bitbank-relay-db    "+Version)
 	logger.Println(logger.INFO, "(c) 2021, Bernd Fix    >Y<")
 	logger.Println(logger.INFO, "==========================")
 
