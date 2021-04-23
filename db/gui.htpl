@@ -177,7 +177,15 @@ window.localStorage.setItem("callstack", callstack);
             <td>{{.Coin}}</td>
             <td>{{.Balance}}</td>
             <td>{{.Account}}</td>
-            <td>{{.Status}}</td>
+            <td>
+            {{if eq .Status 0}}
+                <span style="color: green">&#x2714;</span>
+            {{else if eq .Status 1}}
+                <span style="color: orange">&#x2756;</span>
+            {{else if eq .Status 2}}
+                <span style="color: red">&#x2718;</span>
+            {{end}}
+            </td>
             <td>{{.LastCheck}}</td>
             <td>{{.RefCount}}</td>
             <td>{{.ValidSince}}</td>
@@ -497,7 +505,13 @@ window.localStorage.setItem("callstack", callstack);
         {{if ne $mode 3}}
         <td>{{.Coin}}</td>
         {{end}}
-        <td>{{.Status}}</td>
+        <td>
+        {{if eq .Status 0}}
+            <span style="color: green">&#x2714;</span>
+        {{else if eq .Status 1}}
+            <span style="color: red">&#x2718;</span>
+        {{end}}
+        </td>
         <td>{{date .ValidFrom}}</td>
         <td>{{date .ValidTo}}</td>
     </tr>
