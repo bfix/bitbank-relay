@@ -53,7 +53,7 @@ func main() {
 	// read configuration
 	var err error
 	logger.Println(logger.INFO, "Reading configuration...")
-	if cfg, err = lib.ReadConfig(confFile); err != nil {
+	if cfg, err = lib.ReadConfigFile(confFile); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}

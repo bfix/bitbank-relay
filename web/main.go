@@ -51,7 +51,7 @@ func main() {
 	var err error
 	defer logger.Flush()
 	logger.Println(logger.INFO, "Reading configuration...")
-	if cfg, err = lib.ReadConfig(confFile); err != nil {
+	if cfg, err = lib.ReadConfigFile(confFile); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}

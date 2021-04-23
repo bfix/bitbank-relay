@@ -22,6 +22,7 @@ package lib
 
 import (
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -123,14 +124,19 @@ type Config struct {
 //----------------------------------------------------------------------
 // persistent configuration
 
-// ReadConfig to parse configurations from file
-func ReadConfig(fname string) (*Config, error) {
+// ReadConfigFile parses a configuration from a file
+func ReadConfigFile(fname string) (*Config, error) {
 	f, err := os.Open(fname)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	data, err := ioutil.ReadAll(f)
+	return ReadConfig(f)
+}
+
+// ReadConfig to parse configurations from a reader
+func ReadConfig(rdr io.Reader) (*Config, error) {
+	data, err := ioutil.ReadAll(rdr)
 	if err != nil {
 		return nil, err
 	}
@@ -141,17 +147,22 @@ func ReadConfig(fname string) (*Config, error) {
 	return cfg, nil
 }
 
-// WriteConfig to store configuration to file
-func WriteConfig(fname string, cfg *Config) error {
+// WriteConfigFile to store configuration to file
+func WriteConfigFile(fname string, cfg *Config) error {
 	f, err := os.Create(fname)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+	return WriteConfig(f, cfg)
+}
+
+// WriteConfig to write configuration to writer
+func WriteConfig(wrt io.Writer, cfg *Config) error {
 	data, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {
 		return err
 	}
-	_, err = f.Write(data)
+	_, err = wrt.Write(data)
 	return err
 }
