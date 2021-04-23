@@ -29,26 +29,56 @@ import (
 )
 
 var (
-	cfg *lib.Config
-	db  *lib.Database
+	cfg     *lib.Config
+	db      *lib.Database
+	Version string = "0.0.0"
 )
 
 func main() {
 	// welcome
 	defer logger.Flush()
-	logger.Println(logger.INFO, "====================================")
-	logger.Println(logger.INFO, "bitbank-relay-db v0.1.0 (2021-03-14)")
-	logger.Println(logger.INFO, "Copyright (c) 2021, Bernd Fix    >Y<")
-	logger.Println(logger.INFO, "====================================")
+	logger.Println(logger.INFO, "==========================")
+	logger.Println(logger.INFO, "bitbank-relay-db    v"+Version)
+	logger.Println(logger.INFO, "(c) 2021, Bernd Fix    >Y<")
+	logger.Println(logger.INFO, "==========================")
 
 	// parse arguments
 	args := os.Args[1:]
 	fs := flag.NewFlagSet("main", flag.ExitOnError)
 	var (
 		confFile string
+		export   bool
 	)
+	fs.BoolVar(&export, "export", false, "Export embedded files")
 	fs.StringVar(&confFile, "c", "config.json", "Configuration file (default: config.json)")
 	fs.Parse(args)
+
+	// special function "export embedded files"
+	if export {
+		dir, err := fsys.ReadDir(".")
+		if err != nil {
+			logger.Println(logger.ERROR, "Export failed: "+err.Error())
+			return
+		}
+		for _, f := range dir {
+			fname := f.Name()
+			body, err := fsys.ReadFile(fname)
+			if err != nil {
+				logger.Printf(logger.ERROR, "Export failed (r:%s): %s", fname, err.Error())
+				continue
+			}
+			fOut, err := os.Create(fname)
+			if err != nil {
+				logger.Printf(logger.ERROR, "Export failed (c:%s): %s", fname, err.Error())
+				continue
+			}
+			if _, err = fOut.Write(body); err != nil {
+				logger.Printf(logger.ERROR, "Export failed (w:%s): %s", fname, err.Error())
+			}
+			fOut.Close()
+		}
+		return
+	}
 
 	// read configuration
 	var err error

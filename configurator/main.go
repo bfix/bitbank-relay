@@ -38,7 +38,15 @@ import (
 //go:embed config-template.json
 var fsys embed.FS
 
+// build-time injected settings
+var Version string = "0.0.0"
+
 func main() {
+	fmt.Println("=================================")
+	fmt.Println("bitbank-relay-configurator v" + Version)
+	fmt.Println("(c) 2021, Bernd Fix           >Y<")
+	fmt.Println("=================================")
+
 	// parse and process command-line options
 	var (
 		network string

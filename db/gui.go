@@ -41,7 +41,7 @@ import (
 )
 
 //go:embed gui.htpl
-var fs embed.FS
+var fsys embed.FS
 
 var (
 	tpl *template.Template // HTML templates
@@ -74,7 +74,7 @@ func gui(args []string) {
 			return time.Unix(ts, 0).Format("02 Jan 06 15:04")
 		},
 	})
-	if _, err := tpl.ParseFS(fs, "gui.htpl"); err != nil {
+	if _, err := tpl.ParseFS(fsys, "gui.htpl"); err != nil {
 		logger.Println(logger.ERROR, "GUI templates: "+err.Error())
 		return
 	}

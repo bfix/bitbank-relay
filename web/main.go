@@ -35,13 +35,21 @@ import (
 
 // Package-global variables
 var (
-	db    *lib.Database = nil
-	cfg   *lib.Config   = nil
-	coins string        = ""
+	db      *lib.Database = nil
+	cfg     *lib.Config   = nil
+	coins   string        = ""
+	Version string        = "0.0.0"
 )
 
 // Application entry point
 func main() {
+	// welcome
+	defer logger.Flush()
+	logger.Println(logger.INFO, "==========================")
+	logger.Println(logger.INFO, "bitbank-relay-web   v"+Version)
+	logger.Println(logger.INFO, "(c) 2021, Bernd Fix    >Y<")
+	logger.Println(logger.INFO, "==========================")
+
 	// handle command-line arguments
 	var confFile string
 	flag.StringVar(&confFile, "c", "config.json", "Name of config file (default: ./config.json)")
