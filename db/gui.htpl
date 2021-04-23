@@ -149,7 +149,12 @@ window.localStorage.setItem("callstack", callstack);
         {{end}}
     </div>
 
-    <div class="heading">Accounts</div>
+    <div class="heading">
+        Accounts
+        <div style="float: right">
+            <a href="/new/?m=accnt"><input type="button" value="Add new account..."/></a>
+        </div>
+    </div>
     <div class="row">
         {{range .Accounts}}
         <div class="cell box">
@@ -163,21 +168,31 @@ window.localStorage.setItem("callstack", callstack);
         {{end}}
     </div>
 
-    <div class="heading">Active addresses</div>
+    <div class="heading">Addresses</div>
     <table width="100%">
         <tr class="header">
             <td>Address</td>
+            <td>State</td>
             <td>Balance</td>
             <td>Currency</td>
             <td>Amount</td>
             <td>Account</td>
             <td>Last check</td>
-            <td>RefCount</td>
+            <td>Refs</td>
             <td>Since</td>
         </tr>
         {{range .Addresses}}
         <tr class="row">
             <td><a href="/addr/?id={{.ID}}">{{.Val}}</a></td>
+            <td>
+                {{if eq .Status 0}}
+                    <span style="color: green;">&#x2714;</span>
+                {{else if eq .Status 1}}
+                    <span style="color: orange;">&#x2756;</span>
+                {{else if eq .Status 2}}
+                    <span style="color: red;">&#x2718;</span>
+                {{end}}
+            </td>
             <td>{{trim (mul .Balance .Rate) 2}}</td>
             <td>{{.Coin}}</td>
             <td>{{.Balance}}</td>
@@ -189,6 +204,32 @@ window.localStorage.setItem("callstack", callstack);
         {{end}}
     </table>
 </div>
+{{end}}
+
+{{define "new"}}
+{{if eq .Mode "accnt"}}
+    <h1>Creating new account:</h1>
+    <form method="POST" action="/new/">
+        <input type="hidden" name="mode" value="accnt"/>
+        <table>
+            <tr>
+                <td align="right">Account label/slug:</td>
+                <td>
+                    <input name="label" size="7"/><br/>
+                    <small>(7 characters; only letters, digits or underscores)</small>
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Account name:</td>
+                <td><input name="name" size="127"/></td>
+            </tr>
+            <tr>
+                <td/>
+                <td><input type="submit" value="Create"/></td>
+            </tr>
+        </table>
+    </form>
+{{end}}
 {{end}}
 
 {{define "coin"}}
@@ -419,12 +460,35 @@ window.localStorage.setItem("callstack", callstack);
 {{end}}
 
 {{define "address"}}
+<script>
+function confirmClose(id) {
+    if (confirm("Really close address?")) {
+        window.location.href = "/addr/?id="+id+"&m=close";
+    }
+}
+function confirmLock(id) {
+    if (confirm("Are all coins on this address spent\nand do you really want to lock it?")) {
+        window.location.href = "/addr/?id="+id+"&m=lock";
+    }
+}
+</script>
 {{$fiat := .Fiat}}
 <h1>{{.Title}}</h1>
 <div class="row">
     {{range .Addrs}}
     <div class="cell box">
         <h1 class="headline status-{{.Status}}">{{.Val}}</h1>
+        {{if eq .Status 0}}
+            {{if gt .Balance 0.0}}
+                <div style="float: right;">
+                    <a href="javascript:confirmClose({{.ID}});"><input type="button" value="Close address"/></a>
+                </div>
+            {{end}}
+        {{else if eq .Status 1}}
+            <div style="float: right;">
+                <a href="javascript:confirmLock({{.ID}});"><input type="button" value="Lock address"/></a>
+            </div>
+        {{end}}
         <table>
             <tr>
                 <td class="label">Current fiat balance:</td>

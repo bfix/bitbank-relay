@@ -30,6 +30,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"relay/lib"
 	"strconv"
 	"strings"
@@ -83,6 +84,7 @@ func gui(args []string) {
 	mux.HandleFunc("/coin/", coinHandler)
 	mux.HandleFunc("/account/", accountHandler)
 	mux.HandleFunc("/addr/", addressHandler)
+	mux.HandleFunc("/new/", newHandler)
 	mux.HandleFunc("/logo/", logoHandler)
 	mux.HandleFunc("/tx/", transactionHandler)
 	mux.HandleFunc("/", guiHandler)
@@ -282,6 +284,23 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 	ad.Links = make(map[string]string)
 
 	if id, ok := queryInt(query, "id"); ok {
+		// check for special actions like "close"
+		if mode := query.Get("m"); len(mode) > 0 {
+			var err error
+			switch mode {
+			// close address for further use
+			case "close":
+				err = db.CloseAddress(id)
+			// lock address after spending
+			case "lock":
+				err = db.LockAddress(id)
+			}
+			if err != nil {
+				logger.Printf(logger.ERROR, "addressHandler: "+err.Error())
+			}
+			// redirect to address page (id-view)
+			http.Redirect(w, r, fmt.Sprintf("/addr/?id=%d", id), http.StatusFound)
+		}
 		ad.Addrs, err = db.GetAddresses(id, 0, 0, true)
 		if len(ad.Addrs) == 0 {
 			ad.Title = "No address(es) found..."
@@ -397,6 +416,56 @@ func transactionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //======================================================================
+// Create a new element (account)
+//======================================================================
+
+// NewData holds the data needed to render a "Create new ..." dialog
+type NewData struct {
+	Mode string `json:"mode"` // kind of object to be created
+}
+
+func newHandler(w http.ResponseWriter, r *http.Request) {
+	// GET requests initiate a "new" dialog
+	if r.Method == "GET" {
+		nd := new(NewData)
+		switch r.URL.Query().Get("m") {
+		// create new account
+		case "accnt":
+			nd.Mode = "accnt"
+		}
+		// show address page
+		renderPage(w, nd, "new")
+		return
+	}
+	// get POST parameters
+	if err := r.ParseForm(); err != nil {
+		logger.Printf(logger.ERROR, "newHandler: %v", err)
+		return
+	}
+	switch r.FormValue("mode") {
+
+	// create new account object
+	case "accnt":
+		label := r.FormValue("label")
+		if len(label) == 0 || !checkChars(label, "^[A-Za-z0-9_]*$") {
+			logger.Println(logger.ERROR, "newAccount: Invalid label")
+			return
+		}
+		name := r.FormValue("name")
+		if len(name) == 0 {
+			logger.Println(logger.ERROR, "newAccount: Invalid name")
+			return
+		}
+		if err := db.NewAccount(label, name); err != nil {
+			logger.Printf(logger.ERROR, "newAccount: %v", err)
+			return
+		}
+	}
+	// redirect back to main page
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+//======================================================================
 // handle upload of new coin logo
 //======================================================================
 
@@ -493,4 +562,10 @@ func queryInt(query url.Values, key string) (int64, bool) {
 		}
 	}
 	return 0, false
+}
+
+// check if all chars in "str" match pattern
+func checkChars(str, pattern string) bool {
+	match, _ := regexp.MatchString(pattern, str)
+	return match
 }

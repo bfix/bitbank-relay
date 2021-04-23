@@ -390,7 +390,7 @@ func (db *Database) PendingAddresses(t int64) ([]int64, error) {
 	return res, nil
 }
 
-// CloseAddress locks an address; no further usage (except spending)
+// CloseAddress closes an address; no further usage (except spending)
 func (db *Database) CloseAddress(ID int64) error {
 	// check for valid database
 	if db.inst == nil {
@@ -398,6 +398,17 @@ func (db *Database) CloseAddress(ID int64) error {
 	}
 	// close address in database
 	_, err := db.inst.Exec("update addr set stat=1, validTo=now() where id=?", ID)
+	return err
+}
+
+// LockAddress locks an address after spending
+func (db *Database) LockAddress(ID int64) error {
+	// check for valid database
+	if db.inst == nil {
+		return ErrDatabaseNotAvailable
+	}
+	// lock address in database
+	_, err := db.inst.Exec("update addr set stat=2 where id=?", ID)
 	return err
 }
 
@@ -692,6 +703,17 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 		return accnts[j].Total < accnts[i].Total
 	})
 	return
+}
+
+// NewAccount creates a new account with given label and name.
+func (db *Database) NewAccount(label, name string) error {
+	// check for valid database
+	if db.inst == nil {
+		return ErrDatabaseNotAvailable
+	}
+	// insert new record into database
+	_, err := db.inst.Exec("insert into account(label,name) values(?,?)", label, name)
+	return err
 }
 
 //----------------------------------------------------------------------
