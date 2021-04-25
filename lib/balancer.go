@@ -74,6 +74,7 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 
 	// start background process
 	ch := make(chan int64)
+	running := make(map[int64]bool)
 	pid := 0
 	go func() {
 		for {
@@ -84,6 +85,12 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 				if ID < 0 {
 					return
 				}
+				// ignore request for already pending address
+				if _, ok := running[ID]; ok {
+					return
+				}
+				running[ID] = true
+
 				// get address information
 				addr, coin, balance, rate, err := db.GetAddressInfo(ID)
 				if err != nil {
@@ -96,6 +103,9 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 
 				// get new address balance
 				go func(pid int) {
+					defer func() {
+						delete(running, ID)
+					}()
 					hdlr, ok := HdlrList[coin]
 					if !ok {
 						logger.Printf(logger.ERROR, "Balancer[%d]: No handler for '%s'", pid, coin)
