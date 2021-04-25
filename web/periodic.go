@@ -76,7 +76,7 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 			}
 		}
 	}
-	// check balances of old address that are not closed
+	// check balances of 'dirty' addresses that need a rescan
 	t := int64(cfg.Balancer.Rescan * cfg.Service.Epoch)
 	addrIds, err := db.PendingAddresses(t)
 	if err != nil {

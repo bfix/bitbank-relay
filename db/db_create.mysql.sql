@@ -70,6 +70,8 @@ create table addr (
     refCnt    integer      default 0,                                -- reference count (transactions)
     balance   float        default 0.0,                              -- address balance
     lastCheck integer      default 0,                                -- last balance check timestamp
+    dirty     boolean      default false,                            -- address used after check
+    lastTx    integer      default 0,                                -- timestamp of last tx usage
     validFrom timestamp    default current_timestamp,                -- address life-span start
     validTo   timestamp    null default null                         -- address life-span end
 );

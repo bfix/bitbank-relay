@@ -374,7 +374,7 @@ func (db *Database) PendingAddresses(t int64) ([]int64, error) {
 	}
 	// get list of pending addresses
 	now := time.Now().Unix()
-	rows, err := db.inst.Query("select id from addr where stat=0 and (?-lastCheck)>?", now, t)
+	rows, err := db.inst.Query("select id from addr where stat=0 and dirty and (?-lastTx)>?", now, t)
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +518,7 @@ func (db *Database) UpdateBalance(ID int64, balance float64) error {
 	}
 	// update balance in database
 	_, err := db.inst.Exec(
-		"update addr set balance=?, lastCheck=? where id=?",
+		"update addr set balance=?, lastCheck=?, dirty=false where id=?",
 		balance, time.Now().Unix(), ID)
 	return err
 }
@@ -781,7 +781,7 @@ func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err e
 		return
 	}
 	// increment ref counter in address
-	if _, err = dbtx.Exec("update addr set refCnt = refCnt + 1 where id=?", addrID); err != nil {
+	if _, err = dbtx.Exec("update addr set refCnt=refCnt+1,dirty=true,lastTx=? where id=?", now, addrID); err != nil {
 		dbtx.Rollback()
 		return
 	}
