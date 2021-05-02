@@ -34,11 +34,12 @@ import (
 
 // CoinConfig for a supported coin (Bitcoin or Altcoin)
 type CoinConfig struct {
-	Symb string `json:"symb"` // coin symbol
-	Path string `json:"path"` // base derivation path like "m/44'/0'/0'/0/0"
-	Mode string `json:"mode"` // address version (P2PKH, P2SH, ...)
-	Pk   string `json:"pk"`   // public key for coin
-	Addr string `json:"addr"` // address for base derivation path
+	Symb     string `json:"symb"`     // coin symbol
+	Path     string `json:"path"`     // base derivation path like "m/44'/0'/0'/0/0"
+	Mode     string `json:"mode"`     // address version (P2PKH, P2SH, ...)
+	Pk       string `json:"pk"`       // public key for coin
+	Addr     string `json:"addr"`     // address for base derivation path
+	Explorer string `json:"explorer"` // address explorer URL
 }
 
 // GetMode returns the numeric value of mode (P2PKH, P2SH, ...)

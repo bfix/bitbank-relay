@@ -29,6 +29,7 @@ import (
 	"strconv"
 
 	"github.com/bfix/gospel/logger"
+	"github.com/bfix/gospel/network"
 )
 
 // Balancer prototype for querying address balances
@@ -150,7 +151,7 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 // BTC (Bitcoin)
 //----------------------------------------------------------------------
 
-var btcLimiter = NewRateLimiter(0, 6)
+var btcLimiter = network.NewRateLimiter(0, 6)
 
 // BtcBalancer gets the balance of a Bitcoin address
 func BtcBalancer(addr string) (float64, error) {
@@ -204,7 +205,7 @@ type EthAddrInfo struct {
 }
 
 // honor rate limit minimum
-var ethLimiter = NewRateLimiter(5, 50, 200, 2000, 3000)
+var ethLimiter = network.NewRateLimiter(5, 50, 200, 2000, 3000)
 
 // EthBalancer gets the balance of an Ethereum address
 func EthBalancer(addr string) (float64, error) {
@@ -246,7 +247,7 @@ type ZecAddrInfo struct {
 	TotalRecv  float64 `json:"totalRecv"`
 }
 
-var zecLimiter = NewRateLimiter(5, 30, 0, 1440)
+var zecLimiter = network.NewRateLimiter(5, 30, 0, 1440)
 
 // ZecBalancer gets the balance of a ZCash address
 func ZecBalancer(addr string) (float64, error) {
@@ -301,7 +302,7 @@ type BtgAddrInfo struct {
 	Transaction        []string `json:"transactions"`
 }
 
-var btgLimiter = NewRateLimiter(5, 30, 0, 1440)
+var btgLimiter = network.NewRateLimiter(5, 30, 0, 1440)
 
 // BtgBalancer gets the balance of a Bitcoin Gold address
 func BtgBalancer(addr string) (float64, error) {
@@ -394,7 +395,7 @@ func NilBalancer(addr string) (float64, error) {
 // chainz.cryptoid.info
 //----------------------------------------------------------------------
 
-var cciLimiter = NewRateLimiter(0, 6)
+var cciLimiter = network.NewRateLimiter(0, 6)
 
 // CciBalancer gets the address balance from chainz.cryptoid.info
 func CciBalancer(coin, addr string) (float64, error) {
@@ -475,7 +476,7 @@ type BlockchairAddrInfo struct {
 	} `json:"context"`
 }
 
-var bchairLimiter = NewRateLimiter(5, 30, 0, 1440)
+var bchairLimiter = network.NewRateLimiter(5, 30, 0, 1440)
 
 // BlockchairGet gets the balance of a Blockchair address
 func BlockchairGet(coin, addr string) (float64, error) {

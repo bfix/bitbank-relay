@@ -503,7 +503,9 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 			addr.ValidUntil = to.String
 		}
 		// set explorer link
-		addr.Explorer = explore(addr.Val, symbol)
+		if hdlr, ok := HdlrList[symbol]; ok {
+			addr.Explorer = fmt.Sprintf(hdlr.explorer, addr.Val)
+		}
 		// add address info to list
 		ai = append(ai, addr)
 	}
@@ -521,41 +523,6 @@ func (db *Database) UpdateBalance(ID int64, balance float64) error {
 		"update addr set balance=?, lastCheck=?, dirty=false where id=?",
 		balance, time.Now().Unix(), ID)
 	return err
-}
-
-// Get the URL for an address on the appropriate blockchain explorer.
-func explore(addr, coin string) string {
-	tpl := ""
-	switch coin {
-	case "btc":
-		tpl = "https://www.blockchain.com/btc/address/%s"
-	case "bch":
-		tpl = "https://www.blockchain.com/bch/address/%s"
-	case "eth":
-		tpl = "https://www.blockchain.com/eth/address/%s"
-	case "btg":
-		tpl = "https://explorer.bitcoingold.org/insight/address/%s"
-	case "doge":
-		tpl = "https://dogechain.info/address/%s"
-	case "dash":
-		tpl = "https://chainz.cryptoid.info/dash/address.dws?%s.htm"
-	case "ltc":
-		tpl = "https://chainz.cryptoid.info/ltc/address.dws?%s.htm"
-	case "vtc":
-		tpl = "https://chainz.cryptoid.info/vtc/address.dws?%s.htm"
-	case "dgb":
-		tpl = "https://chainz.cryptoid.info/dgb/address.dws?%s.htm"
-	case "nmc":
-		tpl = "https://nmc.tokenview.com/en/address/%s"
-	case "zec":
-		tpl = "https://zecblockexplorer.com/address/%s"
-	case "etc":
-		tpl = "https://etcblockexplorer.com/address/%s"
-	}
-	if len(tpl) == 0 {
-		return ""
-	}
-	return fmt.Sprintf(tpl, addr)
 }
 
 //----------------------------------------------------------------------

@@ -45,6 +45,7 @@ type Handler struct {
 	tree     *wallet.HDPublic // HDKD for public keys
 	balancer Balancer         // address balance handler for coin
 	pathTpl  string           // path template for indexing addresses
+	explorer string           // Explorer URL for address
 }
 
 // NewHandler creates a new handler instance for the given coin on
@@ -82,6 +83,7 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 		tree:     wallet.NewHDPublic(pk, coin.Path),
 		balancer: b,
 		pathTpl:  path,
+		explorer: coin.Explorer,
 	}, nil
 }
 

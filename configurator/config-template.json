@@ -12,10 +12,7 @@
   },
   "balancer": {
     "accountLimit": 10000,
-    "rescan": 48,
-    "apikeys": {
-      "blockchair": ""
-    }
+    "rescan": 48
   },
   "market": {
     "fiat": "EUR",
@@ -28,84 +25,96 @@
       "path": "m/49'/0'/0'",
       "mode": "P2SH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://www.blockchain.com/btc/address/%s"
     },
     {
       "symb": "bch",
       "path": "m/44'/145'/0'",
       "mode": "P2PKH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://www.blockchain.com/bch/address/%s"
     },
     {
       "symb": "btg",
       "path": "m/49'/156'/0'",
       "mode": "P2SH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://explorer.bitcoingold.org/insight/address/%s"
     },
     {
       "symb": "dash",
       "path": "m/44'/5'/0'",
       "mode": "P2PKH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://chainz.cryptoid.info/dash/address.dws?%s.htm"
     },
     {
       "symb": "dgb",
       "path": "m/49'/20'/0'",
       "mode": "P2SH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://chainz.cryptoid.info/dgb/address.dws?%s.htm"
     },
     {
       "symb": "doge",
       "path": "m/44'/3'/0'",
       "mode": "P2PKH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://dogechain.info/address/%s"
     },
     {
       "symb": "ltc",
       "path": "m/49'/2'/0'",
       "mode": "P2SH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://chainz.cryptoid.info/ltc/address.dws?%s.htm"
     },
     {
       "symb": "nmc",
       "path": "m/44'/7'/0'",
       "mode": "P2PKH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://nmc.tokenview.com/en/address/%s"
     },
     {
       "symb": "vtc",
       "path": "m/49'/28'/0'",
       "mode": "P2SH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://chainz.cryptoid.info/vtc/address.dws?%s.htm"
     },
     {
       "symb": "zec",
       "path": "m/44'/133'/0'",
       "mode": "P2PKH",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://zecblockexplorer.com/address/%s"
     },
     {
       "symb": "eth",
       "path": "m/44'/60'/0'/0",
       "mode": "",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://www.blockchain.com/eth/address/%s"
     },
     {
       "symb": "etc",
       "path": "m/44'/61'/0'/0",
       "mode": "",
       "pk": "",
-      "addr": ""
+      "addr": "",
+      "explorer": "https://etcblockexplorer.com/address/%s"
     }
   ]
 }
