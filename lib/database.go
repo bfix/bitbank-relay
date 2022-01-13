@@ -218,6 +218,7 @@ func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
 
 // GetAccumulatedCoins returns information about a coin and its accumulated
 // balance over all accounts. If "coin" is "0", all coins are returned.
+// Closed (state == 2) accounts are not included.
 func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err error) {
 	// check for valid database
 	if db.inst == nil {
@@ -236,7 +237,7 @@ func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err erro
 		from
 			coin c, addr a
 		where
-			c.id = a.coin`
+			c.id = a.coin and a.stat <> 2`
 	if coin != 0 {
 		query += fmt.Sprintf(" and c.id=%d", coin)
 	}
