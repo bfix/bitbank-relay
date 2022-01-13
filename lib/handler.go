@@ -149,11 +149,11 @@ func Blockcypher(coin, addr string) (bool, error) {
 	}
 	val, ok := data["n_tx"]
 	if !ok {
-		return false, fmt.Errorf("No 'n_tx' attribute")
+		return false, fmt.Errorf("no 'n_tx' attribute")
 	}
 	n, ok := val.(uint64)
 	if !ok {
-		return false, fmt.Errorf("Invalid 'n_tx' type")
+		return false, fmt.Errorf("invalid 'n_tx' type")
 	}
 	return n > 0, nil
 }

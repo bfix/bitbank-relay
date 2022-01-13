@@ -147,8 +147,6 @@ func (db *Database) getItems(query string, args ...interface{}) (list []*Item, e
 				default:
 					val = v
 				}
-			} else {
-
 			}
 			item.Dict[columns[3+i]] = val
 		}
@@ -308,7 +306,7 @@ func (db *Database) SetCoinLogo(coin, logo string) error {
 
 // Error codes (coin-related)
 var (
-	ErrDbUnknownCoin = fmt.Errorf("Unknown coin")
+	ErrDbUnknownCoin = fmt.Errorf("unknown coin")
 )
 
 // GetUnusedAddress returns a currently unused address for a given
