@@ -373,7 +373,7 @@ func (db *Database) PendingAddresses(t int64) ([]int64, error) {
 	}
 	// get list of pending addresses
 	now := time.Now().Unix()
-	rows, err := db.inst.Query("select id from addr where stat=0 and dirty and (?-lastTx)>?", now, t)
+	rows, err := db.inst.Query("select id from addr where stat<>2 and dirty and (?-lastTx)>?", now, t)
 	if err != nil {
 		return nil, err
 	}
