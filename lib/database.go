@@ -177,7 +177,7 @@ type AccCoinInfo struct {
 	Accnts []*Item `json:"accnts"` // (assigned) accounts
 }
 
-// GetCoins returns a list of coins for a give account
+// GetCoins returns a list of coins for a given account
 func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
 	// check for valid database
 	if db.inst == nil {
@@ -235,7 +235,7 @@ func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err erro
 		from
 			coin c, addr a
 		where
-			c.id = a.coin and a.stat <> 2`
+			c.id = a.coin and a.stat < 2`
 	if coin != 0 {
 		query += fmt.Sprintf(" and c.id=%d", coin)
 	}
@@ -373,7 +373,7 @@ func (db *Database) PendingAddresses(t int64) ([]int64, error) {
 	}
 	// get list of pending addresses
 	now := time.Now().Unix()
-	rows, err := db.inst.Query("select id from addr where stat<>2 and dirty and (?-lastTx)>?", now, t)
+	rows, err := db.inst.Query("select id from addr where stat<2 and dirty and (?-lastTx)>?", now, t)
 	if err != nil {
 		return nil, err
 	}
@@ -597,7 +597,7 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 			sum(addr.balance*coin.rate) as total,
 			sum(addr.refCnt) as refs
 		from account
-		left join addr on addr.accnt=account.id
+		left join addr on addr.accnt=account.id and addr.stat < 2
 		left join coin on addr.coin=coin.id
 		group by account.id`
 
