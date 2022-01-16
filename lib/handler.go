@@ -111,6 +111,42 @@ func (hdlr *Handler) GetBalance(addr string) (float64, error) {
 }
 
 //----------------------------------------------------------------------
+// Setup handler list from configuration
+
+func InitHandler(cfg *Config, db *Database) (coins string, err error) {
+	// load handlers; assemble list of coin symbols
+	coins = ""
+	for _, coin := range cfg.Coins {
+		// check if coin is in database
+		if _, err = db.GetCoin(coin.Symb); err != nil {
+			return
+		}
+		// add to list of coins
+		if len(coins) > 0 {
+			coins += ","
+		}
+		coins += coin.Symb
+		// get coin handler
+		var hdlr *Handler
+		if hdlr, err = NewHandler(coin, wallet.AddrMain); err != nil {
+			return
+		}
+		// verify handler
+		var addr string
+		if addr, err = hdlr.GetAddress(0); err != nil {
+			return
+		}
+		if addr != coin.Addr {
+			err = fmt.Errorf("addr mismatch: %s != %s", addr, coin.Addr)
+			return
+		}
+		// save handler
+		HdlrList[coin.Symb] = hdlr
+	}
+	return
+}
+
+//----------------------------------------------------------------------
 // helper functions
 
 // GetNetwork returns the numeric coin network ID
