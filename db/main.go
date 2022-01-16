@@ -102,6 +102,11 @@ func main() {
 	}
 	defer db.Close()
 
+	// load handlers; assemble list of coin symbols
+	logger.Println(logger.INFO, "Initializing coin handlers:")
+	lib.InitHandler(cfg, db)
+	logger.Println(logger.INFO, "Done.")
+
 	// parse command line arguments (top-level)
 	if fs.NArg() == 0 {
 		logger.Println(logger.ERROR, "ERROR: No command specified")
