@@ -23,6 +23,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"relay/lib"
@@ -64,7 +65,8 @@ func main() {
 	}
 	// setup logging
 	if len(cfg.Service.LogFile) > 0 {
-		logger.LogToFile(cfg.Service.LogFile)
+		lfName := fmt.Sprintf(cfg.Service.LogFile, "web")
+		logger.LogToFile(lfName)
 	}
 	logger.SetLogLevelFromName(cfg.Service.LogLevel)
 

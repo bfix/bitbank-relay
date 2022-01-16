@@ -2,7 +2,7 @@
   "service": {
     "listen": "localhost:80",
     "epoch": 300,
-    "logFile": "relay.log",
+    "logFile": "relay-%s.log",
     "logLevel": "DBG",
     "logRotate": 288
   },
