@@ -29,7 +29,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bfix/gospel/bitcoin/wallet"
 	"github.com/bfix/gospel/logger"
 )
 
@@ -79,38 +78,9 @@ func main() {
 
 	// load handlers; assemble list of coin symbols
 	logger.Println(logger.INFO, "Initializing coin handlers:")
-	for _, coin := range cfg.Coins {
-		_, name := wallet.GetCoinInfo(coin.Symb)
-		logger.Printf(logger.INFO, "   * %s (%s)", coin.Symb, name)
-
-		// check if coin is in database
-		if _, err = db.GetCoin(coin.Symb); err != nil {
-			logger.Println(logger.ERROR, err.Error())
-			continue
-		}
-		// add to list of coins
-		if len(coins) > 0 {
-			coins += ","
-		}
-		coins += coin.Symb
-		// get coin handler
-		hdlr, err := lib.NewHandler(coin, wallet.AddrMain)
-		if err != nil {
-			logger.Println(logger.ERROR, err.Error())
-			continue
-		}
-		// verify handler
-		addr, err := hdlr.GetAddress(0)
-		if err != nil {
-			logger.Println(logger.ERROR, err.Error())
-			continue
-		}
-		if addr != coin.Addr {
-			logger.Printf(logger.ERROR, "Addr mismatch: %s != %s", addr, coin.Addr)
-			continue
-		}
-		// save handler
-		lib.HdlrList[coin.Symb] = hdlr
+	if coins, err = lib.InitHandler(cfg, db); err != nil {
+		logger.Println(logger.ERROR, err.Error())
+		return
 	}
 	logger.Println(logger.INFO, "Done.")
 
