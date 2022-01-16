@@ -485,6 +485,13 @@ function confirmLock(id) {
         {{range .Addrs}}
         <div class="cell box">
             <h1 class="headline status-{{.Status}}">{{.Val}}</h1>
+            <div style="float: right; margin-left: 0.5em;">
+            {{if not .Dirty}}
+                <a href="/addr/?id={{.ID}}&m=dirty"><input type="button" value="Balance sync"/></a>
+            {{else}}
+                <span>Pending balance update</span>
+            {{end}}
+            </div>
             {{if eq .Status 0}}
                 {{if gt .Balance 0.0}}
                     <div style="float: right;">
