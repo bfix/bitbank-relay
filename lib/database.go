@@ -411,6 +411,17 @@ func (db *Database) LockAddress(ID int64) error {
 	return err
 }
 
+// DirtyAddress fags an address for balance update
+func (db *Database) DirtyAddress(ID int64) error {
+	// check for valid database
+	if db.inst == nil {
+		return ErrDatabaseNotAvailable
+	}
+	// flag address in database
+	_, err := db.inst.Exec("update addr set dirty=true where id=?", ID)
+	return err
+}
+
 // GetAddressInfo returns basic info about an address
 func (db *Database) GetAddressInfo(ID int64) (addr, coin string, balance, rate float64, err error) {
 	// check for valid database
@@ -437,6 +448,7 @@ type AddrInfo struct {
 	ValidSince string  `json:"validSince"` // start of active period
 	ValidUntil string  `json:"validUntil"` // end of active period
 	Explorer   string  `json:"explorer"`   // URL to address in blockchain explorer
+	Dirty      bool    `json:"dirty"`      // Address needs balance update
 }
 
 // GetAddress returns a list of active adresses
@@ -465,7 +477,8 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 		addClause(accnt, "accntId")
 	}
 	// assemble SELECT statement
-	query := "select id,coin,coinName,val,balance,rate,stat,accountName,cnt,lastCheck,validFrom,validTo from v_addr"
+	query := "select id,coin,coinName,val,balance,rate,stat,accountName," +
+		"cnt,lastCheck,validFrom,validTo,dirty from v_addr"
 	if len(clause) > 0 {
 		query += " where" + clause
 	}
@@ -486,7 +499,7 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 		)
 		if err = rows.Scan(
 			&addr.ID, &symbol, &addr.Coin, &addr.Val, &addr.Balance, &addr.Rate, &addr.Status,
-			&addr.Account, &addr.RefCount, &last, &from, &to); err != nil {
+			&addr.Account, &addr.RefCount, &last, &from, &to, &addr.Dirty); err != nil {
 			return
 		}
 		if last.Valid {
