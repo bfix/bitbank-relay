@@ -216,7 +216,7 @@ func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
 
 // GetAccumulatedCoins returns information about a coin and its accumulated
 // balance over all accounts. If "coin" is "0", all coins are returned.
-// Closed (state == 2) accounts are not included.
+// Locked (state == 2) accounts are not included.
 func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err error) {
 	// check for valid database
 	if db.inst == nil {
@@ -261,7 +261,7 @@ func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err erro
   				sum(addr.balance) as balance,
 				count(addr.id) as addrs
 			from account
-			left join addr on addr.coin=? and addr.accnt = account.id
+			left join addr on addr.coin=? and addr.stat < 2 and addr.accnt = account.id
 			group by account.id`, ci.ID, ci.ID); err != nil {
 			return
 		}
@@ -641,7 +641,7 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 				coin.symbol as symbol,
 				coin.logo as logo
 			from coin
-			left join addr on addr.coin = coin.id and addr.accnt = ?
+			left join addr on addr.coin = coin.id and addr.stat < 2 and addr.accnt = ?
 			group by coin.id`, ai.ID, ai.ID); err != nil {
 			return
 		}
