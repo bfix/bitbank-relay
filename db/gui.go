@@ -296,9 +296,9 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 			// lock address after spending
 			case "lock":
 				err = db.LockAddress(id)
-			// flag address as dirty (needs balance sync)
-			case "dirty":
-				err = db.DirtyAddress(id)
+			// flag address for balance sync
+			case "sync":
+				err = db.SyncAddress(id)
 			}
 			if err != nil {
 				logger.Printf(logger.ERROR, "addressHandler: "+err.Error())

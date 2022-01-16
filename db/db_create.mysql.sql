@@ -70,11 +70,11 @@ create table addr (
     refCnt    integer      default 0,                                -- reference count (transactions)
     balance   float        default 0.0,                              -- address balance
     lastCheck integer      default 0,                                -- last balance check timestamp
-    dirty     boolean      default false,                            -- address used after check
+    nextCheck integer      default 0,                                -- next balance check timestamp
+    waitCheck integer      default 300,                              -- current wait time (seconds) between checks
     lastTx    integer      default 0,                                -- timestamp of last tx usage
     validFrom timestamp    default current_timestamp,                -- address life-span start
-    validTo   timestamp    null default null,                        -- address life-span end
-    dirty     boolean      default false                             -- address flagged for balance update
+    validTo   timestamp    null default null                         -- address life-span end
 );
 
 -- transaction
@@ -122,9 +122,11 @@ create view v_addr as select
     b.name      as accountName,  -- account name
     a.refCnt    as cnt,          -- ref. count for address
     a.lastCheck as lastCheck,    -- timestamp of last balance check
+    a.nextCheck as nextCheck,    -- timestamp of next balance check
+    a.waitCheck as waitCheck,    -- wait time (seconds) between checks
+    a.lastTx    as lastTx,       -- timestamp of address usage in tx
     a.validFrom as validFrom,    -- address life-span (start)
-    a.validTo   as validTo,      -- address life-span (end)
-    a.dirty     as dirty         -- address flagged for balance update
+    a.validTo   as validTo       -- address life-span (end)
 from
     addr a
 inner join

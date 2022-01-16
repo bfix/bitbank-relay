@@ -364,16 +364,16 @@ func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr s
 	return
 }
 
-// PendingAddresses returns a list of open addresses with a balance check
-// older than 't' seconds.
-func (db *Database) PendingAddresses(t int64) ([]int64, error) {
+// PendingAddresses returns a list of non-locked addresses that are due for
+// balance update.
+func (db *Database) PendingAddresses() ([]int64, error) {
 	// check for valid database
 	if db.inst == nil {
 		return nil, ErrDatabaseNotAvailable
 	}
 	// get list of pending addresses
 	now := time.Now().Unix()
-	rows, err := db.inst.Query("select id from addr where stat<2 and dirty and (?-lastTx)>?", now, t)
+	rows, err := db.inst.Query("select id from addr where stat<2 and (?-nextCheck)<0", now)
 	if err != nil {
 		return nil, err
 	}
@@ -387,6 +387,25 @@ func (db *Database) PendingAddresses(t int64) ([]int64, error) {
 		res = append(res, ID)
 	}
 	return res, nil
+}
+
+// NextUpdate calculates the time for the next update and the asociated
+// wait time depending on the reset flag. If reset, the wait time starts
+// at 5 minutes (300 sec), otherwise it is doubled before calculating the
+// next update time.
+func (db *Database) NextUpdate(ID int64, reset bool) error {
+	// check for valid database
+	if db.inst == nil {
+		return ErrDatabaseNotAvailable
+	}
+	// set next wait time
+	wt := "2*waitCheck"
+	if reset {
+		wt = "300"
+	}
+	_, err := db.inst.Exec("update addr set waitCheck="+wt+
+		",nextCheck=nextCheck+"+wt+" where id=?", ID)
+	return err
 }
 
 // CloseAddress closes an address; no further usage (except spending)
@@ -411,14 +430,15 @@ func (db *Database) LockAddress(ID int64) error {
 	return err
 }
 
-// DirtyAddress fags an address for balance update
-func (db *Database) DirtyAddress(ID int64) error {
+// SyncAddress tags an address for immediate balance update
+func (db *Database) SyncAddress(ID int64) error {
 	// check for valid database
 	if db.inst == nil {
 		return ErrDatabaseNotAvailable
 	}
-	// flag address in database
-	_, err := db.inst.Exec("update addr set dirty=true where id=?", ID)
+	// enforce update now
+	now := time.Now().Unix()
+	_, err := db.inst.Exec("update addr set nextCheck=? where id=?", now, ID)
 	return err
 }
 
@@ -445,10 +465,12 @@ type AddrInfo struct {
 	Rate       float64 `json:"rate"`       // coin value (price per coin)
 	RefCount   int     `json:"refCount"`   // number of transactions
 	LastCheck  string  `json:"lastCheck"`  // last balance check
+	NextCheck  string  `json:"nextCheck"`  // next balance check
+	WaitCheck  int     `json:"waitCheck"`  // wait time between checks (seconds)
+	LastTx     string  `json:"lastTx"`     // last used in a transaction
 	ValidSince string  `json:"validSince"` // start of active period
 	ValidUntil string  `json:"validUntil"` // end of active period
 	Explorer   string  `json:"explorer"`   // URL to address in blockchain explorer
-	Dirty      bool    `json:"dirty"`      // Address needs balance update
 }
 
 // GetAddress returns a list of active adresses
@@ -478,7 +500,7 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 	}
 	// assemble SELECT statement
 	query := "select id,coin,coinName,val,balance,rate,stat,accountName," +
-		"cnt,lastCheck,validFrom,validTo,dirty from v_addr"
+		"cnt,lastCheck,nextCheck,waitCheck,lastTx,validFrom,validTo from v_addr"
 	if len(clause) > 0 {
 		query += " where" + clause
 	}
@@ -493,19 +515,32 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 	for rows.Next() {
 		addr := new(AddrInfo)
 		var (
-			last     sql.NullInt64
-			from, to sql.NullString
-			symbol   string
+			last, next, tx sql.NullInt64
+			from, to       sql.NullString
+			symbol         string
 		)
 		if err = rows.Scan(
-			&addr.ID, &symbol, &addr.Coin, &addr.Val, &addr.Balance, &addr.Rate, &addr.Status,
-			&addr.Account, &addr.RefCount, &last, &from, &to, &addr.Dirty); err != nil {
+			&addr.ID, &symbol, &addr.Coin, &addr.Val, &addr.Balance,
+			&addr.Rate, &addr.Status, &addr.Account, &addr.RefCount,
+			&last, &next, &addr.WaitCheck, &tx, &from, &to); err != nil {
 			return
 		}
 		if last.Valid {
 			addr.LastCheck = ""
 			if last.Int64 > 0 {
 				addr.LastCheck = time.Unix(last.Int64, 0).Format("02 Jan 06 15:04")
+			}
+		}
+		if next.Valid {
+			addr.NextCheck = ""
+			if next.Int64 > 0 {
+				addr.NextCheck = time.Unix(next.Int64, 0).Format("02 Jan 06 15:04")
+			}
+		}
+		if tx.Valid {
+			addr.LastTx = ""
+			if tx.Int64 > 0 {
+				addr.LastTx = time.Unix(tx.Int64, 0).Format("02 Jan 06 15:04")
 			}
 		}
 		if from.Valid {
@@ -532,7 +567,7 @@ func (db *Database) UpdateBalance(ID int64, balance float64) error {
 	}
 	// update balance in database
 	_, err := db.inst.Exec(
-		"update addr set balance=?, lastCheck=?, dirty=false where id=?",
+		"update addr set balance=? where id=?",
 		balance, time.Now().Unix(), ID)
 	return err
 }
@@ -760,7 +795,7 @@ func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err e
 		return
 	}
 	// increment ref counter in address
-	if _, err = dbtx.Exec("update addr set refCnt=refCnt+1,dirty=true,lastTx=? where id=?", now, addrID); err != nil {
+	if _, err = dbtx.Exec("update addr set refCnt=refCnt+1,lastTx=? where id=?", now, addrID); err != nil {
 		dbtx.Rollback()
 		return
 	}

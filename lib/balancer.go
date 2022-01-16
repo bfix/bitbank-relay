@@ -100,33 +100,36 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					continue
 				}
 				pid++
-				logger.Printf(logger.INFO, "Balancer[%d]: addr=%s, coin=%s, balance=%f", pid, addr, coin, balance)
+				logger.Printf(logger.INFO, "Balancer[%d] update addr=%s (%.5f %s)...", pid, addr, balance, coin)
 
 				// get new address balance
 				go func(pid int) {
 					defer func() {
 						delete(running, ID)
 					}()
+					// get matching handler
 					hdlr, ok := HdlrList[coin]
 					if !ok {
-						logger.Printf(logger.ERROR, "Balancer[%d]: No handler for '%s'", pid, coin)
+						logger.Printf(logger.ERROR, "Balancer[%d] No handler for '%s'", pid, coin)
 						return
 					}
+					// perform balance check
 					newBalance, err := hdlr.GetBalance(addr)
 					if err != nil {
-						logger.Printf(logger.ERROR, "Balancer[%d]: GetBalance: %s", pid, err.Error())
-						newBalance = 0.0
+						logger.Printf(logger.ERROR, "Balancer[%d] sync failed: %s", pid, err.Error())
+						return
 					}
 					// update balance if increased
-					if newBalance >= balance {
-						if newBalance > 0 {
-							logger.Printf(logger.INFO, "Balancer[%d]: => new balance: %f", pid, newBalance)
-						}
+					if newBalance > balance {
+						logger.Printf(logger.INFO, "Balancer[%d] => new balance: %f", pid, newBalance)
 						balance = newBalance
+						db.NextUpdate(ID, true)
+					} else {
+						db.NextUpdate(ID, false)
 					}
-					// update balance
+					// update balance in database
 					if err = db.UpdateBalance(ID, balance); err != nil {
-						logger.Printf(logger.ERROR, "Balancer[%d]: update: %s", pid, err.Error())
+						logger.Printf(logger.ERROR, "Balancer[%d] update failed: %s", pid, err.Error())
 					}
 					// check if account limit is reached...
 					if cfg.AccountLimit < balance*rate {

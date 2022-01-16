@@ -485,19 +485,15 @@ function confirmLock(id) {
         {{range .Addrs}}
         <div class="cell box">
             <h1 class="headline status-{{.Status}}">{{.Val}}</h1>
-            <div style="float: right; margin-left: 0.5em;">
-            {{if not .Dirty}}
-                <a href="/addr/?id={{.ID}}&m=dirty"><input type="button" value="Balance sync"/></a>
-            {{else}}
-                <span>Pending balance update</span>
-            {{end}}
-            </div>
             {{if eq .Status 0}}
                 {{if gt .Balance 0.0}}
                     <div style="float: right;">
                         <a href="javascript:confirmClose({{.ID}});"><input type="button" value="Close address"/></a>
                     </div>
                 {{end}}
+                <div style="float: right; margin-left: 0.5em;">
+                    <a href="/addr/?id={{.ID}}&m=sync"><input type="button" value="Re-check balance"/></a>
+                </div>
             {{else if eq .Status 1}}
                 <div style="float: right;">
                     <a href="javascript:confirmLock({{.ID}});"><input type="button" value="Lock address"/></a>
@@ -506,7 +502,7 @@ function confirmLock(id) {
             <table>
                 <tr>
                     <td class="label">Current fiat balance:</td>
-                    <td><span class="large">{{trim (mul .Balance .Rate) 2}} {{$fiat}}</td>
+                    <td><span class="large">{{trim (mul .Balance .Rate) 2}} {{$fiat}}</span></td>
                 </tr>
                 <tr>
                     <td class="label">Coins:</td>
@@ -525,7 +521,15 @@ function confirmLock(id) {
                 </tr>
                 <tr>
                     <td class="label">Life span:</td>
-                    <td><span>{{.ValidSince}} - {{.ValidUntil}}</td>
+                    <td>{{.ValidSince}} - {{.ValidUntil}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Last transaction:</td>
+                    <td>{{.LastTx}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Next balance check:</td>
+                    <td>{{.NextCheck}}</td>
                 </tr>
                 <tr>
                     <td class="label">Blockchain explorer:</td>

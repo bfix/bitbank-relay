@@ -76,9 +76,8 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 			}
 		}
 	}
-	// check balances of 'dirty' addresses that need a rescan
-	t := int64(cfg.Balancer.Rescan * cfg.Service.Epoch)
-	addrIds, err := db.PendingAddresses(t)
+	// check balances of addresses that need a rescan (balance sync)
+	addrIds, err := db.PendingAddresses()
 	if err != nil {
 		logger.Println(logger.ERROR, "[periodic] rescan: "+err.Error())
 	} else if len(addrIds) > 0 {
