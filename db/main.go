@@ -104,7 +104,10 @@ func main() {
 
 	// load handlers; assemble list of coin symbols
 	logger.Println(logger.INFO, "Initializing coin handlers:")
-	lib.InitHandler(cfg, db)
+	if _, err = lib.InitHandler(cfg, db); err != nil {
+		logger.Println(logger.ERROR, err.Error())
+		return
+	}
 	logger.Println(logger.INFO, "Done.")
 
 	// parse command line arguments (top-level)
