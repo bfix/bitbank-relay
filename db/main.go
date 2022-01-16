@@ -87,6 +87,12 @@ func main() {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
+	// setup logging
+	logger.Println(logger.INFO, "Setting up logging...")
+	if len(cfg.Service.LogFile) > 0 {
+		logger.LogToFile(cfg.Service.LogFile)
+	}
+	logger.SetLogLevelFromName(cfg.Service.LogLevel)
 
 	// connect to database
 	logger.Println(logger.INFO, "Connecting to database...")
