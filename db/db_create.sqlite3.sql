@@ -62,7 +62,8 @@ create table addr (
     dirty     boolean      default false,                            -- address used after check
     lastTx    integer      default 0,                                -- timestamp of last tx usage
     validFrom timestamp    default current_timestamp,                -- address life-span start
-    validTo   timestamp    null default null                         -- address life-span end
+    validTo   timestamp    null default null,                        -- address life-span end
+    dirty     boolean      default false                             -- address flagged for balance update
 );
 
 -- transaction
@@ -111,7 +112,8 @@ create view v_addr as select
     a.refCnt    as cnt,          -- ref. count for address
     a.lastCheck as lastCheck,    -- timestamp of last balance check
     a.validFrom as validFrom,    -- address life-span (start)
-    a.validTo   as validTo       -- address life-span (end)
+    a.validTo   as validTo,      -- address life-span (end)
+    a.dirty     as dirty         -- address flagged for balance update
 from
     addr a
 inner join
