@@ -1,13 +1,13 @@
-# Bitbank - Relay (bb_relay)
+# Bitbank - Relay
 
-(c) 2021 Bernd Fix <brf@hoi-polloi.org>   >Y<
+(c) 2021-2022 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
-bb_relay is free software: you can redistribute it and/or modify it
+bitbank-relay is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published
 by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-bb_relay is distributed in the hope that it will be useful, but
+bitbank-relay is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 Affero General Public License for more details.
@@ -19,7 +19,7 @@ SPDX-License-Identifier: AGPL3.0-or-later
 
 # Deployment
 
-The deployment for `bb_relay` includes:
+The deployment for `bitbank-relay` includes:
 
 1. `bitbank-relay-web` executable (if build with GNU make, or the file
 `web/web` if build manually)
@@ -58,7 +58,7 @@ The `config.json` specifies which database engine to use and how to access it.
 Either database is initialized with a SQL script found in the `db/` folder:
 
 * `db_create.mysql.sql` for MySQL database engine (adjust to your local env)
-* `fb_create.sqlite3.sql` for SQLite3 database file (add to deployment)
+* `db_create.sqlite3.sql` for SQLite3 database file (add to deployment)
 
 ### Fill database with custom data
 
@@ -213,15 +213,17 @@ like this:
 
 # Operation
 
+## Technical details
+
 The two executables in the deployment set (`bitbank-relay-web` and
-`bitbank-relay-db`) are each providing their own services. They share the same
+`bitbank-relay-db`) are each providing their own services. They share the
 database and can run on separate systems/container/jails if desired.
 
 You need to write startup/shutdown scripts for the services and the integration
 of these scripts into your operating system yourself; the following description
 only covers how to start the services from the command-line directly.
 
-## bitbank-relay-web
+### bitbank-relay-web
 
 This service provides a JSON-API for serving cryptocurrency addresses for
 accounts on a website. It is started by the following command:
@@ -230,7 +232,7 @@ accounts on a website. It is started by the following command:
 bitbank-relay-web -c config.json &
 ```
 
-## bitbank-relay-db
+### bitbank-relay-db
 
 This service provides a browser-based GUI for auditing and managing `bb_relay`.
 It is started with the following command:
@@ -243,3 +245,9 @@ The service will listen on port `8080` and will accept any source IP
 
 Once the service is started, visit the management webpages with a decent
 modern browser.
+
+## Crptocurrency details
+
+### Managing addresses
+
+Coin addresses have some 

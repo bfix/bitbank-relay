@@ -1,16 +1,16 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/bfix/bitbank-relay)](https://goreportcard.com/report/github.com/bfix/bitbank-relay)
 [![GoDoc](https://godoc.org/github.com/bfix/bitbank-relay?status.svg)](https://godoc.org/github.com/bfix/bitbank-relay)
 
-# Bitbank - Relay (bb_relay)
+# Bitbank - Relay
 
-(c) 2021 Bernd Fix <brf@hoi-polloi.org>   >Y<
+(c) 2021-2022 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
-bb_relay is free software: you can redistribute it and/or modify it
+bitbank-relay is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published
 by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-bb_relay is distributed in the hope that it will be useful, but
+bitbank-relay is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 Affero General Public License for more details.
