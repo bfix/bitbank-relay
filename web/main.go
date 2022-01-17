@@ -45,10 +45,10 @@ var (
 func main() {
 	// welcome
 	defer logger.Flush()
-	logger.Println(logger.INFO, "==========================")
-	logger.Println(logger.INFO, "bitbank-relay-web   "+Version)
-	logger.Println(logger.INFO, "(c) 2021, Bernd Fix    >Y<")
-	logger.Println(logger.INFO, "==========================")
+	logger.Println(logger.INFO, "===============================")
+	logger.Println(logger.INFO, "bitbank-relay-web        "+Version)
+	logger.Println(logger.INFO, "(c) 2021-2022, Bernd Fix    >Y<")
+	logger.Println(logger.INFO, "===============================")
 
 	// handle command-line arguments
 	var confFile string
