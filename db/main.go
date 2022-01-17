@@ -31,7 +31,7 @@ import (
 
 var (
 	cfg     *lib.Config
-	db      *lib.Database
+	mdl     *lib.Model
 	Version string = "v0.0.0"
 )
 
@@ -96,17 +96,17 @@ func main() {
 	}
 	logger.SetLogLevelFromName(cfg.Service.LogLevel)
 
-	// connect to database
-	logger.Println(logger.INFO, "Connecting to database...")
-	if db, err = lib.Connect(cfg.Db); err != nil {
+	// connect to model
+	logger.Println(logger.INFO, "Connecting to model...")
+	if mdl, err = lib.Connect(cfg.Model); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
-	defer db.Close()
+	defer mdl.Close()
 
 	// load handlers; assemble list of coin symbols
 	logger.Println(logger.INFO, "Initializing coin handlers:")
-	if _, err = lib.InitHandler(cfg, db); err != nil {
+	if _, err = lib.InitHandler(cfg, mdl); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}

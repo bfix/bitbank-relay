@@ -105,5 +105,5 @@ func importSVG(fname string) error {
 	coin := base[:len(base)-4]
 
 	logger.Printf(logger.INFO, "Adding logo for coin '%s'\n", coin)
-	return db.SetCoinLogo(coin, logo)
+	return mdl.SetCoinLogo(coin, logo)
 }

@@ -35,10 +35,10 @@ import (
 
 // Package-global variables
 var (
-	db      *lib.Database = nil
-	cfg     *lib.Config   = nil
-	coins   string        = ""
-	Version string        = "v0.0.0"
+	mdl     *lib.Model  = nil
+	cfg     *lib.Config = nil
+	coins   string      = ""
+	Version string      = "v0.0.0"
 )
 
 // Application entry point
@@ -70,17 +70,17 @@ func main() {
 	}
 	logger.SetLogLevelFromName(cfg.Service.LogLevel)
 
-	// connect to database
-	logger.Println(logger.INFO, "Connecting to database...")
-	if db, err = lib.Connect(cfg.Db); err != nil {
+	// connect to model
+	logger.Println(logger.INFO, "Connecting to model...")
+	if mdl, err = lib.Connect(cfg.Model); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
-	defer db.Close()
+	defer mdl.Close()
 
 	// load handlers; assemble list of coin symbols
 	logger.Println(logger.INFO, "Initializing coin handlers:")
-	if coins, err = lib.InitHandler(cfg, db); err != nil {
+	if coins, err = lib.InitHandler(cfg, mdl); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
@@ -92,7 +92,7 @@ func main() {
 	defer cancel()
 
 	// setting up balancer service
-	balanceCh := lib.StartBalancer(ctx, db, cfg.Balancer)
+	balanceCh := lib.StartBalancer(ctx, mdl, cfg.Balancer)
 
 	// setting up webservice
 	srvQuit := runService(cfg.Service)

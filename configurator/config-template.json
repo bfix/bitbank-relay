@@ -6,9 +6,9 @@
     "logLevel": "DBG",
     "logRotate": 288
   },
-  "database": {
-    "mode": "mysql",
-    "connect": "bb_relay:bb_relay@tcp(127.0.0.1:3306)/BB_Relay"
+  "model": {
+    "dbEngine": "mysql",
+    "dbConnect": "bb_relay:bb_relay@tcp(127.0.0.1:3306)/BB_Relay"
   },
   "balancer": {
     "accountLimit": 10000,

@@ -48,7 +48,7 @@ var (
 	srv *http.Server       // HTTP server
 )
 
-// Start the GUI for database management and relay maintenance
+// Start the GUI for model management and relay maintenance
 func gui(args []string) {
 	// parse arguments
 	flags := flag.NewFlagSet("gui", flag.ExitOnError)
@@ -125,17 +125,17 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 
 	// collect coin info
 	var err error
-	if dd.Coins, err = db.GetAccumulatedCoin(0); err != nil {
+	if dd.Coins, err = mdl.GetAccumulatedCoin(0); err != nil {
 		io.WriteString(w, "ERROR: "+err.Error())
 		return
 	}
 	// collect account info
-	if dd.Accounts, err = db.GetAccounts(0); err != nil {
+	if dd.Accounts, err = mdl.GetAccounts(0); err != nil {
 		io.WriteString(w, "ERROR: "+err.Error())
 		return
 	}
 	// collect address info
-	if dd.Addresses, err = db.GetAddresses(0, 0, 0, false); err != nil {
+	if dd.Addresses, err = mdl.GetAddresses(0, 0, 0, false); err != nil {
 		io.WriteString(w, "ERROR: "+err.Error())
 		return
 	}
@@ -169,12 +169,12 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			for _, accnt := range on {
-				if err := db.ChangeAssignment(id, accnt, true); err != nil {
+				if err := mdl.ChangeAssignment(id, accnt, true); err != nil {
 					return
 				}
 			}
 			for _, accnt := range off {
-				if err := db.ChangeAssignment(id, accnt, false); err != nil {
+				if err := mdl.ChangeAssignment(id, accnt, false); err != nil {
 					return
 				}
 			}
@@ -182,8 +182,8 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, fmt.Sprintf("/coin/?id=%d", id), http.StatusFound)
 			return
 		}
-		// get assignments from database
-		if res, err := db.GetAccumulatedCoin(id); err == nil {
+		// get assignments from model
+		if res, err := mdl.GetAccumulatedCoin(id); err == nil {
 			if len(res) > 0 {
 				cd.Coin = res[0]
 			} else {
@@ -228,12 +228,12 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			for _, coin := range on {
-				if err := db.ChangeAssignment(coin, id, true); err != nil {
+				if err := mdl.ChangeAssignment(coin, id, true); err != nil {
 					return
 				}
 			}
 			for _, coin := range off {
-				if err := db.ChangeAssignment(coin, id, false); err != nil {
+				if err := mdl.ChangeAssignment(coin, id, false); err != nil {
 					return
 				}
 			}
@@ -241,8 +241,8 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, fmt.Sprintf("/account/?id=%d", id), http.StatusFound)
 			return
 		}
-		// get assignments from database
-		if res, err := db.GetAccounts(id); err == nil {
+		// get assignments from model
+		if res, err := mdl.GetAccounts(id); err == nil {
 			if len(res) > 0 {
 				ad.Accnt = res[0]
 			} else {
@@ -292,13 +292,13 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 			switch mode {
 			// close address for further use
 			case "close":
-				err = db.CloseAddress(id)
+				err = mdl.CloseAddress(id)
 			// lock address after spending
 			case "lock":
-				err = db.LockAddress(id)
+				err = mdl.LockAddress(id)
 			// flag address for balance sync
 			case "sync":
-				err = db.SyncAddress(id)
+				err = mdl.SyncAddress(id)
 			}
 			if err != nil {
 				logger.Printf(logger.ERROR, "addressHandler: "+err.Error())
@@ -307,7 +307,7 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, fmt.Sprintf("/addr/?id=%d", id), http.StatusFound)
 		}
 		// normal address selection
-		ad.Addrs, err = db.GetAddresses(id, 0, 0, true)
+		ad.Addrs, err = mdl.GetAddresses(id, 0, 0, true)
 		if len(ad.Addrs) == 0 {
 			ad.Mode = 0
 		} else {
@@ -324,7 +324,7 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 		if coinId != 0 {
 			ad.Links["&#9654; Coin"] = fmt.Sprintf("/coin/?id=%d", coinId)
 		}
-		ad.Addrs, err = db.GetAddresses(0, accntId, coinId, true)
+		ad.Addrs, err = mdl.GetAddresses(0, accntId, coinId, true)
 		if len(ad.Addrs) == 0 {
 			ad.Mode = 0
 		} else {
@@ -395,7 +395,7 @@ func transactionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		td.Links["&#9654; Coin"] = fmt.Sprintf("/coin/?id=%d", coin)
 	}
-	if td.Txs, err = db.GetTransactions(addr, accnt, coin); err != nil {
+	if td.Txs, err = mdl.GetTransactions(addr, accnt, coin); err != nil {
 		logger.Println(logger.ERROR, "txHandler: "+err.Error())
 		return
 	}
@@ -454,7 +454,7 @@ func newHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Println(logger.ERROR, "newAccount: Invalid name")
 			return
 		}
-		if err := db.NewAccount(label, name); err != nil {
+		if err := mdl.NewAccount(label, name); err != nil {
 			logger.Printf(logger.ERROR, "newAccount: %v", err)
 			return
 		}
@@ -488,8 +488,8 @@ func logoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logo := base64.StdEncoding.EncodeToString(body)
-	// save logo to database
-	if err := db.SetCoinLogo(coin, logo); err != nil {
+	// save logo to model
+	if err := mdl.SetCoinLogo(coin, logo); err != nil {
 		logger.Printf(logger.ERROR, "ParseForm() err: %v", err)
 		return
 	}

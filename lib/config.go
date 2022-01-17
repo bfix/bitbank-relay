@@ -87,10 +87,10 @@ type ServiceConfig struct {
 
 //----------------------------------------------------------------------
 
-// DatabaseConfig for database-related settings.
-type DatabaseConfig struct {
-	Mode    string `json:"mode"`    // mode (mysql, sqlite3, ...)
-	Connect string `json:"connect"` // database connect string
+// ModelConfig for model-related settings.
+type ModelConfig struct {
+	DbEngine  string `json:"dbEngine"`  // mode (mysql, sqlite3, ...)
+	DbConnect string `json:"dbConnect"` // database connect string
 }
 
 //----------------------------------------------------------------------
@@ -116,7 +116,7 @@ type MarketConfig struct {
 // Config holds overall configuration settings
 type Config struct {
 	Service  *ServiceConfig  `json:"service"`  // web service configuration
-	Db       *DatabaseConfig `json:"database"` // database configuration
+	Model    *ModelConfig    `json:"model"`    // model configuration
 	Balancer *BalancerConfig `json:"balancer"` // balancer configuration
 	Market   *MarketConfig   `json:"market"`   // market configuration
 	Coins    []*CoinConfig   `json:"coins"`    // list of known coins

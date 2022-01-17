@@ -68,9 +68,9 @@ var (
 
 // StartBalancer starts the background balance processor.
 // It returns a channel for balance check requests that accepts int64
-// values that refer to the database id (row id) of the address record
+// values that refer to the model id of the address record
 // that is to be checked.
-func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan int64 {
+func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan int64 {
 	// save API keys
 	apikeys = cfg.APIKeys
 
@@ -94,7 +94,7 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 				running[ID] = true
 
 				// get address information
-				addr, coin, balance, rate, err := db.GetAddressInfo(ID)
+				addr, coin, balance, rate, err := mdl.GetAddressInfo(ID)
 				if err != nil {
 					logger.Printf(logger.ERROR, "Balancer: can't retrieve address #%d", ID)
 					logger.Println(logger.ERROR, "=> "+err.Error())
@@ -107,7 +107,7 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 				go func(pid int) {
 					flag := false
 					defer func() {
-						db.NextUpdate(ID, flag)
+						mdl.NextUpdate(ID, flag)
 						delete(running, ID)
 					}()
 					// get matching handler
@@ -124,14 +124,15 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					}
 					// update balance if increased
 					if newBalance <= balance {
+						logger.Printf(logger.INFO, "Balancer[%d] unchanged balance (%f)", pid, balance)
 						return
 					}
 					logger.Printf(logger.INFO, "Balancer[%d] => new balance: %f", pid, newBalance)
 					balance = newBalance
 					flag = true
 
-					// update balance in database
-					if err = db.UpdateBalance(ID, balance); err != nil {
+					// update balance in model
+					if err = mdl.UpdateBalance(ID, balance); err != nil {
 						logger.Printf(logger.ERROR, "Balancer[%d] update failed: %s", pid, err.Error())
 						return
 					}
@@ -139,7 +140,7 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 					if cfg.AccountLimit < balance*rate {
 						// yes: close address
 						logger.Printf(logger.INFO, "Balancer[%d]: Closing address '%s' with balance=%f", pid, addr, balance)
-						if err = db.CloseAddress(ID); err != nil {
+						if err = mdl.CloseAddress(ID); err != nil {
 							logger.Printf(logger.ERROR, "Balancer[%d] CloseAddress: %s", pid, err.Error())
 						}
 					}

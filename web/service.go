@@ -79,7 +79,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, "[]")
 		return
 	}
-	list, err := db.GetCoins(accnt)
+	list, err := mdl.GetCoins(accnt)
 	if err != nil {
 		logger.Println(logger.ERROR, "List[1]: "+err.Error())
 		io.WriteString(w, "[]")
@@ -120,7 +120,7 @@ func receiveHandler(w http.ResponseWriter, r *http.Request) {
 	// get address for given account and coin
 	accnt := r.FormValue("a")
 	coin := r.FormValue("c")
-	tx, err := db.NewTransaction(coin, accnt)
+	tx, err := mdl.NewTransaction(coin, accnt)
 	if err != nil {
 		logger.Printf(logger.ERROR, "receive: account=%s, coin=%s failed: %s\n", accnt, coin, err.Error())
 		resp.Error = err.Error()
@@ -139,7 +139,7 @@ func receiveHandler(w http.ResponseWriter, r *http.Request) {
 		qr = ""
 	}
 	// get coin info
-	ci, err := db.GetCoin(coin)
+	ci, err := mdl.GetCoin(coin)
 	if err != nil {
 		resp.Error = err.Error()
 		return
@@ -170,7 +170,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	tx := r.FormValue("t")
 	logger.Printf(logger.DBG, "status: tx=%s\n", tx)
 
-	if resp.Tx, err = db.GetTransaction(tx); err != nil {
+	if resp.Tx, err = mdl.GetTransaction(tx); err != nil {
 		resp.Error = err.Error()
 		return
 	}
@@ -185,7 +185,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 		qr = ""
 	}
 	// get coin info
-	ci, err := db.GetCoin(resp.Tx.Coin)
+	ci, err := mdl.GetCoin(resp.Tx.Coin)
 	if err != nil {
 		resp.Error = err.Error()
 		return

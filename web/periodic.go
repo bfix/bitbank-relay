@@ -31,7 +31,7 @@ import (
 func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 
 	// check expired transactions
-	txList, err := db.GetExpiredTransactions()
+	txList, err := mdl.GetExpiredTransactions()
 	if err != nil {
 		logger.Println(logger.ERROR, "[periodic] GetExpiredTxs: "+err.Error())
 	} else if len(txList) > 0 {
@@ -40,7 +40,7 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 		list := make(map[int64]bool)
 		for txID, addrID := range txList {
 			logger.Printf(logger.INFO, "[periodic] Closing transaction #%d", txID)
-			if err = db.CloseTransaction(txID); err != nil {
+			if err = mdl.CloseTransaction(txID); err != nil {
 				logger.Println(logger.ERROR, "[periodic] CloseTx: "+err.Error())
 				continue
 			}
@@ -70,14 +70,14 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 			// update rates in coin table
 			for coin, rate := range rates {
 				logger.Printf(logger.DBG, "[periodic]    * %s: %f", coin, rate)
-				if err := db.UpdateRate(coin, rate); err != nil {
+				if err := mdl.UpdateRate(coin, rate); err != nil {
 					logger.Println(logger.ERROR, "[periodic] UpdateRate: "+err.Error())
 				}
 			}
 		}
 	}
 	// check balances of addresses that need a rescan (balance sync)
-	addrIds, err := db.PendingAddresses()
+	addrIds, err := mdl.PendingAddresses()
 	if err != nil {
 		logger.Println(logger.ERROR, "[periodic] rescan: "+err.Error())
 	} else if len(addrIds) > 0 {

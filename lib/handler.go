@@ -113,12 +113,12 @@ func (hdlr *Handler) GetBalance(addr string) (float64, error) {
 //----------------------------------------------------------------------
 // Setup handler list from configuration
 
-func InitHandler(cfg *Config, db *Database) (coins string, err error) {
+func InitHandler(cfg *Config, mdl *Model) (coins string, err error) {
 	// load handlers; assemble list of coin symbols
 	coins = ""
 	for _, coin := range cfg.Coins {
-		// check if coin is in database
-		if _, err = db.GetCoin(coin.Symb); err != nil {
+		// check if coin is in model
+		if _, err = mdl.GetCoin(coin.Symb); err != nil {
 			return
 		}
 		// add to list of coins

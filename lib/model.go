@@ -17,6 +17,42 @@
 //
 // SPDX-License-Identifier: AGPL3.0-or-later
 //----------------------------------------------------------------------
+//
+// Abstract persistent data model for all bitbank-relay services.
+// The model provides manipulation and query methods that represent
+// its logic:
+//
+// Table 'coin' has all excepted cryptocoins; table 'account' has all
+// receivers and table 'accept' maps which coins are accepted by which
+// receivers. For each records in 'accept' there is an 'addr' record,
+// that corresponds to the currently used receiving address for the
+// 'accept' record.
+//
+// If a client requests an address for a 'account'/'coin' pair, this
+// address is returned. If the address is not defined, it is generated
+// from a HDKD wallet (by index). The time of the last client delivery
+// is recorded in the 'addr' record.
+//
+// Any existing 'addr' can be in one of three states:
+//   (0) The address is in use (for client delivery)
+//   (1) The address is closed (will no longer be used)
+//   (2) The address is locked (will no longer be updated)
+//
+// The 'addr' record has some additional information used for automatic
+// balance checks. It keeps the time of last balance check, the current
+// wait time be tween checks and the time of the next update.
+//
+// All 'addr' records in state (0) or (1) will have balance updates
+// at specified times. Whenever the address is requested by a client,
+// the wait time will be set to 300 seconds (5 min) and the next update
+// will happen "wait time" from now to check for incoming funds.
+//
+// If a balance update yields a new balance (higher than before), the
+// balance is updated and the new wait time is (re-)set to 300 seconds.
+// Otherwise the wait time is doubled but can't exceed a week. Based on
+// the wait time a time for the next update is calculated.
+//
+//----------------------------------------------------------------------
 
 package lib
 
@@ -41,25 +77,27 @@ import (
 
 // Error codes
 var (
-	ErrDatabaseNotAvailable = fmt.Errorf("Database not available")
+	ErrModelNotAvailable = fmt.Errorf("model not available")
 )
 
-// Database for persistent storage
-type Database struct {
+// Model for domain logic and persistent storage
+type Model struct {
 	inst *sql.DB
+	cfg  *ModelConfig
 }
 
-// Connect to database
-func Connect(cfg *DatabaseConfig) (db *Database, err error) {
-	db = &Database{}
-	db.inst, err = sql.Open(cfg.Mode, cfg.Connect)
+// Connect to model
+func Connect(cfg *ModelConfig) (mdl *Model, err error) {
+	mdl = &Model{}
+	mdl.cfg = cfg
+	mdl.inst, err = sql.Open(cfg.DbEngine, cfg.DbConnect)
 	return
 }
 
-// Close database connection
-func (db *Database) Close() (err error) {
-	if db.inst != nil {
-		err = db.inst.Close()
+// Close model connection
+func (mdl *Model) Close() (err error) {
+	if mdl.inst != nil {
+		err = mdl.inst.Close()
 	}
 	return
 }
@@ -69,10 +107,10 @@ func (db *Database) Close() (err error) {
 //----------------------------------------------------------------------
 
 // Item represents either a coin or an account. ID is refering to the record
-// in the database, Name is the common name and Status indicates if a condition
-// for the item is statisfied. A coin condition is "assigned to account" and
-// an account condition is "assigned to a coin". The item can have additional
-// attributes (for display) in the Dictionary field.
+// in the model repository. Name is the common name and Status indicates if
+// a condition for the item is statisfied. A coin condition is "assigned to
+// account" and an account condition is "assigned to a coin". The item can
+// have additional attributes (for display) in the Dictionary field.
 type Item struct {
 	ID     int64
 	Name   string
@@ -98,10 +136,10 @@ func (i *Item) String() string {
 // columns MUST be named "id", "name" and "status" and are assigned to the
 // first three fields of the Item; additional coulmns are added to the
 // dictionary).
-func (db *Database) getItems(query string, args ...interface{}) (list []*Item, err error) {
+func (mdl *Model) getItems(query string, args ...interface{}) (list []*Item, err error) {
 	// perform query
 	var rows *sql.Rows
-	if rows, err = db.inst.Query(query, args...); err != nil {
+	if rows, err = mdl.inst.Query(query, args...); err != nil {
 		return
 	}
 	defer rows.Close()
@@ -171,20 +209,20 @@ type CoinInfo struct {
 // accumulated balance of the coin over all accounts.
 type AccCoinInfo struct {
 	CoinInfo
-	ID     int64   `json:"id"`     // database ID of coin entry
+	ID     int64   `json:"id"`     // repository ID of coin entry
 	Total  float64 `json:"total"`  // total balance in coins
 	NumTx  int     `json:"numTx"`  // number of transactions for this coin
 	Accnts []*Item `json:"accnts"` // (assigned) accounts
 }
 
 // GetCoins returns a list of coins for a given account
-func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) GetCoins(account string) ([]*CoinInfo, error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
 	// select coins for given account
-	rows, err := db.inst.Query("select coin,label,logo,rate from v_coin_accnt where account=?", account)
+	rows, err := mdl.inst.Query("select coin,label,logo,rate from v_coin_accnt where account=?", account)
 	if err != nil {
 		return nil, err
 	}
@@ -201,13 +239,13 @@ func (db *Database) GetCoins(account string) ([]*CoinInfo, error) {
 }
 
 // GetCoin get information for a given coin.
-func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) GetCoin(symb string) (ci *CoinInfo, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
 	// select coin information
-	row := db.inst.QueryRow("select label,logo,rate from coin where symbol=?", symb)
+	row := mdl.inst.QueryRow("select label,logo,rate from coin where symbol=?", symb)
 	ci = new(CoinInfo)
 	ci.Symbol = symb
 	err = row.Scan(&ci.Label, &ci.Logo, &ci.Rate)
@@ -217,10 +255,10 @@ func (db *Database) GetCoin(symb string) (ci *CoinInfo, err error) {
 // GetAccumulatedCoins returns information about a coin and its accumulated
 // balance over all accounts. If "coin" is "0", all coins are returned.
 // Locked (state == 2) accounts are not included.
-func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
 	// select coin information
 	query := `
@@ -242,7 +280,7 @@ func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err erro
 	query += " group by c.id"
 
 	var rows *sql.Rows
-	if rows, err = db.inst.Query(query); err != nil {
+	if rows, err = mdl.inst.Query(query); err != nil {
 		return
 	}
 	defer rows.Close()
@@ -253,7 +291,7 @@ func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err erro
 			return
 		}
 		// get account items
-		if ci.Accnts, err = db.getItems(`
+		if ci.Accnts, err = mdl.getItems(`
 			select
   				account.id as id,
   				account.name as name,
@@ -290,13 +328,13 @@ func (db *Database) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err erro
 }
 
 // SetCoinLogo sets a base64-encoded SVG logo for a coin
-func (db *Database) SetCoinLogo(coin, logo string) error {
-	// check for valid database
-	if db.inst == nil {
-		return ErrDatabaseNotAvailable
+func (mdl *Model) SetCoinLogo(coin, logo string) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
 	}
-	// set new coin logo in database
-	_, err := db.inst.Exec("update coin set logo=? where symbol=?", logo, coin)
+	// set new coin logo in model
+	_, err := mdl.inst.Exec("update coin set logo=? where symbol=?", logo, coin)
 	return err
 }
 
@@ -306,19 +344,19 @@ func (db *Database) SetCoinLogo(coin, logo string) error {
 
 // Error codes (coin-related)
 var (
-	ErrDbUnknownCoin = fmt.Errorf("unknown coin")
+	ErrMdlUnknownCoin = fmt.Errorf("unknown coin")
 )
 
 // GetUnusedAddress returns a currently unused address for a given
 // coin/account pair. Creates a new address if none is available.
 // (Internal use for generating new transactions)
-func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr string, err error) {
-	// check for valid database
-	if db.inst == nil {
-		return "", ErrDatabaseNotAvailable
+func (mdl *Model) getUnusedAddress(mdltx *sql.Tx, coin, account string) (addr string, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return "", ErrModelNotAvailable
 	}
 	// do we have a unused address for given coin? if so, use that address.
-	row := dbtx.QueryRow(
+	row := mdltx.QueryRow(
 		"select val from v_addr where stat=0 and coin=? and account=?",
 		coin, account)
 	err = row.Scan(&addr)
@@ -328,26 +366,26 @@ func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr s
 	//  no old address found: generate a new one
 	hdlr, ok := HdlrList[coin]
 	if !ok {
-		err = ErrDbUnknownCoin
+		err = ErrMdlUnknownCoin
 		return
 	}
-	// get coin database id
+	// get coin id
 	var coinID int64
-	row = dbtx.QueryRow("select id from coin where symbol=?", coin)
+	row = mdltx.QueryRow("select id from coin where symbol=?", coin)
 	err = row.Scan(&coinID)
 	if err != nil {
 		return
 	}
-	// get account database id
+	// get account id
 	var accntID int64
-	row = dbtx.QueryRow("select id from account where label=?", account)
+	row = mdltx.QueryRow("select id from account where label=?", account)
 	err = row.Scan(&accntID)
 	if err != nil {
 		return
 	}
 	// get next address index
 	var idxV sql.NullInt64
-	row = dbtx.QueryRow("select max(idx)+1 from addr where coin=?", coinID)
+	row = mdltx.QueryRow("select max(idx)+1 from addr where coin=?", coinID)
 	if err = row.Scan(&idxV); err != nil {
 		return
 	}
@@ -359,21 +397,21 @@ func (db *Database) getUnusedAddress(dbtx *sql.Tx, coin, account string) (addr s
 	if addr, err = hdlr.GetAddress(idx); err != nil {
 		return
 	}
-	_, err = dbtx.Exec("insert into addr(coin,accnt,idx,val) values(?,?,?,?)", coinID, accntID, idx, addr)
+	_, err = mdltx.Exec("insert into addr(coin,accnt,idx,val) values(?,?,?,?)", coinID, accntID, idx, addr)
 	logger.Printf(logger.INFO, "[addr] New address '%s' for account '%s'", addr, account)
 	return
 }
 
 // PendingAddresses returns a list of non-locked addresses that are due for
 // balance update.
-func (db *Database) PendingAddresses() ([]int64, error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) PendingAddresses() ([]int64, error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
 	// get list of pending addresses
 	now := time.Now().Unix()
-	rows, err := db.inst.Query("select id from addr where stat<2 and (?-nextCheck)>=0", now)
+	rows, err := mdl.inst.Query("select id from addr where stat<2 and (?-nextCheck)>=0", now)
 	if err != nil {
 		return nil, err
 	}
@@ -393,10 +431,10 @@ func (db *Database) PendingAddresses() ([]int64, error) {
 // wait time depending on the reset flag. If reset, the wait time starts
 // at 5 minutes (300 sec), otherwise it is doubled before calculating the
 // next update time.
-func (db *Database) NextUpdate(ID int64, reset bool) error {
-	// check for valid database
-	if db.inst == nil {
-		return ErrDatabaseNotAvailable
+func (mdl *Model) NextUpdate(ID int64, reset bool) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
 	}
 	// set next wait time
 	wt := "least(2*waitCheck,604800)"
@@ -404,61 +442,61 @@ func (db *Database) NextUpdate(ID int64, reset bool) error {
 		wt = "300"
 	}
 	now := time.Now().Unix()
-	_, err := db.inst.Exec(
+	_, err := mdl.inst.Exec(
 		"update addr set lastCheck=?,waitCheck="+wt+
 			",nextCheck=nextCheck+"+wt+" where id=?", now, ID)
 	return err
 }
 
 // CloseAddress closes an address; no further usage (except spending)
-func (db *Database) CloseAddress(ID int64) error {
-	// check for valid database
-	if db.inst == nil {
-		return ErrDatabaseNotAvailable
+func (mdl *Model) CloseAddress(ID int64) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
 	}
-	// close address in database
-	_, err := db.inst.Exec("update addr set stat=1, validTo=now() where id=?", ID)
+	// close address in model
+	_, err := mdl.inst.Exec("update addr set stat=1, validTo=now() where id=?", ID)
 	return err
 }
 
 // LockAddress locks an address after spending
-func (db *Database) LockAddress(ID int64) error {
-	// check for valid database
-	if db.inst == nil {
-		return ErrDatabaseNotAvailable
+func (mdl *Model) LockAddress(ID int64) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
 	}
-	// lock address in database
-	_, err := db.inst.Exec("update addr set stat=2 where id=?", ID)
+	// lock address in model
+	_, err := mdl.inst.Exec("update addr set stat=2 where id=?", ID)
 	return err
 }
 
 // SyncAddress tags an address for immediate balance update
-func (db *Database) SyncAddress(ID int64) error {
-	// check for valid database
-	if db.inst == nil {
-		return ErrDatabaseNotAvailable
+func (mdl *Model) SyncAddress(ID int64) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
 	}
 	// enforce update now
 	now := time.Now().Unix()
-	_, err := db.inst.Exec("update addr set nextCheck=? where id=?", now, ID)
+	_, err := mdl.inst.Exec("update addr set nextCheck=? where id=?", now, ID)
 	return err
 }
 
 // GetAddressInfo returns basic info about an address
-func (db *Database) GetAddressInfo(ID int64) (addr, coin string, balance, rate float64, err error) {
-	// check for valid database
-	if db.inst == nil {
-		return "", "", 0, 0, ErrDatabaseNotAvailable
+func (mdl *Model) GetAddressInfo(ID int64) (addr, coin string, balance, rate float64, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return "", "", 0, 0, ErrModelNotAvailable
 	}
 	// get information about coin address
-	row := db.inst.QueryRow("select coin,val,balance,rate from v_addr where id=?", ID)
+	row := mdl.inst.QueryRow("select coin,val,balance,rate from v_addr where id=?", ID)
 	err = row.Scan(&coin, &addr, &balance, &rate)
 	return
 }
 
 // AddrInfo holds information about an address
 type AddrInfo struct {
-	ID         int64   `json:"id"`         // database id of address entry
+	ID         int64   `json:"id"`         // id of address entry
 	Status     int     `json:"status"`     // address status
 	Coin       string  `json:"coin"`       // name of coin
 	Account    string  `json:"account"`    // name of account
@@ -476,10 +514,10 @@ type AddrInfo struct {
 }
 
 // GetAddress returns a list of active adresses
-func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInfo, err error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInfo, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
 	// assemble WHERE clause
 	clause := ""
@@ -510,7 +548,7 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 
 	// get information about active addresses
 	var rows *sql.Rows
-	if rows, err = db.inst.Query(query); err != nil {
+	if rows, err = mdl.inst.Query(query); err != nil {
 		return nil, err
 	}
 	defer rows.Close()
@@ -562,13 +600,13 @@ func (db *Database) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInf
 }
 
 // UpdateBalance sets the new balance for an address
-func (db *Database) UpdateBalance(ID int64, balance float64) error {
-	// check for valid database
-	if db.inst == nil {
-		return ErrDatabaseNotAvailable
+func (mdl *Model) UpdateBalance(ID int64, balance float64) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
 	}
-	// update balance in database
-	_, err := db.inst.Exec("update addr set balance=? where id=?", balance, ID)
+	// update balance in model
+	_, err := mdl.inst.Exec("update addr set balance=? where id=?", balance, ID)
 	return err
 }
 
@@ -578,7 +616,7 @@ func (db *Database) UpdateBalance(ID int64, balance float64) error {
 
 // CountAssignments returns the number of assignments between coins and
 // accounts. An ID of "0" means "all".
-func (db *Database) CountAssignments(coin, accnt int64) int {
+func (mdl *Model) CountAssignments(coin, accnt int64) int {
 	// assemble WHERE clause
 	clause := ""
 	addClause := func(id int64, field string) {
@@ -597,7 +635,7 @@ func (db *Database) CountAssignments(coin, accnt int64) int {
 	if len(clause) > 0 {
 		query += " where" + clause
 	}
-	row := db.inst.QueryRow(query)
+	row := mdl.inst.QueryRow(query)
 	var count int
 	if err := row.Scan(&count); err != nil {
 		logger.Printf(logger.ERROR, "CountAssign: "+err.Error())
@@ -607,11 +645,11 @@ func (db *Database) CountAssignments(coin, accnt int64) int {
 }
 
 // ChangeAssignment adds or removes coin/account assignments
-func (db *Database) ChangeAssignment(coin, accnt int64, add bool) (err error) {
+func (mdl *Model) ChangeAssignment(coin, accnt int64, add bool) (err error) {
 	if add {
-		_, err = db.inst.Exec("insert ignore into accept(coin,accnt) values(?,?)", coin, accnt)
+		_, err = mdl.inst.Exec("insert ignore into accept(coin,accnt) values(?,?)", coin, accnt)
 	} else {
-		_, err = db.inst.Exec("delete from accept where coin=? and accnt=?", coin, accnt)
+		_, err = mdl.inst.Exec("delete from accept where coin=? and accnt=?", coin, accnt)
 	}
 	return
 }
@@ -620,9 +658,9 @@ func (db *Database) ChangeAssignment(coin, accnt int64, add bool) (err error) {
 // Account-related methods
 //----------------------------------------------------------------------
 
-// AccntInfo holds information about an account in the database.
+// AccntInfo holds information about an account in the model.
 type AccntInfo struct {
-	ID    int64   `json:"id"`    // database ID of account record
+	ID    int64   `json:"id"`    // Id of account record
 	Label string  `json:"label"` // account label
 	Name  string  `json:"name"`  // account name
 	Total float64 `json:"total"` // total balance of account (in fiat currency)
@@ -631,10 +669,10 @@ type AccntInfo struct {
 }
 
 // GetAccounts list all accounts with their total balance (in fiat currency)
-func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
 	// assemble query
 	query := `
@@ -651,7 +689,7 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 
 	// select account information
 	var rows *sql.Rows
-	if rows, err = db.inst.Query(query); err != nil {
+	if rows, err = mdl.inst.Query(query); err != nil {
 		return
 	}
 	defer rows.Close()
@@ -678,7 +716,7 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 			ai.NumTx = refs.Int64
 		}
 		// get associated coins for account
-		if ai.Coins, err = db.getItems(`
+		if ai.Coins, err = mdl.getItems(`
 			select
   				coin.id as id,
   				coin.label as name,
@@ -720,13 +758,13 @@ func (db *Database) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 }
 
 // NewAccount creates a new account with given label and name.
-func (db *Database) NewAccount(label, name string) error {
-	// check for valid database
-	if db.inst == nil {
-		return ErrDatabaseNotAvailable
+func (mdl *Model) NewAccount(label, name string) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
 	}
-	// insert new record into database
-	_, err := db.inst.Exec("insert into account(label,name) values(?,?)", label, name)
+	// insert new record into model
+	_, err := mdl.inst.Exec("insert into account(label,name) values(?,?)", label, name)
 	return err
 }
 
@@ -746,21 +784,21 @@ type Transaction struct {
 }
 
 // NewTransaction creates a new pending transaction for a given coin/account pair
-func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) NewTransaction(coin, account string) (tx *Transaction, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
-	// start database transaction
+	// start repository transaction
 	ctx := context.Background()
-	var dbtx *sql.Tx
-	if dbtx, err = db.inst.BeginTx(ctx, nil); err != nil {
+	var mdltx *sql.Tx
+	if mdltx, err = mdl.inst.BeginTx(ctx, nil); err != nil {
 		return
 	}
 	// get an address
 	var addr string
-	if addr, err = db.getUnusedAddress(dbtx, coin, account); err != nil {
-		dbtx.Rollback()
+	if addr, err = mdl.getUnusedAddress(mdltx, coin, account); err != nil {
+		mdltx.Rollback()
 		return
 	}
 
@@ -779,36 +817,36 @@ func (db *Database) NewTransaction(coin, account string) (tx *Transaction, err e
 	}
 	var addrID int64
 	var accnt sql.NullString
-	row := dbtx.QueryRow("select id,coin,account from v_addr where val=?", addr)
+	row := mdltx.QueryRow("select id,coin,account from v_addr where val=?", addr)
 	if err = row.Scan(&addrID, &tx.Coin, &accnt); err != nil {
-		dbtx.Rollback()
+		mdltx.Rollback()
 		return
 	}
 	if accnt.Valid {
 		tx.Accnt = accnt.String
 	}
-	// insert transaction into database
-	if _, err = dbtx.Exec(
+	// insert transaction into model
+	if _, err = mdltx.Exec(
 		"insert into tx(txid,addr,validFrom,validTo) values(?,?,?,?)",
 		tx.ID, addrID, tx.ValidFrom, tx.ValidTo); err != nil {
-		dbtx.Rollback()
+		mdltx.Rollback()
 		return
 	}
 	// increment ref counter in address
-	if _, err = dbtx.Exec("update addr set refCnt=refCnt+1,lastTx=? where id=?", now, addrID); err != nil {
-		dbtx.Rollback()
+	if _, err = mdltx.Exec("update addr set refCnt=refCnt+1,lastTx=? where id=?", now, addrID); err != nil {
+		mdltx.Rollback()
 		return
 	}
-	// commit database transaction
-	err = dbtx.Commit()
+	// commit repository transaction
+	err = mdltx.Commit()
 	return
 }
 
 // GetTransactions returns a list of Tx instances for a given address
-func (db *Database) GetTransactions(addrId, accntId, coinId int64) (txs []*Transaction, err error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) GetTransactions(addrId, accntId, coinId int64) (txs []*Transaction, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
 	// assemble WHERE clause
 	clause := ""
@@ -831,9 +869,9 @@ func (db *Database) GetTransactions(addrId, accntId, coinId int64) (txs []*Trans
 	}
 	query += " order by validFrom desc"
 
-	// query database for transactions of given address
+	// query model for transactions of given address
 	var rows *sql.Rows
-	if rows, err = db.inst.Query(query); err != nil {
+	if rows, err = mdl.inst.Query(query); err != nil {
 		return
 	}
 	defer rows.Close()
@@ -850,15 +888,15 @@ func (db *Database) GetTransactions(addrId, accntId, coinId int64) (txs []*Trans
 }
 
 // GetTransaction returns the Tx instance for a given identifier
-func (db *Database) GetTransaction(txid string) (tx *Transaction, err error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) GetTransaction(txid string) (tx *Transaction, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
-	// get information about transaction from database
+	// get information about transaction from model
 	tx = new(Transaction)
 	tx.ID = txid
-	row := db.inst.QueryRow(
+	row := mdl.inst.QueryRow(
 		"select addr,coin,account,stat,validFrom,validTo from v_tx where txid=?", txid)
 	err = row.Scan(&tx.Addr, &tx.Coin, &tx.Accnt, &tx.Status, &tx.ValidFrom, &tx.ValidTo)
 	return
@@ -866,14 +904,14 @@ func (db *Database) GetTransaction(txid string) (tx *Transaction, err error) {
 
 // GetExpiredTransactions collects transactions that have expired.
 // Returns a mapping between transaction and associated address.
-func (db *Database) GetExpiredTransactions() (map[int64]int64, error) {
-	// check for valid database
-	if db.inst == nil {
-		return nil, ErrDatabaseNotAvailable
+func (mdl *Model) GetExpiredTransactions() (map[int64]int64, error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
 	}
 	// collect expired transactions
 	t := time.Now().Unix()
-	rows, err := db.inst.Query("select id,addr from tx where stat=0 and validTo<?", t)
+	rows, err := mdl.inst.Query("select id,addr from tx where stat=0 and validTo<?", t)
 	if err != nil {
 		return nil, err
 	}
@@ -891,13 +929,13 @@ func (db *Database) GetExpiredTransactions() (map[int64]int64, error) {
 }
 
 // CloseTransaction closes a pending transaction.
-func (db *Database) CloseTransaction(txID int64) error {
-	// check for valid database
-	if db.inst == nil {
-		return ErrDatabaseNotAvailable
+func (mdl *Model) CloseTransaction(txID int64) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
 	}
-	// close transaction in database
-	_, err := db.inst.Exec("update tx set stat=1 where id=?", txID)
+	// close transaction in model
+	_, err := mdl.inst.Exec("update tx set stat=1 where id=?", txID)
 	return err
 }
 
@@ -907,12 +945,12 @@ func (db *Database) CloseTransaction(txID int64) error {
 
 // UpdateRate sets the new exchange rate (in market base currency) for
 // the given coin.
-func (db *Database) UpdateRate(coin string, rate float64) error {
-	// check for valid database
-	if db.inst == nil {
-		return ErrDatabaseNotAvailable
+func (mdl *Model) UpdateRate(coin string, rate float64) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
 	}
 	// update rate in coin record
-	_, err := db.inst.Exec("update coin set rate=? where symbol=?", rate, coin)
+	_, err := mdl.inst.Exec("update coin set rate=? where symbol=?", rate, coin)
 	return err
 }
