@@ -566,9 +566,7 @@ func (db *Database) UpdateBalance(ID int64, balance float64) error {
 		return ErrDatabaseNotAvailable
 	}
 	// update balance in database
-	_, err := db.inst.Exec(
-		"update addr set balance=? where id=?",
-		balance, time.Now().Unix(), ID)
+	_, err := db.inst.Exec("update addr set balance=? where id=?", balance, ID)
 	return err
 }
 
