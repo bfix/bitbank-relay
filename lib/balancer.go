@@ -101,7 +101,7 @@ func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan in
 					continue
 				}
 				pid++
-				logger.Printf(logger.INFO, "Balancer[%d] update addr=%s (%.5f %s)...", pid, addr, balance, coin)
+				logger.Printf(logger.INFO, "Balancer[%d] update addr=%s (%f %s)...", pid, addr, balance, coin)
 
 				// get new address balance
 				go func(pid int) {
@@ -128,12 +128,17 @@ func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan in
 						return
 					}
 					logger.Printf(logger.INFO, "Balancer[%d] => new balance: %f", pid, newBalance)
-					balance = newBalance
 					flag = true
 
 					// update balance in model
-					if err = mdl.UpdateBalance(ID, balance); err != nil {
+					if err = mdl.UpdateBalance(ID, newBalance); err != nil {
 						logger.Printf(logger.ERROR, "Balancer[%d] update failed: %s", pid, err.Error())
+						return
+					}
+					// record incoming funds
+					diff := newBalance - balance
+					if err = mdl.Incoming(ID, diff); err != nil {
+						logger.Printf(logger.ERROR, "Balancer[%d] record incoming failed: %s", pid, err.Error())
 						return
 					}
 					// check if account limit is reached...
@@ -142,6 +147,7 @@ func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan in
 						logger.Printf(logger.INFO, "Balancer[%d]: Closing address '%s' with balance=%f", pid, addr, balance)
 						if err = mdl.CloseAddress(ID); err != nil {
 							logger.Printf(logger.ERROR, "Balancer[%d] CloseAddress: %s", pid, err.Error())
+							return
 						}
 					}
 				}(pid)

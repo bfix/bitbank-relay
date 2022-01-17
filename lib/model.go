@@ -610,6 +610,18 @@ func (mdl *Model) UpdateBalance(ID int64, balance float64) error {
 	return err
 }
 
+// Incoming records funds received by an address
+func (mdl *Model) Incoming(ID int64, amount float64) error {
+	// check for valid repository
+	if mdl.inst == nil {
+		return ErrModelNotAvailable
+	}
+	// insert funding statement
+	now := time.Now().Unix()
+	_, err := mdl.inst.Exec("insert into incoming(firstSeen,addr,amount) values(?,?,?)", now, ID, amount)
+	return err
+}
+
 //----------------------------------------------------------------------
 // Assignement-related methods.
 //----------------------------------------------------------------------

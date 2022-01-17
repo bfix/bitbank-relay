@@ -28,7 +28,7 @@ create table coin (
     symbol varchar(7)  not null unique, -- coin symbol (lowercase short name)
     label  varchar(63) default null,    -- coin long name / description
     logo   text        default null,    -- coin logo (base64-encoded SVG)
-    rate   float       default 0.0      -- market data for coin
+    rate   float(53)   default 0.0      -- market data for coin
 );
 
 -- account is a receiver for cryptocoins
@@ -57,7 +57,7 @@ create table addr (
                                                                      --  2 = removed (after balance is transfered)
     accnt     integer      references account(id) on delete cascade, -- reference to account
     refCnt    integer      default 0,                                -- reference count (transactions)
-    balance   float        default 0.0,                              -- address balance
+    balance   float(53)    default 0.0,                              -- address balance
     lastCheck integer      default 0,                                -- last balance check timestamp
     nextCheck integer      default 0,                                -- next balance check timestamp
     waitCheck integer      default 300,                              -- current wait time (seconds) between checks
@@ -76,6 +76,13 @@ create table tx (
                                                                  --  1 = expired
     validFrom integer     not null,                              -- transaction life-span (start)
     validTo   integer     not null                               -- transaction life-span (end)
+);
+
+-- incoming funds
+create table incoming (
+    firstSeen integer     default 0,                             -- time funds first seen
+    addr      integer     references addr(id) on delete cascade, -- receiving address
+    amount    float(53)   default 0.0                            -- amount of funds
 );
 
 -- ---------------------------------------------------------------------
@@ -139,3 +146,14 @@ from
     tx t, addr a, account b, coin c
 where
     t.addr = a.id and a.accnt = b.id and a.coin = c.id;
+
+-- view on incoming funds
+create view v_incoming as select
+    i.firstSeen as firstSeen, -- time funds first seen
+    p.name as account,        -- receiver label
+    c.label as coin,          -- coin symbol
+    i.amount as amount        -- amount of funds
+from
+    incoming i, addr a, account p, coin c
+where
+    i.addr = a.id and a.accnt = p.id and a.coin = c.id;
