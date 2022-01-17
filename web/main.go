@@ -84,6 +84,7 @@ func main() {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
+	logger.Println(logger.INFO, "   Added coins: "+coins)
 	logger.Println(logger.INFO, "Done.")
 
 	// Prepare context
