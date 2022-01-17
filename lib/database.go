@@ -373,7 +373,7 @@ func (db *Database) PendingAddresses() ([]int64, error) {
 	}
 	// get list of pending addresses
 	now := time.Now().Unix()
-	rows, err := db.inst.Query("select id from addr where stat<2 and (?-nextCheck)<0", now)
+	rows, err := db.inst.Query("select id from addr where stat<2 and (?-nextCheck)>=0", now)
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +389,7 @@ func (db *Database) PendingAddresses() ([]int64, error) {
 	return res, nil
 }
 
-// NextUpdate calculates the time for the next update and the asociated
+// NextUpdate calculates the time for the next update and the associated
 // wait time depending on the reset flag. If reset, the wait time starts
 // at 5 minutes (300 sec), otherwise it is doubled before calculating the
 // next update time.
@@ -399,12 +399,14 @@ func (db *Database) NextUpdate(ID int64, reset bool) error {
 		return ErrDatabaseNotAvailable
 	}
 	// set next wait time
-	wt := "2*waitCheck"
+	wt := "least(2*waitCheck,604800)"
 	if reset {
 		wt = "300"
 	}
-	_, err := db.inst.Exec("update addr set waitCheck="+wt+
-		",nextCheck=nextCheck+"+wt+" where id=?", ID)
+	now := time.Now().Unix()
+	_, err := db.inst.Exec(
+		"update addr set lastCheck=?,waitCheck="+wt+
+			",nextCheck=nextCheck+"+wt+" where id=?", now, ID)
 	return err
 }
 
