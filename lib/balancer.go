@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/bfix/gospel/logger"
 	"github.com/bfix/gospel/network"
@@ -104,7 +105,9 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 
 				// get new address balance
 				go func(pid int) {
+					flag := false
 					defer func() {
+						db.NextUpdate(ID, flag)
 						delete(running, ID)
 					}()
 					// get matching handler
@@ -120,16 +123,17 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 						return
 					}
 					// update balance if increased
-					if newBalance > balance {
-						logger.Printf(logger.INFO, "Balancer[%d] => new balance: %f", pid, newBalance)
-						balance = newBalance
-						db.NextUpdate(ID, true)
-					} else {
-						db.NextUpdate(ID, false)
+					if newBalance <= balance {
+						return
 					}
+					logger.Printf(logger.INFO, "Balancer[%d] => new balance: %f", pid, newBalance)
+					balance = newBalance
+					flag = true
+
 					// update balance in database
 					if err = db.UpdateBalance(ID, balance); err != nil {
 						logger.Printf(logger.ERROR, "Balancer[%d] update failed: %s", pid, err.Error())
+						return
 					}
 					// check if account limit is reached...
 					if cfg.AccountLimit < balance*rate {
@@ -154,16 +158,30 @@ func StartBalancer(ctx context.Context, db *Database, cfg *BalancerConfig) chan 
 // BTC (Bitcoin)
 //----------------------------------------------------------------------
 
-var btcLimiter = network.NewRateLimiter(0, 6)
+var btcLimiter = network.NewRateLimiter(1, 6)
+
+type BtcAddrInfo struct {
+	Hash160  string `json:"hash160"`
+	Address  string `json:"address"`
+	NTx      int    `json:"n_tx"`
+	Nur      int    `json:"n_unredeemed"`
+	Received int64  `json:"total_received"`
+	Sent     int64  `json:"total_sent"`
+	Balance  int64  `json:"final_balance"`
+}
 
 // BtcBalancer gets the balance of a Bitcoin address
 func BtcBalancer(addr string) (float64, error) {
 	// honor rate limits
 	btcLimiter.Pass()
 
+	// time-out HTTP client
+	cl := http.Client{
+		Timeout: time.Minute,
+	}
 	// assemble query
-	query := fmt.Sprintf("https://blockchain.info/q/addressbalance/%s?confirmations=0", addr)
-	resp, err := http.Get(query)
+	query := fmt.Sprintf("https://blockchain.info/rawaddr/%s", addr)
+	resp, err := cl.Get(query)
 	if err != nil {
 		return -1, err
 	}
@@ -173,12 +191,12 @@ func BtcBalancer(addr string) (float64, error) {
 	if err != nil {
 		return -1, err
 	}
-	val, err := strconv.ParseFloat(string(body), 64)
-	if err != nil {
+	data := new(BtcAddrInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
 		return -1, err
 	}
 	// return balance
-	return val / 1e8, nil
+	return float64(data.Received) / 1e8, nil
 }
 
 //----------------------------------------------------------------------
@@ -215,9 +233,13 @@ func EthBalancer(addr string) (float64, error) {
 	// honor rate limit
 	ethLimiter.Pass()
 
+	// time-out HTTP client
+	cl := http.Client{
+		Timeout: time.Minute,
+	}
 	// assemble and execute GET request
 	query := fmt.Sprintf("https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey", addr)
-	resp, err := http.Get(query)
+	resp, err := cl.Get(query)
 	if err != nil {
 		return -1, err
 	}
@@ -257,9 +279,13 @@ func ZecBalancer(addr string) (float64, error) {
 	// honor rate limits
 	zecLimiter.Pass()
 
+	// time-out HTTP client
+	cl := http.Client{
+		Timeout: time.Minute,
+	}
 	// assemble query
 	query := fmt.Sprintf("https://api.zcha.in/v2/mainnet/accounts/%s", addr)
-	resp, err := http.Get(query)
+	resp, err := cl.Get(query)
 	if err != nil {
 		return -1, err
 	}
@@ -312,9 +338,13 @@ func BtgBalancer(addr string) (float64, error) {
 	// honor rate limits
 	btgLimiter.Pass()
 
+	// time-out HTTP client
+	cl := http.Client{
+		Timeout: time.Minute,
+	}
 	// assemble query
 	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
-	resp, err := http.Get(query)
+	resp, err := cl.Get(query)
 	if err != nil {
 		return -1, err
 	}
@@ -405,9 +435,13 @@ func CciBalancer(coin, addr string) (float64, error) {
 	// honor rate limit
 	cciLimiter.Pass()
 
+	// time-out HTTP client
+	cl := http.Client{
+		Timeout: time.Minute,
+	}
 	// assemble query
 	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=getbalance&a=%s", coin, addr)
-	resp, err := http.Get(query)
+	resp, err := cl.Get(query)
 	if err != nil {
 		return -1, err
 	}
@@ -485,12 +519,16 @@ var bchairLimiter = network.NewRateLimiter(5, 30, 0, 1440)
 func BlockchairGet(coin, addr string) (float64, error) {
 	bchairLimiter.Pass()
 
+	// time-out HTTP client
+	cl := http.Client{
+		Timeout: time.Minute,
+	}
 	// query API
 	query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/address/%s", coin, addr)
 	if k, ok := apikeys["blockchair"]; ok {
 		query += fmt.Sprintf("?key=%s", k)
 	}
-	resp, err := http.Get(query)
+	resp, err := cl.Get(query)
 	if err != nil {
 		return -1, err
 	}
