@@ -250,4 +250,25 @@ modern browser.
 
 ### Managing addresses
 
-Coin addresses have some 
+Addresses only need to be managed manually if funds from an address are
+about to transfered out (e.g. for cashing in).
+
+Coin addresses have some model-related logic that is governed by its state.
+The address state can be either OPEN(0), CLOSED(1) or LOCKED(2).
+
+An address is generated, if a request for a specific coin/account pair does
+not have an open address associated with it. A new address is in state OPEN.
+
+If incoming funds on an address reach a certain custom threshold, the address
+is automatically CLOSED and will not be used in client sessions.
+
+Prior to transferring the funds from an address the address should be manually
+LOCKED in the management GUI. N.B.: For safety reasons it is recommended to
+only transfer funds out of an address if the address is LOCKED!
+
+Adress balances are updated for OPEN and CLOSED addresses. If an open address
+is used in a client session, the wait time until the next balance check is
+set a custom minimum wait time. If the new balance (received funds) is greater
+than the old balance, the wait time is also (re-)set to the minimum wait time;
+otherwise the wait time is multiplied with a custom factor and capped at the
+defined maximum wait time.

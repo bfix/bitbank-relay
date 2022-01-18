@@ -8,7 +8,9 @@
   },
   "model": {
     "dbEngine": "mysql",
-    "dbConnect": "bb_relay:bb_relay@tcp(127.0.0.1:3306)/BB_Relay"
+    "dbConnect": "bb_relay:bb_relay@tcp(127.0.0.1:3306)/BB_Relay",
+    "balanceWait": [ 300, 2, 604800 ],
+    "txTTL": 900
   },
   "balancer": {
     "accountLimit": 10000,

@@ -397,7 +397,9 @@ func (mdl *Model) getUnusedAddress(mdltx *sql.Tx, coin, account string) (addr st
 	if addr, err = hdlr.GetAddress(idx); err != nil {
 		return
 	}
-	_, err = mdltx.Exec("insert into addr(coin,accnt,idx,val) values(?,?,?,?)", coinID, accntID, idx, addr)
+	_, err = mdltx.Exec(
+		"insert into addr(coin,accnt,idx,val,waitCheck) values(?,?,?,?,?)",
+		coinID, accntID, idx, addr, mdl.cfg.BalanceWait[0])
 	logger.Printf(logger.INFO, "[addr] New address '%s' for account '%s'", addr, account)
 	return
 }
@@ -437,9 +439,9 @@ func (mdl *Model) NextUpdate(ID int64, reset bool) error {
 		return ErrModelNotAvailable
 	}
 	// set next wait time
-	wt := "least(2*waitCheck,604800)"
+	wt := fmt.Sprintf("least(%d*waitCheck,%d)", mdl.cfg.BalanceWait[1], mdl.cfg.BalanceWait[2])
 	if reset {
-		wt = "300"
+		wt = fmt.Sprintf("%d", mdl.cfg.BalanceWait[0])
 	}
 	now := time.Now().Unix()
 	_, err := mdl.inst.Exec(
@@ -825,7 +827,7 @@ func (mdl *Model) NewTransaction(coin, account string) (tx *Transaction, err err
 		Addr:      addr,
 		Status:    0,
 		ValidFrom: now,
-		ValidTo:   now + 900,
+		ValidTo:   now + int64(mdl.cfg.TxTTL),
 	}
 	var addrID int64
 	var accnt sql.NullString
