@@ -123,7 +123,8 @@ func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan in
 						return
 					}
 					// update balance if increased
-					if newBalance <= balance {
+					diff := newBalance - balance
+					if diff < 1e-8 {
 						logger.Printf(logger.INFO, "Balancer[%d] unchanged balance (%f)", pid, balance)
 						return
 					}
@@ -136,7 +137,6 @@ func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan in
 						return
 					}
 					// record incoming funds
-					diff := newBalance - balance
 					if err = mdl.Incoming(ID, diff); err != nil {
 						logger.Printf(logger.ERROR, "Balancer[%d] record incoming failed: %s", pid, err.Error())
 						return
