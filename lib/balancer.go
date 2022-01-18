@@ -25,8 +25,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bfix/gospel/logger"
@@ -197,6 +199,17 @@ func BtcBalancer(addr string) (float64, error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
+	}
+	content := string(body)
+	if strings.HasPrefix(content, "error") {
+		switch content {
+		case "error code: 1015":
+			// timeout: sleep for some time (mean: 10 minutes)
+			delay := WaitTime(600)
+			logger.Printf(logger.WARN, "Timeout (%s): delaying for %s seconds", delay)
+			time.Sleep(delay)
+		}
+		return -1, fmt.Errorf(content)
 	}
 	data := new(BtcAddrInfo)
 	if err = json.Unmarshal(body, &data); err != nil {
@@ -556,4 +569,16 @@ func BlockchairGet(coin, addr string) (float64, error) {
 	}
 	// return response
 	return float64(data.Data[addr].Address.Balance) / 1e8, nil
+}
+
+//======================================================================
+// Helper functions
+//======================================================================
+
+func WaitTime(t int) time.Duration {
+	d := rand.ExpFloat64() * float64(t) * 1000
+	if d < 2000 {
+		d *= 100.
+	}
+	return time.Duration(d) * time.Millisecond
 }
