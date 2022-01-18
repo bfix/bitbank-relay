@@ -89,7 +89,7 @@ func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan in
 				}
 				// ignore request for already pending address
 				if _, ok := running[ID]; ok {
-					return
+					break
 				}
 				running[ID] = true
 
@@ -98,7 +98,7 @@ func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan in
 				if err != nil {
 					logger.Printf(logger.ERROR, "Balancer: can't retrieve address #%d", ID)
 					logger.Println(logger.ERROR, "=> "+err.Error())
-					continue
+					break
 				}
 				pid++
 				logger.Printf(logger.INFO, "Balancer[%d] update addr=%s (%f %s)...", pid, addr, balance, coin)
