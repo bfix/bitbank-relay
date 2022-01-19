@@ -44,6 +44,7 @@ type Handler struct {
 	netw     int              // network (Main, Test, Reg)
 	tree     *wallet.HDPublic // HDKD for public keys
 	balancer Balancer         // address balance handler for coin
+	reporter FundLister       // list funds received by address
 	pathTpl  string           // path template for indexing addresses
 	explorer string           // Explorer URL for address
 }
@@ -74,6 +75,13 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 	if !ok {
 		b = nil
 	}
+
+	// fund lister function for coin
+	r, ok := fundlister[coin.Symb]
+	if !ok {
+		r = nil
+	}
+
 	// assemble handler for given coin
 	return &Handler{
 		coin:     coinID,
@@ -82,6 +90,7 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 		netw:     network,
 		tree:     wallet.NewHDPublic(pk, coin.Path),
 		balancer: b,
+		reporter: r,
 		pathTpl:  path,
 		explorer: coin.Explorer,
 	}, nil
@@ -108,6 +117,11 @@ func (hdlr *Handler) GetAddress(idx int) (string, error) {
 // GetBalance returns the balance for a given address
 func (hdlr *Handler) GetBalance(addr string) (float64, error) {
 	return hdlr.balancer(addr)
+}
+
+// GetTxList returns a list of transaction for an address
+func (hdlr *Handler) GetFunds(addr int64) ([]*Fund, error) {
+	return hdlr.reporter(addr)
 }
 
 //----------------------------------------------------------------------

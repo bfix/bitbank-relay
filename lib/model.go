@@ -199,17 +199,17 @@ func (mdl *Model) getItems(query string, args ...interface{}) (list []*Item, err
 
 // CoinInfo contains information about a coin
 type CoinInfo struct {
-	Symbol string  `json:"symb"`
-	Label  string  `json:"label"`
-	Logo   string  `json:"logo"`
-	Rate   float64 `json:"rate"` // price of coin in fiat currency
+	ID     int64   `json:"id"`    // repository ID of coin entry
+	Symbol string  `json:"symb"`  // Ticker symbol of coin
+	Label  string  `json:"label"` // Full coin name
+	Logo   string  `json:"logo"`  // SVG-encoded coin logo
+	Rate   float64 `json:"rate"`  // price of coin in fiat currency
 }
 
 // AccCoinInfo holds information about a coin and the
 // accumulated balance of the coin over all accounts.
 type AccCoinInfo struct {
 	CoinInfo
-	ID     int64   `json:"id"`     // repository ID of coin entry
 	Total  float64 `json:"total"`  // total balance in coins
 	NumTx  int     `json:"numTx"`  // number of transactions for this coin
 	Accnts []*Item `json:"accnts"` // (assigned) accounts
@@ -222,7 +222,7 @@ func (mdl *Model) GetCoins(account string) ([]*CoinInfo, error) {
 		return nil, ErrModelNotAvailable
 	}
 	// select coins for given account
-	rows, err := mdl.inst.Query("select coin,label,logo,rate from v_coin_accnt where account=?", account)
+	rows, err := mdl.inst.Query("select coinId,coin,label,logo,rate from v_coin_accnt where account=?", account)
 	if err != nil {
 		return nil, err
 	}
@@ -230,12 +230,26 @@ func (mdl *Model) GetCoins(account string) ([]*CoinInfo, error) {
 	list := make([]*CoinInfo, 0)
 	for rows.Next() {
 		e := new(CoinInfo)
-		if err = rows.Scan(&e.Symbol, &e.Label, &e.Logo, &e.Rate); err != nil {
+		if err = rows.Scan(&e.ID, &e.Symbol, &e.Label, &e.Logo, &e.Rate); err != nil {
 			return nil, err
 		}
 		list = append(list, e)
 	}
 	return list, nil
+}
+
+// GetCoinInfo returns coin information for given id
+func (mdl *Model) GetCoinInfo(coinID int64) (*CoinInfo, error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return nil, ErrModelNotAvailable
+	}
+	// select coin for given ID
+	row := mdl.inst.QueryRow("select symbol,label,logo,rate from coin where id=?", coinID)
+	e := new(CoinInfo)
+	e.ID = coinID
+	err := row.Scan(&e.Symbol, &e.Label, &e.Logo, &e.Rate)
+	return e, err
 }
 
 // GetCoin get information for a given coin.
@@ -245,10 +259,22 @@ func (mdl *Model) GetCoin(symb string) (ci *CoinInfo, err error) {
 		return nil, ErrModelNotAvailable
 	}
 	// select coin information
-	row := mdl.inst.QueryRow("select label,logo,rate from coin where symbol=?", symb)
+	row := mdl.inst.QueryRow("select id,label,logo,rate from coin where symbol=?", symb)
 	ci = new(CoinInfo)
 	ci.Symbol = symb
-	err = row.Scan(&ci.Label, &ci.Logo, &ci.Rate)
+	err = row.Scan(&ci.ID, &ci.Label, &ci.Logo, &ci.Rate)
+	return
+}
+
+// GetCoinID returns the repository ID of a coin
+func (mdl *Model) GetCoinID(label string) (id int64, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return 0, ErrModelNotAvailable
+	}
+	// query ID
+	row := mdl.inst.QueryRow("select id from coin where label=?", label)
+	err = row.Scan(&id)
 	return
 }
 
@@ -496,12 +522,26 @@ func (mdl *Model) GetAddressInfo(ID int64) (addr, coin string, balance, rate flo
 	return
 }
 
+// GetAddressID returns the repository ID of an address
+func (mdl *Model) GetAddressID(addr string) (id int64, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return 0, ErrModelNotAvailable
+	}
+	// query ID
+	row := mdl.inst.QueryRow("select id from addr where val=?", addr)
+	err = row.Scan(&id)
+	return
+}
+
 // AddrInfo holds information about an address
 type AddrInfo struct {
 	ID         int64   `json:"id"`         // id of address entry
 	Status     int     `json:"status"`     // address status
-	Coin       string  `json:"coin"`       // name of coin
+	CoinName   string  `json:"coin"`       // name of coin
+	CoinSymb   string  `json:"coinID"`     // coin symbol
 	Account    string  `json:"account"`    // name of account
+	AccntLabel string  `json:"accntLabel"` // account label
 	Val        string  `json:"value"`      // address value
 	Balance    float64 `json:"balance"`    // address balance
 	Rate       float64 `json:"rate"`       // coin value (price per coin)
@@ -541,7 +581,7 @@ func (mdl *Model) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInfo,
 		addClause(accnt, "accntId")
 	}
 	// assemble SELECT statement
-	query := "select id,coin,coinName,val,balance,rate,stat,accountName," +
+	query := "select id,coin,coinName,val,balance,rate,stat,account,accountName," +
 		"cnt,lastCheck,nextCheck,waitCheck,lastTx,validFrom,validTo from v_addr"
 	if len(clause) > 0 {
 		query += " where" + clause
@@ -559,11 +599,10 @@ func (mdl *Model) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInfo,
 		var (
 			last, next, tx sql.NullInt64
 			from, to       sql.NullString
-			symbol         string
 		)
 		if err = rows.Scan(
-			&addr.ID, &symbol, &addr.Coin, &addr.Val, &addr.Balance,
-			&addr.Rate, &addr.Status, &addr.Account, &addr.RefCount,
+			&addr.ID, &addr.CoinSymb, &addr.CoinName, &addr.Val, &addr.Balance,
+			&addr.Rate, &addr.Status, &addr.AccntLabel, &addr.Account, &addr.RefCount,
 			&last, &next, &addr.WaitCheck, &tx, &from, &to); err != nil {
 			return
 		}
@@ -592,7 +631,7 @@ func (mdl *Model) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInfo,
 			addr.ValidUntil = to.String
 		}
 		// set explorer link
-		if hdlr, ok := HdlrList[symbol]; ok {
+		if hdlr, ok := HdlrList[addr.CoinSymb]; ok {
 			addr.Explorer = fmt.Sprintf(hdlr.explorer, addr.Val)
 		}
 		// add address info to list
@@ -622,6 +661,34 @@ func (mdl *Model) Incoming(ID int64, amount float64) error {
 	now := time.Now().Unix()
 	_, err := mdl.inst.Exec("insert into incoming(firstSeen,addr,amount) values(?,?,?)", now, ID, amount)
 	return err
+}
+
+// Fund represents an entry in the 'incoming' table (incoming fund)
+type Fund struct {
+	Seen   int64
+	Addr   int64
+	Amount float64
+}
+
+// GetFunds return a list of funds for given address
+func (mdl *Model) GetFunds(addr int64) (list []*Fund, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		err = ErrModelNotAvailable
+		return
+	}
+	var rows *sql.Rows
+	if rows, err = mdl.inst.Query("select firstSeen,amount from incoming where addr=?", addr); err != nil {
+		return
+	}
+	for rows.Next() {
+		f := &Fund{Addr: addr}
+		if err := rows.Scan(&f.Seen, &f.Amount); err != nil {
+			return nil, err
+		}
+		list = append(list, f)
+	}
+	return
 }
 
 //----------------------------------------------------------------------
@@ -768,6 +835,18 @@ func (mdl *Model) GetAccounts(id int64) (accnts []*AccntInfo, err error) {
 	sort.Slice(accnts, func(i, j int) bool {
 		return accnts[j].Total < accnts[i].Total
 	})
+	return
+}
+
+// GetAccountID returns repository ID of an account record.
+func (mdl *Model) GetAccountID(label string) (accnt int64, err error) {
+	// check for valid repository
+	if mdl.inst == nil {
+		return 0, ErrModelNotAvailable
+	}
+	// query ID
+	row := mdl.inst.QueryRow("select id from accnt where label=?", label)
+	err = row.Scan(&accnt)
 	return
 }
 
