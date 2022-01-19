@@ -32,14 +32,21 @@ import (
 
 //----------------------------------------------------------------------
 
+type HandlerConfig struct {
+	Limit    float64 `json:"limit"`    // limit for receiving addresses
+	ApiKey   string  `json:"apiKey"`   // API key
+	Rates    []int   `json:"rates"`    // API rate limits
+	Explorer string  `json:"explorer"` // address explorer URL
+}
+
 // CoinConfig for a supported coin (Bitcoin or Altcoin)
 type CoinConfig struct {
-	Symb     string `json:"symb"`     // coin symbol
-	Path     string `json:"path"`     // base derivation path like "m/44'/0'/0'/0/0"
-	Mode     string `json:"mode"`     // address version (P2PKH, P2SH, ...)
-	Pk       string `json:"pk"`       // public key for coin
-	Addr     string `json:"addr"`     // address for base derivation path
-	Explorer string `json:"explorer"` // address explorer URL
+	Symb    string         `json:"symb"`    // coin symbol
+	Path    string         `json:"path"`    // base derivation path like "m/44'/0'/0'/0/0"
+	Mode    string         `json:"mode"`    // address version (P2PKH, P2SH, ...)
+	Pk      string         `json:"pk"`      // public key for coin
+	Addr    string         `json:"addr"`    // address for base derivation path
+	Handler *HandlerConfig `json:"handler"` // handler configuration
 }
 
 // GetMode returns the numeric value of mode (P2PKH, P2SH, ...)
@@ -97,15 +104,6 @@ type ModelConfig struct {
 
 //----------------------------------------------------------------------
 
-// BalancerConfig for account balance processing
-type BalancerConfig struct {
-	AccountLimit float64           `json:"accountLimit"` // auto-close address balance limit
-	Rescan       int               `json:"rescan"`       // rescan time interval (in epochs)
-	APIKeys      map[string]string `json:"apikeys"`      // list of API keys
-}
-
-//----------------------------------------------------------------------
-
 // MarketConfig defines settings for cryptocurrency price retrieval.
 type MarketConfig struct {
 	Fiat   string `json:"fiat"`   // Fiat base currency
@@ -117,11 +115,10 @@ type MarketConfig struct {
 
 // Config holds overall configuration settings
 type Config struct {
-	Service  *ServiceConfig  `json:"service"`  // web service configuration
-	Model    *ModelConfig    `json:"model"`    // model configuration
-	Balancer *BalancerConfig `json:"balancer"` // balancer configuration
-	Market   *MarketConfig   `json:"market"`   // market configuration
-	Coins    []*CoinConfig   `json:"coins"`    // list of known coins
+	Service *ServiceConfig `json:"service"` // web service configuration
+	Model   *ModelConfig   `json:"model"`   // model configuration
+	Market  *MarketConfig  `json:"market"`  // market configuration
+	Coins   []*CoinConfig  `json:"coins"`   // list of known coins
 }
 
 //----------------------------------------------------------------------

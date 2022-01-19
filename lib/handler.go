@@ -21,6 +21,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,10 +44,9 @@ type Handler struct {
 	mode     int              // address mode (P2PKH, P2SH, ...)
 	netw     int              // network (Main, Test, Reg)
 	tree     *wallet.HDPublic // HDKD for public keys
-	balancer Balancer         // address balance handler for coin
-	reporter FundLister       // list funds received by address
 	pathTpl  string           // path template for indexing addresses
 	explorer string           // Explorer URL for address
+	chain    ChainHandler     // blockchain handler for coin
 }
 
 // NewHandler creates a new handler instance for the given coin on
@@ -70,29 +70,15 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 	// get coin identifier
 	coinID, _ := wallet.GetCoinInfo(coin.Symb)
 
-	// balancer function for coin
-	b, ok := balancer[coin.Symb]
-	if !ok {
-		b = nil
-	}
-
-	// fund lister function for coin
-	r, ok := fundlister[coin.Symb]
-	if !ok {
-		r = nil
-	}
-
 	// assemble handler for given coin
 	return &Handler{
-		coin:     coinID,
-		symb:     coin.Symb,
-		mode:     coin.GetMode(),
-		netw:     network,
-		tree:     wallet.NewHDPublic(pk, coin.Path),
-		balancer: b,
-		reporter: r,
-		pathTpl:  path,
-		explorer: coin.Explorer,
+		coin:    coinID,
+		symb:    coin.Symb,
+		mode:    coin.GetMode(),
+		netw:    network,
+		tree:    wallet.NewHDPublic(pk, coin.Path),
+		pathTpl: path,
+		chain:   NewChainHandler(coin.Symb, coin.Handler),
 	}, nil
 }
 
@@ -116,12 +102,14 @@ func (hdlr *Handler) GetAddress(idx int) (string, error) {
 
 // GetBalance returns the balance for a given address
 func (hdlr *Handler) GetBalance(addr string) (float64, error) {
-	return hdlr.balancer(addr)
+	// call balance function
+	return hdlr.chain.Balance(addr)
 }
 
 // GetTxList returns a list of transaction for an address
-func (hdlr *Handler) GetFunds(addr int64) ([]*Fund, error) {
-	return hdlr.reporter(addr)
+func (hdlr *Handler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+	// call reporting function
+	return hdlr.chain.GetFunds(ctx, addrId, addr)
 }
 
 //----------------------------------------------------------------------

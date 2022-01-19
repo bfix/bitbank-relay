@@ -92,7 +92,7 @@ func main() {
 	defer cancel()
 
 	// setting up balancer service
-	balanceCh := lib.StartBalancer(ctx, mdl, cfg.Balancer)
+	balanceCh := lib.StartBalancer(ctx, mdl)
 
 	// setting up webservice
 	srvQuit := runService(cfg.Service)

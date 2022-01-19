@@ -44,7 +44,7 @@ func report(args []string) {
 	flags := flag.NewFlagSet("report", flag.ExitOnError)
 	var span, mode, accnt, coin, addr, out, fname string
 	flags.StringVar(&span, "r", "*:*", "Date range for report (YYYY-MM-DD)")
-	flags.StringVar(&mode, "m", "full", "Report mode")
+	flags.StringVar(&mode, "m", "fast", "Report mode")
 	flags.StringVar(&addr, "a", "", "Reported address")
 	flags.StringVar(&coin, "c", "", "Reported coin")
 	flags.StringVar(&accnt, "p", "", "Reported account")
@@ -163,7 +163,7 @@ func doReporting(
 				err = fmt.Errorf("no matching handler for '%s'", ai.CoinName)
 				return
 			}
-			if funds, err = hdlr.GetFunds(ai.ID); err != nil {
+			if funds, err = hdlr.GetFunds(ctx, ai.ID, ai.Val); err != nil {
 				logger.Printf(logger.ERROR, "tx list failed for '%s'\n", ai.CoinName)
 				return
 			}
