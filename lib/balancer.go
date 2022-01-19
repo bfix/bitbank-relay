@@ -87,6 +87,7 @@ func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan in
 			case ID := <-ch:
 				// close processor on negative row id
 				if ID < 0 {
+					close(ch)
 					return
 				}
 				// ignore request for already pending address
@@ -156,6 +157,7 @@ func StartBalancer(ctx context.Context, mdl *Model, cfg *BalancerConfig) chan in
 
 			// cancel processor
 			case <-ctx.Done():
+				close(ch)
 				return
 			}
 		}
