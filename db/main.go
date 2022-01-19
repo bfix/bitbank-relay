@@ -106,11 +106,12 @@ func main() {
 
 	// load handlers; assemble list of coin symbols
 	logger.Println(logger.INFO, "Initializing coin handlers:")
-	if _, err = lib.InitHandler(cfg, mdl); err != nil {
+	var coins string
+	if coins, err = lib.InitHandler(cfg, mdl); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
-	logger.Println(logger.INFO, "Done.")
+	logger.Println(logger.INFO, "   Processed coins: "+coins)
 
 	// parse command line arguments (top-level)
 	if fs.NArg() == 0 {
@@ -130,5 +131,11 @@ func main() {
 	//------------------------------------------------------------------
 	case "logo":
 		logo(args[1:])
+
+	//------------------------------------------------------------------
+	// handle logo methods
+	//------------------------------------------------------------------
+	case "report":
+		report(args[1:])
 	}
 }
