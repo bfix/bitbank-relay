@@ -313,7 +313,7 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			ad.Mode = 1
 			ad.Account = ad.Addrs[0].Account
-			ad.Coin = ad.Addrs[0].Coin
+			ad.Coin = ad.Addrs[0].CoinName
 		}
 	} else {
 		accntId, _ := queryInt(query, "accnt")
@@ -335,7 +335,7 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			ad.Coin = "*"
 			if coinId != 0 {
-				ad.Coin = ad.Addrs[0].Coin
+				ad.Coin = ad.Addrs[0].CoinName
 			}
 		}
 	}
