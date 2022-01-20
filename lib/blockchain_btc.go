@@ -37,6 +37,10 @@ type BtcChainHandler struct {
 
 // Balance gets the balance of a Bitcoin address
 func (hdlr *BtcChainHandler) Balance(addr string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://blockchain.info/rawaddr/%s", addr)
@@ -54,6 +58,10 @@ func (hdlr *BtcChainHandler) Balance(addr string) (float64, error) {
 
 // GetFunds returns a list of incoming funds for the address
 func (hdlr *BtcChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://blockchain.info/rawaddr/%s", addr)

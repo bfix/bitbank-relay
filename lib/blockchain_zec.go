@@ -37,6 +37,10 @@ type ZecChainHandler struct {
 
 // Balance gets the balance of a ZCash address
 func (hdlr *ZecChainHandler) Balance(addr string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// assemble query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://api.zcha.in/v2/mainnet/accounts/%s", addr)
@@ -54,6 +58,10 @@ func (hdlr *ZecChainHandler) Balance(addr string) (float64, error) {
 
 // GetFunds returns incoming transaction for a ZCash address.
 func (hdlr *ZecChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// retrieve list of transactions in chunks
 	funds := make([]*Fund, 0)
 	offset := 0

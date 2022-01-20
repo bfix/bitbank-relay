@@ -38,6 +38,10 @@ type BtgChainHandler struct {
 
 // Balance gets the balance of a Bitcoin Gold address
 func (hdlr *BtgChainHandler) Balance(addr string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
@@ -60,6 +64,10 @@ func (hdlr *BtgChainHandler) Balance(addr string) (float64, error) {
 
 // GetFunds returns incoming transaction for a Bitcoin Gold address.
 func (hdlr *BtgChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// perform query (stage 1)
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)

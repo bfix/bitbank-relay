@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/bfix/gospel/network"
@@ -103,6 +104,7 @@ type BasicChainHandler struct {
 	limit       float64
 	apiKey      string
 	explorer    string
+	lock        sync.Mutex
 }
 
 // Init a new chain handler instance
@@ -139,9 +141,10 @@ var (
 
 // CCIChainHandler handles multi-coin blockchain operations
 type CCIChainHandler struct {
-	ratelimiter *network.RateLimiter
-	apiKey      string
-	initialized bool // handler set-up?
+	ratelimiter *network.RateLimiter // limit calls to service
+	apiKey      string               // optional API key
+	initialized bool                 // handler set-up?
+	lock        sync.Mutex           // serialize operations
 }
 
 // Init a new chain handler instance
@@ -156,6 +159,10 @@ func (hdlr *CCIChainHandler) Init(cfg *HandlerConfig) {
 
 // Balance gets the balance of a Bitcoin address
 func (hdlr *CCIChainHandler) Balance(addr, coin string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=getbalance&a=%s", coin, addr)
@@ -172,6 +179,10 @@ func (hdlr *CCIChainHandler) Balance(addr, coin string) (float64, error) {
 
 // GetFunds returns a list of incoming funds for the address
 func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	return nil, nil
 }
 
@@ -181,10 +192,10 @@ func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 
 // BcChainHandler handles multi-coin blockchain operations
 type BcChainHandler struct {
-	ratelimiter *network.RateLimiter
-	limit       float64
-	apiKey      string
-	initialized bool // handler set-up?
+	ratelimiter *network.RateLimiter // limit calls to service
+	apiKey      string               // optional API key
+	initialized bool                 // handler set-up?
+	lock        sync.Mutex           // serialize operations
 }
 
 // Init a new chain handler instance
@@ -193,13 +204,16 @@ func (hdlr *BcChainHandler) Init(cfg *HandlerConfig) {
 	if !hdlr.initialized {
 		hdlr.initialized = true
 		hdlr.ratelimiter = network.NewRateLimiter(cfg.Rates...)
-		hdlr.limit = cfg.Limit
 		hdlr.apiKey = cfg.ApiKey
 	}
 }
 
 // Balance gets the balance of a coin address
 func (hdlr *BcChainHandler) Balance(addr, coin string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/address/%s", coin, addr)
@@ -225,12 +239,11 @@ func (hdlr *BcChainHandler) Balance(addr, coin string) (float64, error) {
 
 // GetFunds returns a list of incoming funds for the address
 func (hdlr *BcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
-	return nil, nil
-}
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
 
-// Limit is the max. funding of an address (auto-close)
-func (hdlr *BcChainHandler) Limit() float64 {
-	return hdlr.limit
+	return nil, nil
 }
 
 // BlockchairAddrInfo is the response from the blockchair.com API

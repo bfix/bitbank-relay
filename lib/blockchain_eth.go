@@ -45,6 +45,10 @@ func (hdlr *EthChainHandler) Init(cfg *HandlerConfig) {
 
 // Balance gets the balance of an Ethereum address
 func (hdlr *EthChainHandler) Balance(addr string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://api.ethplorer.io/getAddressInfo/%s?showETHTotals=true&apiKey=%s", addr, hdlr.apiKey)
@@ -62,6 +66,10 @@ func (hdlr *EthChainHandler) Balance(addr string) (float64, error) {
 
 // GetFunds returns incoming transaction for an Ethereum address.
 func (hdlr *EthChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://api.ethplorer.io/getAddressTransactions/%s?apiKey=%s", addr, hdlr.apiKey)
