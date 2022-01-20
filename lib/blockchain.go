@@ -148,10 +148,12 @@ type CCIChainHandler struct {
 }
 
 // wait for execution of request: requests are serialized and
-func (hdlr *CCIChainHandler) wait() {
+func (hdlr *CCIChainHandler) wait(withLock bool) {
 	// only handle one call at a time
-	hdlr.lock.Lock()
-	defer hdlr.lock.Unlock()
+	if withLock {
+		hdlr.lock.Lock()
+		defer hdlr.lock.Unlock()
+	}
 
 	delay := time.Now().UnixMilli() - hdlr.lastCall
 	if delay < 10000 {
@@ -172,8 +174,11 @@ func (hdlr *CCIChainHandler) Init(cfg *HandlerConfig) {
 // Balance gets the balance of a Bitcoin address
 func (hdlr *CCIChainHandler) Balance(addr, coin string) (float64, error) {
 	// perform query
-	hdlr.wait()
+	hdlr.wait(true)
 	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=getreceivedbyaddress&a=%s", coin, addr)
+	if hdlr.apiKey != "" {
+		query += fmt.Sprintf("&key=%s", hdlr.apiKey)
+	}
 	body, err := ChainQuery(context.Background(), query)
 	if err != nil {
 		return -1, err
@@ -187,8 +192,94 @@ func (hdlr *CCIChainHandler) Balance(addr, coin string) (float64, error) {
 
 // GetFunds returns a list of incoming funds for the address
 func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
-	// only handle one call at a time
-	return nil, nil
+	// perform query
+	hdlr.wait(true)
+	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=multiaddr&active=%s", coin, addr)
+	if hdlr.apiKey != "" {
+		query += fmt.Sprintf("&key=%s", hdlr.apiKey)
+	}
+	body, err := ChainQuery(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	// parse response
+	data := new(CCIAddrInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+	// collect funding transactions
+	funds := make([]*Fund, 0)
+	for _, tx := range data.Txs {
+		// query transaction
+		hdlr.wait(false)
+		query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=txinfo&t=%s", coin, tx.Hash)
+		if hdlr.apiKey != "" {
+			query += fmt.Sprintf("?key=%s", hdlr.apiKey)
+		}
+		if body, err = ChainQuery(context.Background(), query); err != nil {
+			return nil, err
+		}
+		// parse response
+		tx := new(CCITxInfo)
+		if err = json.Unmarshal(body, &tx); err != nil {
+			return nil, err
+		}
+		// find received funds in transaction outputs
+		for _, vout := range tx.Outputs {
+			if addr == vout.Addr {
+				f := &Fund{
+					Seen:   tx.Timestamp,
+					Addr:   addrId,
+					Amount: vout.Amount,
+				}
+				funds = append(funds, f)
+			}
+		}
+	}
+	return funds, nil
+
+}
+
+// CCIAddrInfo holds basic address information
+type CCIAddrInfo struct {
+	Addresses []struct {
+		Address       string `json:"address"`
+		TotalSent     int64  `json:"total_sent"`
+		TotalReceived int64  `json:"total_received"`
+		FinalBalance  int64  `json:"final_balance"`
+		NTx           int    `json:"n_tx"`
+	} `json:"addresses"`
+	Txs []struct {
+		Hash          string `json:"hash"`
+		Confirmations int    `json:"confirmations"`
+		Change        int64  `json:"change"`
+		TimeUTC       string `json:"time_utc"`
+	} `json:"txs"`
+}
+
+// CCITxInfo holds transaction details
+type CCITxInfo struct {
+	Hash          string  `json:"hash"`
+	Block         int     `json:"block"`
+	Index         int     `json:"index"`
+	Timestamp     int64   `json:"timestamp"`
+	Confirmations int     `json:"confirmations"`
+	Fees          float64 `json:"fees"`
+	TotalInput    float64 `json:"total_input"`
+	Inputs        []struct {
+		Addr         string  `json:"addr"`
+		Amount       float64 `json:"amount"`
+		ReceivedFrom struct {
+			Tx string `json:"tx"`
+			N  int    `json:"n"`
+		} `json:"received_from"`
+	} `json:"inputs"`
+	TotalOutputs float64 `json:"total_output"`
+	Outputs      []struct {
+		Addr   string  `json:"addr"`
+		Amount float64 `json:"amount"`
+		Script string  `json:"script"`
+	} `json:"outputs"`
 }
 
 //----------------------------------------------------------------------
