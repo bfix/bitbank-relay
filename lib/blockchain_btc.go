@@ -25,6 +25,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/bfix/gospel/logger"
 )
 
 //======================================================================
@@ -54,6 +56,7 @@ func (hdlr *BtcChainHandler) wait() {
 
 	delay := time.Now().UnixMilli() - hdlr.lastCall
 	if delay < 10000 {
+		logger.Printf(logger.INFO, "BtcChainHandler: delaying request for %f seconds", 10.-float64(delay)/1000.)
 		time.Sleep(time.Duration(10000-delay) * time.Millisecond)
 	}
 	hdlr.lastCall = time.Now().UnixMilli()
