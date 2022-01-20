@@ -1,6 +1,6 @@
 {
 	"service": {
-  	"listen": "localhost:80",
+		"listen": "localhost:80",
 		"epoch": 300,
 		"logFile": "relay-%s.log",
 		"logLevel": "DBG",
@@ -33,8 +33,7 @@
 				"accountLimit": 10000,
 				"apikey": "",
 				"rates": [
-					0,
-					6
+					10
 				]
 			}
 		},
@@ -99,11 +98,7 @@
 			"handler": {
 				"explorer": "https://chainz.cryptoid.info/dgb/address.dws?%s.htm",
 				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					0,
-					6
-				]
+				"apikey": ""
 			}
 		},
 		{
@@ -147,7 +142,9 @@
 			"pk": "",
 			"addr": "",
 			"handler": {
-				"explorer": "https://nmc.tokenview.com/en/address/%s"
+				"explorer": "https://nmc.tokenview.com/en/address/%s",
+				"accountLimit": 10000,
+				"apikey": ""
 			}
 		},
 		{
@@ -159,11 +156,7 @@
 			"handler": {
 				"explorer": "https://chainz.cryptoid.info/vtc/address.dws?%s.htm",
 				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					0,
-					6
-				]
+				"apikey": ""
 			}
 		},
 		{
@@ -210,7 +203,15 @@
 			"pk": "",
 			"addr": "",
 			"handler": {
-				"explorer": "https://etcblockexplorer.com/address/%s"
+				"explorer": "https://etcblockexplorer.com/address/%s",
+				"accountLimit": 10000,
+				"apikey": "",
+				"rates": [
+					5,
+					30,
+					0,
+					1440
+				]
 			}
 		}
 	]
