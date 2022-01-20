@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 //======================================================================
@@ -77,7 +78,7 @@ func (hdlr *EthChainHandler) GetFunds(ctx context.Context, addrId int64, addr st
 	if err != nil {
 		return nil, err
 	}
-	data := make([]*EthAddrTx, 0)
+	data := make([]*EthTxInfo, 0)
 	if err = json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
@@ -123,8 +124,8 @@ type EthAddrInfo struct {
 	CounTxs int `json:"countTxs"`
 }
 
-// EthAddrTx is a response for an address transaction query
-type EthAddrTx struct {
+// EthTxInfo is a response for an address transaction query
+type EthTxInfo struct {
 	Time    int64   `json:"timestamp"`
 	From    string  `json:"from"`
 	To      string  `json:"to"`
@@ -132,4 +133,113 @@ type EthAddrTx struct {
 	Value   float64 `json:"value"`
 	Input   string  `json:"input"`
 	Success bool    `json:"success"`
+}
+
+//======================================================================
+// ETC (Ethereum Classic)
+//======================================================================
+
+// EtcChainHandler handles Ethereum Classic-related blockchain operations
+type EtcChainHandler struct {
+	BasicChainHandler
+}
+
+// Balance gets the balance of an Ethereum address
+func (hdlr *EtcChainHandler) Balance(addr string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
+	// perform query
+	hdlr.ratelimiter.Pass()
+	query := fmt.Sprintf("https://blockscout.com/etc/mainnet/api?module=account&action=balance&address=%s", addr)
+	body, err := ChainQuery(context.Background(), query)
+	if err != nil {
+		return -1, err
+	}
+	data := new(EtcAddrInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return -1, err
+	}
+	// return balance (incoming funds)
+	if data.Result == nil {
+		return -1, err
+	}
+	val, err := strconv.ParseInt(*data.Result, 10, 64)
+	if err != nil {
+		return -1, err
+	}
+	return float64(val) / 1e8, nil
+}
+
+// GetFunds returns incoming transaction for an Ethereum address.
+func (hdlr *EtcChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
+	// perform query
+	hdlr.ratelimiter.Pass()
+	query := fmt.Sprintf("https://blockscout.com/etc/mainnet/api?module=account&action=txlist&address=%s", addr)
+	body, err := ChainQuery(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	data := new(EtcTxInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+	// find received funds in transaction outputs
+	funds := make([]*Fund, 0)
+	for _, tx := range data.Result {
+		ts, err := strconv.ParseInt(tx.Timestamp, 10, 64)
+		if err != nil {
+			continue
+		}
+		val, err := strconv.ParseInt(tx.Value, 10, 64)
+		if err != nil {
+			continue
+		}
+		f := &Fund{
+			Seen:   ts,
+			Addr:   addrId,
+			Amount: float64(val) / 1e8,
+		}
+		funds = append(funds, f)
+	}
+	// return funds
+	return funds, nil
+}
+
+// EtcAddrInfo is a response for an address info query
+type EtcAddrInfo struct {
+	Message string  `json:"message"`
+	Result  *string `json:"result"`
+	Status  string  `json:"status"`
+}
+
+// EtcTxInfo is a response for an address transaction query
+type EtcTxInfo struct {
+	Message string `json:"message"`
+	Result  []*struct {
+		BlockHash       string `json:"blockHash"`
+		BlockNumber     string `json:"blockNumber"`
+		Confirmations   string `json:"confirmations"`
+		ContractAddress string `json:"contractAddress"`
+		CumGasUsed      string `json:"cumulativeGasUsed"`
+		From            string `json:"from"`
+		Gas             string `json:"gas"`
+		GasPrice        string `json:"gasPrice"`
+		GasedUsed       string `json:"gasUsed"`
+		Hash            string `json:"hash"`
+		Input           string `json:"input"`
+		IsError         string `json:"isError"`
+		None            string `json:"nonce"`
+		Timestamp       string `jspn:"timeStamp"`
+		To              string `json:"to"`
+		TxIndex         string `json:"transactionIndex"`
+		TxReceipt       string `json:"txreceipt_status"`
+		Value           string `json:"value"`
+	} `json:"result"`
+	Status string `json:"status"`
 }
