@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 //======================================================================
@@ -33,16 +34,35 @@ import (
 // BtcChainHandler handles BTC-related blockchain operations
 type BtcChainHandler struct {
 	BasicChainHandler
+	lastCall int64 // last service call (UnixMilli)
+	delay    int64 // delay between calls in miliseconds
 }
 
-// Balance gets the balance of a Bitcoin address
-func (hdlr *BtcChainHandler) Balance(addr string) (float64, error) {
+// Init a new chain handler instance
+func (hdlr *BtcChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.apiKey = cfg.ApiKey
+	hdlr.limit = cfg.Limit
+	hdlr.explorer = cfg.Explorer
+	hdlr.delay = int64(cfg.Rates[0]) * 1000
+}
+
+// wait for execution of request: requests are serialized and
+func (hdlr *BtcChainHandler) wait() {
 	// only handle one call at a time
 	hdlr.lock.Lock()
 	defer hdlr.lock.Unlock()
 
+	delay := time.Now().UnixMilli() - hdlr.lastCall
+	if delay < 10000 {
+		time.Sleep(time.Duration(10000-delay) * time.Millisecond)
+	}
+	hdlr.lastCall = time.Now().UnixMilli()
+}
+
+// Balance gets the balance of a Bitcoin address
+func (hdlr *BtcChainHandler) Balance(addr string) (float64, error) {
 	// perform query
-	hdlr.ratelimiter.Pass()
+	hdlr.wait()
 	query := fmt.Sprintf("https://blockchain.info/rawaddr/%s", addr)
 	body, err := ChainQuery(context.Background(), query)
 	if err != nil {
@@ -58,12 +78,8 @@ func (hdlr *BtcChainHandler) Balance(addr string) (float64, error) {
 
 // GetFunds returns a list of incoming funds for the address
 func (hdlr *BtcChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
-	// only handle one call at a time
-	hdlr.lock.Lock()
-	defer hdlr.lock.Unlock()
-
 	// perform query
-	hdlr.ratelimiter.Pass()
+	hdlr.wait()
 	query := fmt.Sprintf("https://blockchain.info/rawaddr/%s", addr)
 	body, err := ChainQuery(context.Background(), query)
 	if err != nil {
