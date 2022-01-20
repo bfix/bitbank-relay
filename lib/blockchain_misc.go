@@ -20,6 +20,8 @@
 
 package lib
 
+import "context"
+
 //======================================================================
 // Delegated handlers (use a shared handler)
 //======================================================================
@@ -30,12 +32,14 @@ package lib
 
 // BchChainHandler handles Bitcoin Cash-related blockchain operations
 type BchChainHandler struct {
-	GenericChainHandler
+	DerivedChainHandler
 }
 
-// Balance gets the balance of a Bitcoin address
-func (hdlr *BchChainHandler) Balance(addr string) (float64, error) {
-	return bcHandler.Balance(addr, "bitcoin-cash")
+// Init chain handler
+func (hdlr *BchChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.parent = bcHandler
+	hdlr.coin = "bitcoin-cash"
+	hdlr.parent.Init(cfg)
 }
 
 //----------------------------------------------------------------------
@@ -44,12 +48,14 @@ func (hdlr *BchChainHandler) Balance(addr string) (float64, error) {
 
 // DashChainHandler handles Dash-related blockchain operations
 type DashChainHandler struct {
-	GenericChainHandler
+	DerivedChainHandler
 }
 
-// Balance gets the balance of a Bitcoin address
-func (hdlr *DashChainHandler) Balance(addr string) (float64, error) {
-	return cciHandler.Balance(addr, "dash")
+// Init chain handler
+func (hdlr *DashChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.parent = cciHandler
+	hdlr.coin = "dash"
+	hdlr.parent.Init(cfg)
 }
 
 //----------------------------------------------------------------------
@@ -58,12 +64,14 @@ func (hdlr *DashChainHandler) Balance(addr string) (float64, error) {
 
 // DogeChainHandler handles Doge-related blockchain operations
 type DogeChainHandler struct {
-	GenericChainHandler
+	DerivedChainHandler
 }
 
-// Balance gets the balance of a Bitcoin address
-func (hdlr *DogeChainHandler) Balance(addr string) (float64, error) {
-	return bcHandler.Balance(addr, "dogecoin")
+// Init chain handler
+func (hdlr *DogeChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.parent = bcHandler
+	hdlr.coin = "dogecoin"
+	hdlr.parent.Init(cfg)
 }
 
 //----------------------------------------------------------------------
@@ -72,12 +80,14 @@ func (hdlr *DogeChainHandler) Balance(addr string) (float64, error) {
 
 // LtcChainHandler handles Litecoin-related blockchain operations
 type LtcChainHandler struct {
-	GenericChainHandler
+	DerivedChainHandler
 }
 
-// Balance gets the balance of a Bitcoin address
-func (hdlr *LtcChainHandler) Balance(addr string) (float64, error) {
-	return cciHandler.Balance(addr, "ltc")
+// Init chain handler
+func (hdlr *LtcChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.parent = cciHandler
+	hdlr.coin = "ltc"
+	hdlr.parent.Init(cfg)
 }
 
 //----------------------------------------------------------------------
@@ -86,12 +96,14 @@ func (hdlr *LtcChainHandler) Balance(addr string) (float64, error) {
 
 // VtcChainHandler handles Vertcoin-related blockchain operations
 type VtcChainHandler struct {
-	GenericChainHandler
+	DerivedChainHandler
 }
 
-// Balance gets the balance of a Bitcoin address
-func (hdlr *VtcChainHandler) Balance(addr string) (float64, error) {
-	return cciHandler.Balance(addr, "vtc")
+// Init chain handler
+func (hdlr *VtcChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.parent = cciHandler
+	hdlr.coin = "vtc"
+	hdlr.parent.Init(cfg)
 }
 
 //----------------------------------------------------------------------
@@ -100,13 +112,19 @@ func (hdlr *VtcChainHandler) Balance(addr string) (float64, error) {
 
 // DgbChainHandler handles Digibyte-related blockchain operations
 type DgbChainHandler struct {
-	GenericChainHandler
+	DerivedChainHandler
 }
 
-// Balance gets the balance of a Bitcoin address
-func (hdlr *DgbChainHandler) Balance(addr string) (float64, error) {
-	return cciHandler.Balance(addr, "dgb")
+// Init chain handler
+func (hdlr *DgbChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.parent = cciHandler
+	hdlr.coin = "dgb"
+	hdlr.parent.Init(cfg)
 }
+
+//======================================================================
+// Unhandled coins
+//======================================================================
 
 //----------------------------------------------------------------------
 // NMC (Namecoin)
@@ -114,12 +132,17 @@ func (hdlr *DgbChainHandler) Balance(addr string) (float64, error) {
 
 // NmcChainHandler handles Namecoin-related blockchain operations
 type NmcChainHandler struct {
-	GenericChainHandler
+	DerivedChainHandler
 }
 
 // Balance gets the balance of a Namecoin address
 func (hdlr *NmcChainHandler) Balance(addr string) (float64, error) {
 	return 0, nil
+}
+
+// GetFunds returns a list of incoming funds for the address
+func (hdlr *NmcChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+	return nil, nil
 }
 
 //----------------------------------------------------------------------
@@ -128,10 +151,15 @@ func (hdlr *NmcChainHandler) Balance(addr string) (float64, error) {
 
 // EtcChainHandler handles Ethereum Classic-related blockchain operations
 type EtcChainHandler struct {
-	GenericChainHandler
+	DerivedChainHandler
 }
 
 // Balance gets the balance of a Namecoin address
 func (hdlr *EtcChainHandler) Balance(addr string) (float64, error) {
 	return 0, nil
+}
+
+// GetFunds returns a list of incoming funds for the address
+func (hdlr *EtcChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+	return nil, nil
 }

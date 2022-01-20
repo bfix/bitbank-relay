@@ -24,8 +24,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"github.com/bfix/gospel/network"
 )
 
 //======================================================================
@@ -34,26 +32,15 @@ import (
 
 // EthChainHandler handles ETH-related blockchain operations
 type EthChainHandler struct {
-	ratelimiter *network.RateLimiter
-	limit       float64
-	apiKey      string
-	explorer    string
+	BasicChainHandler
 }
 
 // Init a new chain handler instance
 func (hdlr *EthChainHandler) Init(cfg *HandlerConfig) {
-	hdlr.ratelimiter = network.NewRateLimiter(cfg.Rates...)
-	hdlr.limit = cfg.Limit
-	hdlr.explorer = cfg.Explorer
-	hdlr.apiKey = cfg.ApiKey
+	hdlr.BasicChainHandler.Init(cfg)
 	if hdlr.apiKey == "" {
 		hdlr.apiKey = "freekey"
 	}
-}
-
-// Exporer returns the pattern for the blockchain browser URL
-func (hdlr *EthChainHandler) Explore(addr string) string {
-	return hdlr.explorer
 }
 
 // Balance gets the balance of an Ethereum address
@@ -98,11 +85,6 @@ func (hdlr *EthChainHandler) GetFunds(ctx context.Context, addrId int64, addr st
 	}
 	// return funds
 	return funds, nil
-}
-
-// Limit is the max. funding of an address (auto-close)
-func (hdlr *EthChainHandler) Limit() float64 {
-	return hdlr.limit
 }
 
 //----------------------------------------------------------------------

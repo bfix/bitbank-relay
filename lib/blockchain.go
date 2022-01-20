@@ -32,6 +32,12 @@ import (
 	"github.com/bfix/gospel/network"
 )
 
+//----------------------------------------------------------------------
+// Chain handlers: All external data (like balances and transactions
+// stored on a blockchain) for addresses/coins is managed by a chain
+// handler instance for a coins.
+//----------------------------------------------------------------------
+
 // ChainHandler interface for blockchain-related processing
 type ChainHandler interface {
 	Init(cfg *HandlerConfig)
@@ -41,117 +47,91 @@ type ChainHandler interface {
 	Limit() float64
 }
 
-// Instantiate a new blockchain handler based on coin symbol
-func NewChainHandler(coin string, cfg *HandlerConfig) (hdlr ChainHandler) {
-	switch coin {
-	case "btc":
-		hdlr = new(BtcChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "bch":
-		hdlr = new(BchChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "btg":
-		hdlr = new(BtgChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "dash":
-		hdlr = new(DashChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "dgb":
-		hdlr = new(DgbChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "doge":
-		hdlr = new(DogeChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "ltc":
-		hdlr = new(LtcChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "nmc":
-		hdlr = new(NmcChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "vtc":
-		hdlr = new(VtcChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "zec":
-		hdlr = new(ZecChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "eth":
-		hdlr = new(EthChainHandler)
-		hdlr.Init(cfg)
-		return
-	case "etc":
-		hdlr = new(EtcChainHandler)
-		hdlr.Init(cfg)
-		return
-	}
-	return nil
+// SharedChainHandler interface for multi-coin chain handlers
+type SharedChainHandler interface {
+	Init(cfg *HandlerConfig)
+	Balance(addr, coin string) (float64, error)
+	GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error)
 }
 
-func ChainQuery(ctx context.Context, query string) ([]byte, error) {
-	// time-out HTTP client
-	toCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-	cl := &http.Client{}
+//----------------------------------------------------------------------
+// A derived chain handler manages a single coin by using a shared
+// chain handler for its operations.
+//----------------------------------------------------------------------
 
-	// request information
-	req, err := http.NewRequestWithContext(toCtx, http.MethodGet, query, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := cl.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	// read and parse response
-	return ioutil.ReadAll(resp.Body)
+// DerivedChainHandler manages a single coin with a shared handler
+type DerivedChainHandler struct {
+	coin     string             // associated coin symbol
+	parent   SharedChainHandler // reference to parent handler
+	limit    float64            // account limit (auto-closing)
+	explorer string             // URL pattern for blockchain browser
+}
+
+// Init a new chain handler instance
+func (hdlr *DerivedChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.limit = cfg.Limit
+	hdlr.explorer = cfg.Explorer
+}
+
+// Balance gets the balance of an address
+func (hdlr *DerivedChainHandler) Balance(addr string) (float64, error) {
+	return hdlr.parent.Balance(addr, hdlr.coin)
+}
+
+// GetFunds returns a list of incoming funds for the address
+func (hdlr *DerivedChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+	return nil, nil
+}
+
+// Exporer returns the pattern for the blockchain browser URL
+func (hdlr *DerivedChainHandler) Explore(addr string) string {
+	return hdlr.explorer
+}
+
+// Limit is the max. funding of an address (auto-close)
+func (hdlr *DerivedChainHandler) Limit() float64 {
+	return hdlr.limit
+}
+
+//----------------------------------------------------------------------
+// Basic chain handlers are generic stand-alone handlers for a coin
+//----------------------------------------------------------------------
+
+// BtcChainHandler handles BTC-related blockchain operations
+type BasicChainHandler struct {
+	ratelimiter *network.RateLimiter
+	limit       float64
+	apiKey      string
+	explorer    string
+}
+
+// Init a new chain handler instance
+func (hdlr *BasicChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.ratelimiter = network.NewRateLimiter(cfg.Rates...)
+	hdlr.limit = cfg.Limit
+	hdlr.apiKey = cfg.ApiKey
+	hdlr.explorer = cfg.Explorer
+}
+
+// Exporer returns the pattern for the blockchain browser URL
+func (hdlr *BasicChainHandler) Explore(addr string) string {
+	return hdlr.explorer
+}
+
+// Limit is the max. funding of an address (auto-close)
+func (hdlr *BasicChainHandler) Limit() float64 {
+	return hdlr.limit
 }
 
 //======================================================================
 // Shared blockchain handlers
 //======================================================================
 
-// singleton instances of shared folders
+// singleton instances of shared handlers
 var (
 	cciHandler = new(CCIChainHandler)
 	bcHandler  = new(BcChainHandler)
 )
-
-// GenericChainHandler handles for multi-coin blockchain operations
-type GenericChainHandler struct {
-	limit    float64
-	explorer string
-}
-
-// Init a new chain handler instance
-func (hdlr *GenericChainHandler) Init(cfg *HandlerConfig) {
-	hdlr.limit = cfg.Limit
-	hdlr.explorer = cfg.Explorer
-}
-
-// GetFunds returns a list of incoming funds for the address
-func (hdlr *GenericChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
-	return nil, nil
-}
-
-// Exporer returns the pattern for the blockchain browser URL
-func (hdlr *GenericChainHandler) Explore(addr string) string {
-	return hdlr.explorer
-}
-
-// Limit is the max. funding of an address (auto-close)
-func (hdlr *GenericChainHandler) Limit() float64 {
-	return hdlr.limit
-}
 
 //----------------------------------------------------------------------
 // (chainz.cryptoid.info)
@@ -191,7 +171,7 @@ func (hdlr *CCIChainHandler) Balance(addr, coin string) (float64, error) {
 }
 
 // GetFunds returns a list of incoming funds for the address
-func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
 	return nil, nil
 }
 
@@ -244,7 +224,7 @@ func (hdlr *BcChainHandler) Balance(addr, coin string) (float64, error) {
 }
 
 // GetFunds returns a list of incoming funds for the address
-func (hdlr *BcChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
+func (hdlr *BcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
 	return nil, nil
 }
 
@@ -303,4 +283,60 @@ type BlockchairAddrInfo struct {
 		FulTime     float64 `json:"full_time"`
 		RequestCost float64 `json:"request_cost"`
 	} `json:"context"`
+}
+
+//----------------------------------------------------------------------
+// Instantiation of chain handler instances
+//----------------------------------------------------------------------
+
+var (
+	chainHdlr = map[string]ChainHandler{
+		"btc":  new(BtcChainHandler),
+		"bch":  new(BchChainHandler),
+		"btg":  new(BtgChainHandler),
+		"dash": new(DashChainHandler),
+		"dgb":  new(DgbChainHandler),
+		"doge": new(DogeChainHandler),
+		"ltc":  new(LtcChainHandler),
+		"nmc":  new(NmcChainHandler),
+		"vtc":  new(VtcChainHandler),
+		"zec":  new(ZecChainHandler),
+		"eth":  new(EthChainHandler),
+		"etc":  new(EtcChainHandler),
+	}
+)
+
+// Instantiate a new blockchain handler based on coin symbol
+func NewChainHandler(coin string, cfg *HandlerConfig) (hdlr ChainHandler) {
+	hdlr, ok := chainHdlr[coin]
+	if ok {
+		hdlr.Init(cfg)
+	} else {
+		hdlr = nil
+	}
+	return
+}
+
+//----------------------------------------------------------------------
+// Helper functions
+//----------------------------------------------------------------------
+
+func ChainQuery(ctx context.Context, query string) ([]byte, error) {
+	// time-out HTTP client
+	toCtx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	cl := &http.Client{}
+
+	// request information
+	req, err := http.NewRequestWithContext(toCtx, http.MethodGet, query, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := cl.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	// read and parse response
+	return ioutil.ReadAll(resp.Body)
 }

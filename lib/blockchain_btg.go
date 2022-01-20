@@ -25,8 +25,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-
-	"github.com/bfix/gospel/network"
 )
 
 //======================================================================
@@ -35,23 +33,7 @@ import (
 
 // BtgChainHandler handles BitcoinGold-related blockchain operations
 type BtgChainHandler struct {
-	ratelimiter *network.RateLimiter
-	limit       float64
-	apiKey      string
-	explorer    string
-}
-
-// Init a new chain handler instance
-func (hdlr *BtgChainHandler) Init(cfg *HandlerConfig) {
-	hdlr.ratelimiter = network.NewRateLimiter(cfg.Rates...)
-	hdlr.limit = cfg.Limit
-	hdlr.apiKey = cfg.ApiKey
-	hdlr.explorer = cfg.Explorer
-}
-
-// Explore returns the pattern for the blockchain browser URL
-func (hdlr *BtgChainHandler) Explore(addr string) string {
-	return hdlr.explorer
+	BasicChainHandler
 }
 
 // Balance gets the balance of a Bitcoin Gold address
@@ -125,11 +107,6 @@ func (hdlr *BtgChainHandler) GetFunds(ctx context.Context, addrId int64, addr st
 	}
 	// return funds
 	return funds, nil
-}
-
-// Limit is the max. funding of an address (auto-close)
-func (hdlr *BtgChainHandler) Limit() float64 {
-	return hdlr.limit
 }
 
 //----------------------------------------------------------------------
