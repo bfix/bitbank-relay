@@ -141,10 +141,23 @@ var (
 
 // CCIChainHandler handles multi-coin blockchain operations
 type CCIChainHandler struct {
-	ratelimiter *network.RateLimiter // limit calls to service
-	apiKey      string               // optional API key
-	initialized bool                 // handler set-up?
-	lock        sync.Mutex           // serialize operations
+	lastCall    int64      // time last used (UnixMilli)
+	apiKey      string     // optional API key
+	initialized bool       // handler set-up?
+	lock        sync.Mutex // serialize operations
+}
+
+// wait for execution of request: requests are serialized and
+func (hdlr *CCIChainHandler) wait() {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
+	delay := time.Now().UnixMilli() - hdlr.lastCall
+	if delay < 10000 {
+		time.Sleep(time.Duration(10000-delay) * time.Millisecond)
+	}
+	hdlr.lastCall = time.Now().UnixMilli()
 }
 
 // Init a new chain handler instance
@@ -152,20 +165,15 @@ func (hdlr *CCIChainHandler) Init(cfg *HandlerConfig) {
 	// shared instance: init only once (first wins)
 	if !hdlr.initialized {
 		hdlr.initialized = true
-		hdlr.ratelimiter = network.NewRateLimiter(cfg.Rates...)
 		hdlr.apiKey = cfg.ApiKey
 	}
 }
 
 // Balance gets the balance of a Bitcoin address
 func (hdlr *CCIChainHandler) Balance(addr, coin string) (float64, error) {
-	// only handle one call at a time
-	hdlr.lock.Lock()
-	defer hdlr.lock.Unlock()
-
 	// perform query
-	hdlr.ratelimiter.Pass()
-	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=getbalance&a=%s", coin, addr)
+	hdlr.wait()
+	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=getreceivedbyaddress&a=%s", coin, addr)
 	body, err := ChainQuery(context.Background(), query)
 	if err != nil {
 		return -1, err
@@ -180,9 +188,6 @@ func (hdlr *CCIChainHandler) Balance(addr, coin string) (float64, error) {
 // GetFunds returns a list of incoming funds for the address
 func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
 	// only handle one call at a time
-	hdlr.lock.Lock()
-	defer hdlr.lock.Unlock()
-
 	return nil, nil
 }
 
@@ -208,8 +213,8 @@ func (hdlr *BcChainHandler) Init(cfg *HandlerConfig) {
 	}
 }
 
-// Balance gets the balance of a coin address
-func (hdlr *BcChainHandler) Balance(addr, coin string) (float64, error) {
+// query address information (incl. transaction list)
+func (hdlr *BcChainHandler) query(addr, coin string) (*BlockchairAddrInfo, error) {
 	// only handle one call at a time
 	hdlr.lock.Lock()
 	defer hdlr.lock.Unlock()
@@ -222,28 +227,101 @@ func (hdlr *BcChainHandler) Balance(addr, coin string) (float64, error) {
 	}
 	body, err := ChainQuery(context.Background(), query)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	// parse response
 	data := new(BlockchairAddrInfo)
 	if err = json.Unmarshal(body, &data); err != nil {
-		return -1, err
+		return nil, err
 	}
 	// check status code.
 	if data.Context.Code != 200 {
-		return -1, fmt.Errorf("HTTP response %d", data.Context.Code)
+		return nil, fmt.Errorf("HTTP response %d", data.Context.Code)
+	}
+	return data, nil
+}
+
+// Balance gets the balance of a coin address
+func (hdlr *BcChainHandler) Balance(addr, coin string) (float64, error) {
+	// get address information
+	data, err := hdlr.query(addr, coin)
+	if err != nil {
+		return -1, err
 	}
 	// return response
-	return float64(data.Data[addr].Address.Balance) / 1e8, nil
+	return float64(data.Data[addr].Address.Received) / 1e8, nil
 }
 
 // GetFunds returns a list of incoming funds for the address
 func (hdlr *BcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
-	// only handle one call at a time
-	hdlr.lock.Lock()
-	defer hdlr.lock.Unlock()
+	// get address information
+	data, err := hdlr.query(addr, coin)
+	if err != nil {
+		return nil, err
+	}
+	// collect funding transactions
+	funds := make([]*Fund, 0)
+	for _, txHash := range data.Data[addr].Transactions {
+		// perform query
+		hdlr.ratelimiter.Pass()
+		query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/transaction/%s", coin, txHash)
+		if hdlr.apiKey != "" {
+			query += fmt.Sprintf("?key=%s", hdlr.apiKey)
+		}
+		body, err := ChainQuery(context.Background(), query)
+		if err != nil {
+			return nil, err
+		}
+		// parse response
+		rec := new(BlockchairTxInfo)
+		if err = json.Unmarshal(body, &rec); err != nil {
+			return nil, err
+		}
+		tx := rec.Data[txHash]
+		// find received funds in transaction outputs
+		for _, vout := range tx.Outputs {
+			if addr == vout.Recipient {
+				ts, err := time.Parse("2006-02-01 15:04:05", vout.Time)
+				if err != nil {
+					return nil, err
+				}
+				f := &Fund{
+					Seen:   ts.Unix(),
+					Addr:   addrId,
+					Amount: float64(vout.Value) / 1e8,
+				}
+				funds = append(funds, f)
+			}
+		}
+	}
+	return funds, nil
+}
 
-	return nil, nil
+// BlockChairContext for the API request
+type BlockChairContext struct {
+	Code    int    `json:"code"`
+	Source  string `json:"source"`
+	Results int    `json:"results"`
+	State   int    `json:"state"`
+	Cache   struct {
+		Live     bool   `json:"live"`
+		Duration int    `json:"duration"`
+		Since    string `json:"since"`
+		Until    string `json:"until"`
+		Time     interface{}
+	} `json:"cache"`
+	API struct {
+		Version       string `json:"version"`
+		LastUpdate    string `json:"last_major_update"`
+		NextUpdate    string `json:"next_major_update"`
+		Documentation string `json:"documentation"`
+		Notice        string `json:"notice"`
+	} `json:"api"`
+	Server      string  `json:"server"`
+	Time        float64 `json:"time"`
+	RenderTime  float64 `json:"render_time"`
+	FulTime     float64 `json:"full_time"`
+	RequestCost float64 `json:"request_cost"`
 }
 
 // BlockchairAddrInfo is the response from the blockchair.com API
@@ -268,34 +346,75 @@ type BlockchairAddrInfo struct {
 			TxCount            int                    `json:"transaction_count"`
 			Formats            map[string]interface{} `json:"formats"`
 		}
-		Transactions []interface{} `json:"transactions"`
-		UTXO         []interface{} `json:"utxo"`
+		Transactions []string `json:"transactions"`
+		UTXO         []*struct {
+			BlockId int    `json:"block_id"`
+			TxHash  string `json:"transaction_hash"`
+			Index   int    `json:"index"`
+			Value   int64  `json:"value"`
+		} `json:"utxo"`
 	} `json:"data"`
-	Context struct {
-		Code    int    `json:"code"`
-		Source  string `json:"source"`
-		Results int    `json:"results"`
-		State   int    `json:"state"`
-		Cache   struct {
-			Live     bool   `json:"live"`
-			Duration int    `json:"duration"`
-			Since    string `json:"since"`
-			Until    string `json:"until"`
-			Time     interface{}
-		} `json:"cache"`
-		API struct {
-			Version       string `json:"version"`
-			LastUpdate    string `json:"last_major_update"`
-			NextUpdate    string `json:"next_major_update"`
-			Documentation string `json:"documentation"`
-			Notice        string `json:"notice"`
-		} `json:"api"`
-		Server      string  `json:"server"`
-		Time        float64 `json:"time"`
-		RenderTime  float64 `json:"render_time"`
-		FulTime     float64 `json:"full_time"`
-		RequestCost float64 `json:"request_cost"`
-	} `json:"context"`
+	Context *BlockChairContext `json:"context"`
+}
+
+// BlockchairTxSlot is an input/output slot of the transaction
+type BlockchairTxSlot struct {
+	BlockId          int     `json:"block_id"`
+	TxId             int64   `json:"transaction_id"`
+	Index            int     `json:"index"`
+	TxHash           string  `json:"transaction_hash"`
+	Date             string  `json:"date"`
+	Time             string  `json:"time"`
+	Value            int64   `json:"value"`
+	ValueUSD         int64   `json:"value_usd"`
+	Recipient        string  `json:"recipient"`
+	Type             string  `json:"type"`
+	ScriptHex        string  `json:"script_hex"`
+	FromCoinbase     bool    `json:"is_from_coinbase"`
+	IsSpendable      *bool   `json:"is_spendable"`
+	IsSpent          bool    `json:"is_spent"`
+	SpendingBlkId    int     `json:"spending_block_id"`
+	SpendingTxId     int64   `json:"spending_transaction_id"`
+	SpendingIndex    int     `json:"spending_index"`
+	SpendingTxHash   string  `json:"spending_transaction_hash"`
+	SpendingDate     string  `json:"spending_date"`
+	SpendingTime     string  `json:"spending_time"`
+	SpendingValueUDS int64   `json:"spending_value_usd"`
+	SpendingSequence int64   `json:"spending_sequence"`
+	SpendingSigHex   string  `json:"spending_signature_hex"`
+	LifeSpan         int64   `json:"lifespan"`
+	Cdd              float64 `json:"cdd"`
+}
+
+// BlockchairTxInfo is a transaction response
+type BlockchairTxInfo struct {
+	Data map[string]struct {
+		Transaction struct {
+			BlockId     int     `json:"block_id"`
+			Id          int     `json:"id"`
+			Hash        string  `json:"hash"`
+			Date        string  `json:"date"`
+			Time        string  `json:"time"`
+			Size        int     `json:"size"`
+			Version     int     `json:"version"`
+			LockTime    int64   `json:"lock_time"`
+			IsCoinbase  bool    `json:"is_coinbase"`
+			InCount     int     `json:"input_count"`
+			OutCount    int     `json:"output_count"`
+			InTotal     int64   `json:"input_total"`
+			InTotalUSD  int64   `json:"input_total_usd"`
+			OutTotal    int64   `json:"output_total"`
+			OutTotalUSD int64   `json:"output_total_usd"`
+			Fee         int64   `json:"fee"`
+			FeeUSD      float64 `json:"fee_usd"`
+			FeeKB       float64 `json:"fee_per_kb"`
+			FeeKBUSD    float64 `json:"fee_per_kb_usd"`
+			CddTotal    float64 `json:"cdd_total"`
+		} `json:"transaction"`
+		Inputs  []*BlockchairTxSlot `json:"inputs"`
+		Outputs []*BlockchairTxSlot `json:"outputs"`
+		Context *BlockChairContext  `json:"context"`
+	} `json:"data"`
 }
 
 //----------------------------------------------------------------------
