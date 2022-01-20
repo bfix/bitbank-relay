@@ -20,8 +20,6 @@
 
 package lib
 
-import "context"
-
 //======================================================================
 // Delegated handlers (use a shared handler)
 //======================================================================
@@ -59,6 +57,22 @@ func (hdlr *DashChainHandler) Init(cfg *HandlerConfig) {
 }
 
 //----------------------------------------------------------------------
+// DGB (Digibyte)
+//----------------------------------------------------------------------
+
+// DgbChainHandler handles Digibyte-related blockchain operations
+type DgbChainHandler struct {
+	DerivedChainHandler
+}
+
+// Init chain handler
+func (hdlr *DgbChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.parent = cciHandler
+	hdlr.coin = "dgb"
+	hdlr.parent.Init(cfg)
+}
+
+//----------------------------------------------------------------------
 // Doge (Dogecoin)
 //----------------------------------------------------------------------
 
@@ -91,6 +105,22 @@ func (hdlr *LtcChainHandler) Init(cfg *HandlerConfig) {
 }
 
 //----------------------------------------------------------------------
+// NMC (Namecoin)
+//----------------------------------------------------------------------
+
+// NmcChainHandler handles Namecoin-related blockchain operations
+type NmcChainHandler struct {
+	DerivedChainHandler
+}
+
+// Init chain handler
+func (hdlr *NmcChainHandler) Init(cfg *HandlerConfig) {
+	hdlr.parent = cciHandler
+	hdlr.coin = "nmc"
+	hdlr.parent.Init(cfg)
+}
+
+//----------------------------------------------------------------------
 // VTC (Vertcoin)
 //----------------------------------------------------------------------
 
@@ -104,43 +134,4 @@ func (hdlr *VtcChainHandler) Init(cfg *HandlerConfig) {
 	hdlr.parent = cciHandler
 	hdlr.coin = "vtc"
 	hdlr.parent.Init(cfg)
-}
-
-//----------------------------------------------------------------------
-// DGB (Digibyte)
-//----------------------------------------------------------------------
-
-// DgbChainHandler handles Digibyte-related blockchain operations
-type DgbChainHandler struct {
-	DerivedChainHandler
-}
-
-// Init chain handler
-func (hdlr *DgbChainHandler) Init(cfg *HandlerConfig) {
-	hdlr.parent = cciHandler
-	hdlr.coin = "dgb"
-	hdlr.parent.Init(cfg)
-}
-
-//======================================================================
-// Unhandled coins
-//======================================================================
-
-//----------------------------------------------------------------------
-// NMC (Namecoin)
-//----------------------------------------------------------------------
-
-// NmcChainHandler handles Namecoin-related blockchain operations
-type NmcChainHandler struct {
-	DerivedChainHandler
-}
-
-// Balance gets the balance of a Namecoin address
-func (hdlr *NmcChainHandler) Balance(addr string) (float64, error) {
-	return 0, nil
-}
-
-// GetFunds returns a list of incoming funds for the address
-func (hdlr *NmcChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
-	return nil, nil
 }
