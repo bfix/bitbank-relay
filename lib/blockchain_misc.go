@@ -53,7 +53,7 @@ type DashChainHandler struct {
 
 // Init chain handler
 func (hdlr *DashChainHandler) Init(cfg *HandlerConfig) {
-	hdlr.parent = cciHandler
+	hdlr.parent = bcHandler
 	hdlr.coin = "dash"
 	hdlr.parent.Init(cfg)
 }
@@ -85,8 +85,8 @@ type LtcChainHandler struct {
 
 // Init chain handler
 func (hdlr *LtcChainHandler) Init(cfg *HandlerConfig) {
-	hdlr.parent = cciHandler
-	hdlr.coin = "ltc"
+	hdlr.parent = bcHandler
+	hdlr.coin = "litecoin"
 	hdlr.parent.Init(cfg)
 }
 
@@ -142,24 +142,5 @@ func (hdlr *NmcChainHandler) Balance(addr string) (float64, error) {
 
 // GetFunds returns a list of incoming funds for the address
 func (hdlr *NmcChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
-	return nil, nil
-}
-
-//----------------------------------------------------------------------
-// ETC (Ethereum Classic)
-//----------------------------------------------------------------------
-
-// EtcChainHandler handles Ethereum Classic-related blockchain operations
-type EtcChainHandler struct {
-	DerivedChainHandler
-}
-
-// Balance gets the balance of a Namecoin address
-func (hdlr *EtcChainHandler) Balance(addr string) (float64, error) {
-	return 0, nil
-}
-
-// GetFunds returns a list of incoming funds for the address
-func (hdlr *EtcChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
 	return nil, nil
 }
