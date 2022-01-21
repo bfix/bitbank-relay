@@ -85,12 +85,14 @@ create table incoming (
     amount    float(53)   default 0.0                            -- amount of funds
 );
 
+-- exchange rates
 create table rates (
     dt        varchar(10) not null,                              -- date string YYYY-MM-DD
     coin      varchar(7)  not null,                              -- coin symbol
     rate      float(53)   not null,                              -- exchange rate
     fiat      varchar(7)  not null,                              -- fiat currency
-    unique key (dt, coin)                                        -- unique combinations
+    n         integer     default 1,                             -- number of rates for date
+    unique key (dt, coin, fiat)                                  -- unique combinations
 );
 
 -- ---------------------------------------------------------------------

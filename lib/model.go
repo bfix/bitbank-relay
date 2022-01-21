@@ -1058,8 +1058,9 @@ func (mdl *Model) UpdateRate(dt, coin, fiat string, rate float64) error {
 	}
 	// update rate in coin record
 	_, err := mdl.inst.Exec(
-		"insert into coin(dt,coin,rate,fiat) values(?,?,?,?) on duplicate key update",
-		dt, coin, rate, fiat)
+		"insert into rates(dt,coin,rate,fiat) values(?,?,?,?)"+
+			" on duplicate key update rate=(n*rate+?)/(n+1), n=n+1",
+		dt, coin, rate, fiat, rate)
 	return err
 }
 
