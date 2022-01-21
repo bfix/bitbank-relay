@@ -59,10 +59,10 @@ package lib
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"sort"
 	"time"
 
@@ -464,8 +464,13 @@ func (mdl *Model) NextUpdate(ID int64, reset bool) error {
 	if mdl.inst == nil {
 		return ErrModelNotAvailable
 	}
-	// set next wait time
-	wt := fmt.Sprintf("least(%d*waitCheck,%d)", mdl.cfg.BalanceWait[1], mdl.cfg.BalanceWait[2])
+	// set next wait time; wait time is randomized
+	f := float64(mdl.cfg.BalanceWait[1] - 1)
+	if f < 1.0 {
+		f = 1.0
+	}
+	f += rand.ExpFloat64()
+	wt := fmt.Sprintf("least(%f*waitCheck,%d)", f, mdl.cfg.BalanceWait[2])
 	if reset {
 		wt = fmt.Sprintf("%d", mdl.cfg.BalanceWait[0])
 	}
