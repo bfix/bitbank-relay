@@ -1047,12 +1047,28 @@ func (mdl *Model) CloseTransaction(txID int64) error {
 
 // UpdateRate sets the new exchange rate (in market base currency) for
 // the given coin.
-func (mdl *Model) UpdateRate(coin string, rate float64) error {
+func (mdl *Model) UpdateRate(dt, coin, fiat string, rate float64) error {
 	// check for valid repository
 	if mdl.inst == nil {
 		return ErrModelNotAvailable
 	}
 	// update rate in coin record
-	_, err := mdl.inst.Exec("update coin set rate=? where symbol=?", rate, coin)
+	if _, err := mdl.inst.Exec("update coin set rate=? where symbol=?", rate, coin); err != nil {
+		return err
+	}
+	// update rate in coin record
+	_, err := mdl.inst.Exec(
+		"insert into coin(dt,coin,rate,fiat) values(?,?,?,?) on duplicate key update",
+		dt, coin, rate, fiat)
 	return err
+}
+
+// GetRate returns a historical exchange rate for coin from rates table.
+func (mdl *Model) GetRate(date int64, coin, fiat string) (rate float64, err error) {
+	dt := time.Unix(date, 0).Format("2006-01-02")
+	row := mdl.inst.QueryRow("select rate from rates where dt=? and coin=? and fiat=?", dt, coin, fiat)
+	if err = row.Scan(&rate); err != nil {
+		rate = -1
+	}
+	return
 }

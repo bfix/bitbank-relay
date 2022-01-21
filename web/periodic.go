@@ -62,18 +62,8 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 	if epoch%cfg.Handler.Market.Rescan == 1 {
 		// get new exchange rates
 		logger.Println(logger.INFO, "[periodic] Get market data...")
-		rates, err := lib.GetMarketData(ctx, cfg.Handler.Market.Fiat, -1, coins)
-		if err != nil {
+		if _, err := lib.GetMarketData(ctx, mdl, cfg.Handler.Market.Fiat, -1, coins); err != nil {
 			logger.Println(logger.ERROR, "[periodic] GetMarketData: "+err.Error())
-		} else {
-			logger.Printf(logger.INFO, "[periodic] Updating market data (%d entries)", len(rates))
-			// update rates in coin table
-			for coin, rate := range rates {
-				logger.Printf(logger.DBG, "[periodic]    * %s: %f", coin, rate)
-				if err := mdl.UpdateRate(coin, rate); err != nil {
-					logger.Println(logger.ERROR, "[periodic] UpdateRate: "+err.Error())
-				}
-			}
 		}
 	}
 	// check balances of addresses that need a rescan (balance sync)

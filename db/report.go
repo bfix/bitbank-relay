@@ -206,12 +206,12 @@ func doReporting(
 	for _, tx := range txList {
 		// exchange value at receive time
 		var rate map[string]float64
-		if rate, err = lib.GetMarketData(ctx, cfg.Handler.Market.Fiat, tx.Timestamp, []string{tx.Coin}); err != nil {
+		if rate, err = lib.GetMarketData(ctx, mdl, cfg.Handler.Market.Fiat, tx.Timestamp, []string{tx.Coin}); err != nil {
 			return
 		}
 		tx.FiatRecv = tx.Amount * rate[tx.Coin]
 		// exchange value at report time
-		if rate, err = lib.GetMarketData(ctx, cfg.Handler.Market.Fiat, -1, []string{tx.Coin}); err != nil {
+		if rate, err = lib.GetMarketData(ctx, mdl, cfg.Handler.Market.Fiat, -1, []string{tx.Coin}); err != nil {
 			return
 		}
 		tx.FiatNow = tx.Amount * rate[tx.Coin]
