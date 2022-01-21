@@ -22,10 +22,7 @@ package lib
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 
 	"github.com/bfix/gospel/bitcoin"
@@ -39,14 +36,16 @@ var (
 
 // Handler to handle coin accounts (in BIP44/49 wallets)
 type Handler struct {
-	coin     int              // coin identifier
+	coin     int              // coin identifier (BIP-32)
 	symb     string           // coin symbol
 	mode     int              // address mode (P2PKH, P2SH, ...)
 	netw     int              // network (Main, Test, Reg)
 	tree     *wallet.HDPublic // HDKD for public keys
 	pathTpl  string           // path template for indexing addresses
+	limit    float64          // auto-close balance on address
 	explorer string           // Explorer URL for address
 	chain    ChainHandler     // blockchain handler for coin
+	market   MarketHandler    // market handler for coin
 }
 
 // NewHandler creates a new handler instance for the given coin on
@@ -67,18 +66,26 @@ func NewHandler(coin *CoinConfig, network int) (*Handler, error) {
 	}
 	path += "/%d"
 
-	// get coin identifier
+	// get coin identifier and handlers
 	coinID, _ := wallet.GetCoinInfo(coin.Symb)
+	chainHdlr, ok := baseChainHdlrs[coin.Blockchain]
+	if !ok {
+		return nil, fmt.Errorf("no blockchain handler for coin %s", coin.Symb)
+	}
+	var marketHdlr MarketHandler = nil
 
 	// assemble handler for given coin
 	return &Handler{
-		coin:    coinID,
-		symb:    coin.Symb,
-		mode:    coin.GetMode(),
-		netw:    network,
-		tree:    wallet.NewHDPublic(pk, coin.Path),
-		pathTpl: path,
-		chain:   NewChainHandler(coin.Symb, coin.Handler),
+		coin:     coinID,
+		symb:     coin.Symb,
+		mode:     coin.GetMode(),
+		netw:     network,
+		tree:     wallet.NewHDPublic(pk, coin.Path),
+		pathTpl:  path,
+		limit:    coin.Limit,
+		explorer: coin.Explorer,
+		chain:    chainHdlr,
+		market:   marketHdlr,
 	}, nil
 }
 
@@ -103,20 +110,30 @@ func (hdlr *Handler) GetAddress(idx int) (string, error) {
 // GetBalance returns the balance for a given address
 func (hdlr *Handler) GetBalance(addr string) (float64, error) {
 	// call balance function
-	return hdlr.chain.Balance(addr)
+	return hdlr.chain.Balance(addr, hdlr.symb)
 }
 
 // GetTxList returns a list of transaction for an address
 func (hdlr *Handler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
 	// call reporting function
-	return hdlr.chain.GetFunds(ctx, addrId, addr)
+	return hdlr.chain.GetFunds(ctx, addrId, addr, hdlr.symb)
 }
 
 //----------------------------------------------------------------------
 // Setup handler list from configuration
 
-func InitHandler(cfg *Config, mdl *Model) (coins string, err error) {
-	// load handlers; assemble list of coin symbols
+func InitHandlers(cfg *Config, mdl *Model) (coins string, err error) {
+
+	// initialize shared handler instances:
+	// ------------------------------------
+	// (1) blockchain handlers
+	for name, hdlrCfg := range cfg.Handler.Blockchain {
+		if hdlr, ok := baseChainHdlrs[name]; ok {
+			hdlr.Init(hdlrCfg)
+		}
+	}
+
+	// load actual coin handlers; assemble list of coin symbols
 	coins = ""
 	for _, coin := range cfg.Coins {
 		// check if coin is in model
@@ -162,36 +179,4 @@ func GetNetwork(netw string) int {
 		return wallet.AddrReg
 	}
 	return -1
-}
-
-//----------------------------------------------------------------------
-// shared blockchain APIs
-//----------------------------------------------------------------------
-
-// Blockcypher works for: BTC, LTC, DASH, DOGE, ETH
-// Checks if an address is used (#tx > 0)
-func Blockcypher(coin, addr string) (bool, error) {
-	query := fmt.Sprintf("https://api.blockcypher.com/v1/%s/main/addrs/%s", coin, addr)
-	resp, err := http.Get(query)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
-	var data map[string]interface{}
-	if err = json.Unmarshal(body, &data); err != nil {
-		return false, err
-	}
-	val, ok := data["n_tx"]
-	if !ok {
-		return false, fmt.Errorf("no 'n_tx' attribute")
-	}
-	n, ok := val.(uint64)
-	if !ok {
-		return false, fmt.Errorf("invalid 'n_tx' type")
-	}
-	return n > 0, nil
 }

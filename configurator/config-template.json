@@ -2,7 +2,6 @@
 	"service": {
 		"listen": "localhost:80",
 		"epoch": 300,
-		"logFile": "relay-%s.log",
 		"logLevel": "DBG",
 		"logRotate": 288
 	},
@@ -16,10 +15,58 @@
 		],
 		"txTTL": 900
 	},
-	"market": {
-		"fiat": "EUR",
-		"rescan": 72,
-		"apikey": ""
+	"handler": {
+		"blockchain": {
+			"blockchair.com": {
+				"apiKey": "",
+				"rateLimits": [
+					5,
+					30,
+					0,
+					1440
+				]
+			},
+			"cryptoid.info": {
+				"apiKey": "",
+				"coolTime": 10.0
+			},
+			"btgexplorer.com": {
+				"apiKey": "",
+				"rates": [
+					5,
+					30,
+					0,
+					1440
+				]
+			},
+			"zcha.in": {
+				"apiKey": "",
+				"rates": [
+					5,
+					30,
+					0,
+					1440
+				]
+			},
+			"blockscout.com": {
+				"apiKey": "",
+				"rates": [
+					5,
+					30,
+					0,
+					1440
+				]
+			}
+		},
+		"market": {
+			"fiat": "EUR",
+			"rescan": 72,
+			"service": {
+				"coinapi.io": {
+					"apiKey": ""
+				}
+			}
+		}
 	},
 	"coins": [
 		{
@@ -28,14 +75,9 @@
 			"mode": "P2SH",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://www.blockchain.com/btc/address/%s",
-				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					10
-				]
-			}
+			"explorer": "https://www.blockchain.com/btc/address/%s",
+			"accountLimit": 10000,
+			"blockchain": "blockchair.com"
 		},
 		{
 			"symb": "bch",
@@ -44,16 +86,8 @@
 			"pk": "",
 			"addr": "",
 			"explorer": "https://www.blockchain.com/bch/address/%s",
-			"handler": {
-				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					5,
-					30,
-					0,
-					1440
-				]
-			}
+			"accountLimit": 10000,
+			"blockchain": "blockchair.com"
 		},
 		{
 			"symb": "btg",
@@ -61,17 +95,9 @@
 			"mode": "P2SH",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://explorer.bitcoingold.org/insight/address/%s",
-				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					5,
-					30,
-					0,
-					1440
-				]
-			}
+			"explorer": "https://explorer.bitcoingold.org/insight/address/%s",
+			"accountLimit": 10000,
+			"blockchain": "btgexplorer.com"
 		},
 		{
 			"symb": "dash",
@@ -79,15 +105,9 @@
 			"mode": "P2PKH",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://chainz.cryptoid.info/dash/address.dws?%s.htm",
-				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					0,
-					6
-				]
-			}
+			"explorer": "https://chainz.cryptoid.info/dash/address.dws?%s.htm",
+			"accountLimit": 10000,
+			"blockchain": "blockchair.com"
 		},
 		{
 			"symb": "dgb",
@@ -95,11 +115,9 @@
 			"mode": "P2SH",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://chainz.cryptoid.info/dgb/address.dws?%s.htm",
-				"accountLimit": 10000,
-				"apikey": ""
-			}
+			"explorer": "https://chainz.cryptoid.info/dgb/address.dws?%s.htm",
+			"accountLimit": 10000,
+			"blockchain": "cryptoid.info"
 		},
 		{
 			"symb": "doge",
@@ -107,17 +125,9 @@
 			"mode": "P2PKH",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://dogechain.info/address/%s",
-				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					5,
-					30,
-					0,
-					1440
-				]
-			}
+			"explorer": "https://dogechain.info/address/%s",
+			"accountLimit": 10000,
+			"blockchain": "blockchair.com"
 		},
 		{
 			"symb": "ltc",
@@ -125,15 +135,9 @@
 			"mode": "P2SH",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://chainz.cryptoid.info/ltc/address.dws?%s.htm",
-				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					0,
-					6
-				]
-			}
+			"explorer": "https://chainz.cryptoid.info/ltc/address.dws?%s.htm",
+			"accountLimit": 10000,
+			"blockchain": "blockchair.com"
 		},
 		{
 			"symb": "nmc",
@@ -141,11 +145,9 @@
 			"mode": "P2PKH",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://nmc.tokenview.com/en/address/%s",
-				"accountLimit": 10000,
-				"apikey": ""
-			}
+			"explorer": "https://nmc.tokenview.com/en/address/%s",
+			"accountLimit": 10000,
+			"blockchain": "cryptoid.info"
 		},
 		{
 			"symb": "vtc",
@@ -153,11 +155,9 @@
 			"mode": "P2SH",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://chainz.cryptoid.info/vtc/address.dws?%s.htm",
-				"accountLimit": 10000,
-				"apikey": ""
-			}
+			"explorer": "https://chainz.cryptoid.info/vtc/address.dws?%s.htm",
+			"accountLimit": 10000,
+			"blockchain": "cryptoid.info"
 		},
 		{
 			"symb": "zec",
@@ -165,17 +165,9 @@
 			"mode": "P2PKH",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://zecblockexplorer.com/address/%s",
-				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					5,
-					30,
-					0,
-					1440
-				]
-			}
+			"explorer": "https://zecblockexplorer.com/address/%s",
+			"accountLimit": 10000,
+			"blockchain": "zcha.in"
 		},
 		{
 			"symb": "eth",
@@ -183,18 +175,9 @@
 			"mode": "",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://www.blockchain.com/eth/address/%s",
-				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					5,
-					50,
-					200,
-					2000,
-					3000
-				]
-			}
+			"explorer": "https://www.blockchain.com/eth/address/%s",
+			"accountLimit": 10000,
+			"blockchain": "blockchair.com"
 		},
 		{
 			"symb": "etc",
@@ -202,17 +185,9 @@
 			"mode": "",
 			"pk": "",
 			"addr": "",
-			"handler": {
-				"explorer": "https://etcblockexplorer.com/address/%s",
-				"accountLimit": 10000,
-				"apikey": "",
-				"rates": [
-					5,
-					30,
-					0,
-					1440
-				]
-			}
+			"explorer": "https://etcblockexplorer.com/address/%s",
+			"accountLimit": 10000,
+			"blockchain": "blockscout.com"
 		}
 	]
 }

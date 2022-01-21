@@ -32,21 +32,16 @@ import (
 
 //----------------------------------------------------------------------
 
-type HandlerConfig struct {
-	Limit    float64 `json:"limit"`    // limit for receiving addresses
-	ApiKey   string  `json:"apiKey"`   // API key
-	Rates    []int   `json:"rates"`    // API rate limits
-	Explorer string  `json:"explorer"` // address explorer URL
-}
-
 // CoinConfig for a supported coin (Bitcoin or Altcoin)
 type CoinConfig struct {
-	Symb    string         `json:"symb"`    // coin symbol
-	Path    string         `json:"path"`    // base derivation path like "m/44'/0'/0'/0/0"
-	Mode    string         `json:"mode"`    // address version (P2PKH, P2SH, ...)
-	Pk      string         `json:"pk"`      // public key for coin
-	Addr    string         `json:"addr"`    // address for base derivation path
-	Handler *HandlerConfig `json:"handler"` // handler configuration
+	Symb       string  `json:"symb"`       // coin symbol
+	Path       string  `json:"path"`       // base derivation path like "m/44'/0'/0'/0/0"
+	Mode       string  `json:"mode"`       // address version (P2PKH, P2SH, ...)
+	Pk         string  `json:"pk"`         // public key for coin
+	Addr       string  `json:"addr"`       // address for base derivation path
+	Limit      float64 `json:"limit"`      // limit for receiving addresses
+	Explorer   string  `json:"explorer"`   // address explorer URL
+	Blockchain string  `json:"blockchain"` // blockchain handler rerefence
 }
 
 // GetMode returns the numeric value of mode (P2PKH, P2SH, ...)
@@ -104,11 +99,28 @@ type ModelConfig struct {
 
 //----------------------------------------------------------------------
 
-// MarketConfig defines settings for cryptocurrency price retrieval.
+// MarketHandlerConfig defines settings for cryptocurrency price retrieval.
+type MarketHandlerConfig struct {
+	APIKey string `json:"apikey"` // API access key
+}
+
+// ChainHandlerConfig to sezup blockchain-retrieval handlers
+type ChainHandlerConfig struct {
+	RateLimits []int   `json:"rateLimits"`
+	CoolTime   float64 `json:"coolTime"`
+	ApiKey     string  `json:"apiKey"`
+}
+
 type MarketConfig struct {
-	Fiat   string `json:"fiat"`   // Fiat base currency
-	Rescan int    `json:"rescan"` // rescan time interval (in epochs)
-	APIKey string `json:"apikey"` // API access key (coinapi.io)
+	Fiat    string                          `json:"fiat"`    // Fiat base currency
+	Rescan  int                             `json:"rescan"`  // rescan time interval (in epochs)
+	Service map[string]*MarketHandlerConfig `json:"service"` // narket services
+}
+
+// HandlerConfig holds all handler-related configurations
+type HandlerConfig struct {
+	Blockchain map[string]*ChainHandlerConfig `json:"blockchain"`
+	Market     *MarketConfig                  `json:"market"`
 }
 
 //----------------------------------------------------------------------
@@ -117,7 +129,7 @@ type MarketConfig struct {
 type Config struct {
 	Service *ServiceConfig `json:"service"` // web service configuration
 	Model   *ModelConfig   `json:"model"`   // model configuration
-	Market  *MarketConfig  `json:"market"`  // market configuration
+	Handler *HandlerConfig `json:"handler"` // handler configuration
 	Coins   []*CoinConfig  `json:"coins"`   // list of known coins
 }
 
@@ -144,6 +156,8 @@ func ReadConfig(rdr io.Reader) (*Config, error) {
 	if err = json.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
+	//buf, _ := json.MarshalIndent(cfg, "", "  ")
+	//logger.Println(logger.DBG, string(buf))
 	return cfg, nil
 }
 

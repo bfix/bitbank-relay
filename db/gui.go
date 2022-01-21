@@ -121,7 +121,7 @@ type DashboardData struct {
 func guiHandler(w http.ResponseWriter, r *http.Request) {
 	// collect information for the dashboard
 	dd := new(DashboardData)
-	dd.Fiat = cfg.Market.Fiat
+	dd.Fiat = cfg.Handler.Market.Fiat
 
 	// collect coin info
 	var err error
@@ -158,7 +158,7 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 	// show coin info
 	query := r.URL.Query()
 	cd := new(CoinData)
-	cd.Fiat = cfg.Market.Fiat
+	cd.Fiat = cfg.Handler.Market.Fiat
 
 	if id, ok := queryInt(query, "id"); ok {
 		// check if we switch assignments
@@ -217,7 +217,7 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 	// show account info
 	query := r.URL.Query()
 	ad := new(AccountData)
-	ad.Fiat = cfg.Market.Fiat
+	ad.Fiat = cfg.Handler.Market.Fiat
 
 	if id, ok := queryInt(query, "id"); ok {
 		// check if we switch assignments
@@ -282,7 +282,7 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 	// show address info
 	query := r.URL.Query()
 	ad := new(AddressData)
-	ad.Fiat = cfg.Market.Fiat
+	ad.Fiat = cfg.Handler.Market.Fiat
 	ad.Links = make(map[string]string)
 
 	if id, ok := queryInt(query, "id"); ok {

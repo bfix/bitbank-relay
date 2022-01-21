@@ -577,8 +577,12 @@ func (mdl *Model) GetAddresses(id, accnt, coin int64, all bool) (ai []*AddrInfo,
 	if id != 0 {
 		addClause(id, "id")
 	} else {
-		addClause(coin, "coinId")
-		addClause(accnt, "accntId")
+		if coin != 0 {
+			addClause(coin, "coinId")
+		}
+		if accnt != 0 {
+			addClause(accnt, "accntId")
+		}
 	}
 	// assemble SELECT statement
 	query := "select id,coin,coinName,val,balance,rate,stat,account,accountName," +

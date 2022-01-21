@@ -41,88 +41,26 @@ import (
 
 // ChainHandler interface for blockchain-related processing
 type ChainHandler interface {
-	Init(cfg *HandlerConfig)
-	Balance(addr string) (float64, error)
-	GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error)
-	Explore(addr string) string
-	Limit() float64
-}
-
-// SharedChainHandler interface for multi-coin chain handlers
-type SharedChainHandler interface {
-	Init(cfg *HandlerConfig)
+	Init(cfg *ChainHandlerConfig)
 	Balance(addr, coin string) (float64, error)
 	GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error)
-}
-
-//----------------------------------------------------------------------
-// A derived chain handler manages a single coin by using a shared
-// chain handler for its operations.
-//----------------------------------------------------------------------
-
-// DerivedChainHandler manages a single coin with a shared handler
-type DerivedChainHandler struct {
-	coin     string             // associated coin symbol
-	parent   SharedChainHandler // reference to parent handler
-	limit    float64            // account limit (auto-closing)
-	explorer string             // URL pattern for blockchain browser
-}
-
-// Init a new chain handler instance
-func (hdlr *DerivedChainHandler) Init(cfg *HandlerConfig) {
-	hdlr.limit = cfg.Limit
-	hdlr.explorer = cfg.Explorer
-}
-
-// Balance gets the balance of an address
-func (hdlr *DerivedChainHandler) Balance(addr string) (float64, error) {
-	return hdlr.parent.Balance(addr, hdlr.coin)
-}
-
-// GetFunds returns a list of incoming funds for the address
-func (hdlr *DerivedChainHandler) GetFunds(ctx context.Context, addrId int64, addr string) ([]*Fund, error) {
-	return nil, nil
-}
-
-// Exporer returns the pattern for the blockchain browser URL
-func (hdlr *DerivedChainHandler) Explore(addr string) string {
-	return hdlr.explorer
-}
-
-// Limit is the max. funding of an address (auto-close)
-func (hdlr *DerivedChainHandler) Limit() float64 {
-	return hdlr.limit
 }
 
 //----------------------------------------------------------------------
 // Basic chain handlers are generic stand-alone handlers for a coin
 //----------------------------------------------------------------------
 
-// BtcChainHandler handles BTC-related blockchain operations
+// BasicChainHandler handles BTC-related blockchain operations
 type BasicChainHandler struct {
 	ratelimiter *network.RateLimiter
-	limit       float64
 	apiKey      string
-	explorer    string
 	lock        sync.Mutex
 }
 
 // Init a new chain handler instance
-func (hdlr *BasicChainHandler) Init(cfg *HandlerConfig) {
-	hdlr.ratelimiter = network.NewRateLimiter(cfg.Rates...)
-	hdlr.limit = cfg.Limit
+func (hdlr *BasicChainHandler) Init(cfg *ChainHandlerConfig) {
+	hdlr.ratelimiter = network.NewRateLimiter(cfg.RateLimits...)
 	hdlr.apiKey = cfg.ApiKey
-	hdlr.explorer = cfg.Explorer
-}
-
-// Exporer returns the pattern for the blockchain browser URL
-func (hdlr *BasicChainHandler) Explore(addr string) string {
-	return hdlr.explorer
-}
-
-// Limit is the max. funding of an address (auto-close)
-func (hdlr *BasicChainHandler) Limit() float64 {
-	return hdlr.limit
 }
 
 //======================================================================
@@ -131,16 +69,21 @@ func (hdlr *BasicChainHandler) Limit() float64 {
 
 // singleton instances of shared handlers
 var (
-	cciHandler = new(CCIChainHandler)
-	bcHandler  = new(BcChainHandler)
+	baseChainHdlrs = map[string]ChainHandler{
+		"cryptoid.info":   new(CciChainHandler),
+		"blockchair.com":  new(BcChainHandler),
+		"btgexplorer.com": new(BtgChainHandler),
+		"zcha.in":         new(ZecChainHandler),
+		"blockscout.com":  new(EtcChainHandler),
+	}
 )
 
 //----------------------------------------------------------------------
 // (chainz.cryptoid.info)
 //----------------------------------------------------------------------
 
-// CCIChainHandler handles multi-coin blockchain operations
-type CCIChainHandler struct {
+// CciChainHandler handles multi-coin blockchain operations
+type CciChainHandler struct {
 	lastCall    int64      // time last used (UnixMilli)
 	apiKey      string     // optional API key
 	initialized bool       // handler set-up?
@@ -148,7 +91,7 @@ type CCIChainHandler struct {
 }
 
 // wait for execution of request: requests are serialized and
-func (hdlr *CCIChainHandler) wait(withLock bool) {
+func (hdlr *CciChainHandler) wait(withLock bool) {
 	// only handle one call at a time
 	if withLock {
 		hdlr.lock.Lock()
@@ -163,7 +106,7 @@ func (hdlr *CCIChainHandler) wait(withLock bool) {
 }
 
 // Init a new chain handler instance
-func (hdlr *CCIChainHandler) Init(cfg *HandlerConfig) {
+func (hdlr *CciChainHandler) Init(cfg *ChainHandlerConfig) {
 	// shared instance: init only once (first wins)
 	if !hdlr.initialized {
 		hdlr.initialized = true
@@ -172,7 +115,7 @@ func (hdlr *CCIChainHandler) Init(cfg *HandlerConfig) {
 }
 
 // Balance gets the balance of a Bitcoin address
-func (hdlr *CCIChainHandler) Balance(addr, coin string) (float64, error) {
+func (hdlr *CciChainHandler) Balance(addr, coin string) (float64, error) {
 	// perform query
 	hdlr.wait(true)
 	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=getreceivedbyaddress&a=%s", coin, addr)
@@ -191,7 +134,7 @@ func (hdlr *CCIChainHandler) Balance(addr, coin string) (float64, error) {
 }
 
 // GetFunds returns a list of incoming funds for the address
-func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
+func (hdlr *CciChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
 	// perform query
 	hdlr.wait(true)
 	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=multiaddr&active=%s", coin, addr)
@@ -203,7 +146,7 @@ func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 		return nil, err
 	}
 	// parse response
-	data := new(CCIAddrInfo)
+	data := new(CciAddrInfo)
 	if err = json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
@@ -220,7 +163,7 @@ func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 			return nil, err
 		}
 		// parse response
-		tx := new(CCITxInfo)
+		tx := new(CciTxInfo)
 		if err = json.Unmarshal(body, &tx); err != nil {
 			return nil, err
 		}
@@ -240,8 +183,8 @@ func (hdlr *CCIChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 
 }
 
-// CCIAddrInfo holds basic address information
-type CCIAddrInfo struct {
+// CciAddrInfo holds basic address information
+type CciAddrInfo struct {
 	Addresses []struct {
 		Address       string `json:"address"`
 		TotalSent     int64  `json:"total_sent"`
@@ -257,8 +200,8 @@ type CCIAddrInfo struct {
 	} `json:"txs"`
 }
 
-// CCITxInfo holds transaction details
-type CCITxInfo struct {
+// CciTxInfo holds transaction details
+type CciTxInfo struct {
 	Hash          string  `json:"hash"`
 	Block         int     `json:"block"`
 	Index         int     `json:"index"`
@@ -295,14 +238,26 @@ type BcChainHandler struct {
 }
 
 // Init a new chain handler instance
-func (hdlr *BcChainHandler) Init(cfg *HandlerConfig) {
+func (hdlr *BcChainHandler) Init(cfg *ChainHandlerConfig) {
 	// shared instance: init only once (first wins)
 	if !hdlr.initialized {
 		hdlr.initialized = true
-		hdlr.ratelimiter = network.NewRateLimiter(cfg.Rates...)
+		hdlr.ratelimiter = network.NewRateLimiter(cfg.RateLimits...)
 		hdlr.apiKey = cfg.ApiKey
 	}
 }
+
+var (
+	// map coin ticker into coin name used by handler instance
+	bcCoinMap = map[string]string{
+		"btc":  "bitcoin",
+		"bch":  "bitcoin-cash",
+		"dash": "dash",
+		"doge": "dogecoin",
+		"ltc":  "litecoin",
+		"eth":  "ethereum",
+	}
+)
 
 // query address information (incl. transaction list)
 func (hdlr *BcChainHandler) query(addr, coin string) (*BlockchairAddrInfo, error) {
@@ -312,7 +267,11 @@ func (hdlr *BcChainHandler) query(addr, coin string) (*BlockchairAddrInfo, error
 
 	// perform query
 	hdlr.ratelimiter.Pass()
-	query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/address/%s", coin, addr)
+	c, ok := bcCoinMap[coin]
+	if !ok {
+		c = coin
+	}
+	query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/address/%s", c, addr)
 	if hdlr.apiKey != "" {
 		query += fmt.Sprintf("?key=%s", hdlr.apiKey)
 	}
@@ -350,12 +309,17 @@ func (hdlr *BcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, co
 	if err != nil {
 		return nil, err
 	}
+	// map coin name to name used by handler
+	c, ok := bcCoinMap[coin]
+	if !ok {
+		c = coin
+	}
 	// collect funding transactions
 	funds := make([]*Fund, 0)
 	for _, txHash := range data.Data[addr].Transactions {
 		// perform query
 		hdlr.ratelimiter.Pass()
-		query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/transaction/%s", coin, txHash)
+		query := fmt.Sprintf("https://api.blockchair.com/%s/dashboards/transaction/%s", c, txHash)
 		if hdlr.apiKey != "" {
 			query += fmt.Sprintf("?key=%s", hdlr.apiKey)
 		}
@@ -372,7 +336,7 @@ func (hdlr *BcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, co
 		// find received funds in transaction outputs
 		for _, vout := range tx.Outputs {
 			if addr == vout.Recipient {
-				ts, err := time.Parse("2006-02-01 15:04:05", vout.Time)
+				ts, err := time.Parse("2006-01-02 15:04:05", vout.Time)
 				if err != nil {
 					return nil, err
 				}
@@ -421,7 +385,7 @@ type BlockchairAddrInfo struct {
 		Address struct {
 			Type               string                 `json:"type"`
 			Script             string                 `json:"script_hex"`
-			Balance            int64                  `json:"balance"`
+			Balance            interface{}            `json:"balance"`
 			BalanceUSD         float64                `json:"balance_usd"`
 			Received           float64                `json:"received"`
 			ReceivedUSD        float64                `json:"received_usd"`
@@ -457,7 +421,7 @@ type BlockchairTxSlot struct {
 	Date             string  `json:"date"`
 	Time             string  `json:"time"`
 	Value            int64   `json:"value"`
-	ValueUSD         int64   `json:"value_usd"`
+	ValueUSD         float64 `json:"value_usd"`
 	Recipient        string  `json:"recipient"`
 	Type             string  `json:"type"`
 	ScriptHex        string  `json:"script_hex"`
@@ -470,7 +434,7 @@ type BlockchairTxSlot struct {
 	SpendingTxHash   string  `json:"spending_transaction_hash"`
 	SpendingDate     string  `json:"spending_date"`
 	SpendingTime     string  `json:"spending_time"`
-	SpendingValueUDS int64   `json:"spending_value_usd"`
+	SpendingValueUSD float64 `json:"spending_value_usd"`
 	SpendingSequence int64   `json:"spending_sequence"`
 	SpendingSigHex   string  `json:"spending_signature_hex"`
 	LifeSpan         int64   `json:"lifespan"`
@@ -493,9 +457,9 @@ type BlockchairTxInfo struct {
 			InCount     int     `json:"input_count"`
 			OutCount    int     `json:"output_count"`
 			InTotal     int64   `json:"input_total"`
-			InTotalUSD  int64   `json:"input_total_usd"`
+			InTotalUSD  float64 `json:"input_total_usd"`
 			OutTotal    int64   `json:"output_total"`
-			OutTotalUSD int64   `json:"output_total_usd"`
+			OutTotalUSD float64 `json:"output_total_usd"`
 			Fee         int64   `json:"fee"`
 			FeeUSD      float64 `json:"fee_usd"`
 			FeeKB       float64 `json:"fee_per_kb"`
@@ -508,36 +472,415 @@ type BlockchairTxInfo struct {
 	} `json:"data"`
 }
 
+//======================================================================
+// BTG (Bitcoin Gold)
+//======================================================================
+
+// BtgChainHandler handles BitcoinGold-related blockchain operations
+type BtgChainHandler struct {
+	BasicChainHandler
+}
+
+// Balance gets the balance of a Bitcoin Gold address
+func (hdlr *BtgChainHandler) Balance(addr, coin string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
+	// perform query
+	hdlr.ratelimiter.Pass()
+	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
+	body, err := ChainQuery(context.Background(), query)
+	if err != nil {
+		return -1, err
+	}
+	data := new(BtgAddrInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return -1, err
+	}
+	// return balance (incoming funds)
+	val, err := strconv.ParseFloat(data.TotalReceived, 64)
+	if err != nil {
+		return -1, err
+	}
+	// return balance
+	return val, nil
+}
+
+// GetFunds returns incoming transaction for a Bitcoin Gold address.
+func (hdlr *BtgChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
+	// perform query (stage 1)
+	hdlr.ratelimiter.Pass()
+	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
+	body, err := ChainQuery(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	data := new(BtgAddrInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+	// process all transactions
+	funds := make([]*Fund, 0)
+	for _, tx := range data.Transaction {
+		// perform query (stage 2)
+		hdlr.ratelimiter.Pass()
+		query := fmt.Sprintf("https://btgexplorer.com/api/tx/%s", tx)
+		body, err := ChainQuery(ctx, query)
+		if err != nil {
+			continue
+		}
+		data := make([]*BtgTxInfo, 0)
+		if err = json.Unmarshal(body, &data); err != nil {
+			return nil, err
+		}
+		// find received funds in transaction outputs
+		for _, tx := range data {
+			for _, vout := range tx.Vout {
+				val, err := strconv.ParseFloat(vout.Value, 64)
+				if err != nil {
+					continue
+				}
+				for _, a := range vout.ScriptPubKey.Addresses {
+					if addr == a {
+						f := &Fund{
+							Seen:   tx.Time,
+							Addr:   addrId,
+							Amount: val,
+						}
+						funds = append(funds, f)
+					}
+				}
+			}
+		}
+	}
+	// return funds
+	return funds, nil
+}
+
 //----------------------------------------------------------------------
-// Instantiation of chain handler instances
+// internal access helpers
 //----------------------------------------------------------------------
 
-var (
-	chainHdlr = map[string]ChainHandler{
-		"btc":  new(BtcChainHandler),
-		"bch":  new(BchChainHandler),
-		"btg":  new(BtgChainHandler),
-		"dash": new(DashChainHandler),
-		"dgb":  new(DgbChainHandler),
-		"doge": new(DogeChainHandler),
-		"ltc":  new(LtcChainHandler),
-		"nmc":  new(NmcChainHandler),
-		"vtc":  new(VtcChainHandler),
-		"zec":  new(ZecChainHandler),
-		"eth":  new(EthChainHandler),
-		"etc":  new(EtcChainHandler),
-	}
-)
+// BtgAddrInfo is the response from the btgexplorer.com API
+type BtgAddrInfo struct {
+	Page               int      `json:"page"`
+	TotalPages         int      `json:"totalPages"`
+	ItemsOnPage        int      `json:"itemsOnPage"`
+	Address            string   `json:"addrStr"`
+	Balance            string   `json:"balance"`
+	TotalReceived      string   `json:"totalReceived"`
+	TotalSent          string   `json:"totalSent"`
+	UnconfirmedBalance string   `json:"unconfirmedBalance"`
+	UnconfirmedTxs     int      `json:"unconfirmedTxApperances"`
+	TxApperances       int      `json:"txApperances"`
+	Transaction        []string `json:"transactions"`
+}
 
-// Instantiate a new blockchain handler based on coin symbol
-func NewChainHandler(coin string, cfg *HandlerConfig) (hdlr ChainHandler) {
-	hdlr, ok := chainHdlr[coin]
-	if ok {
-		hdlr.Init(cfg)
-	} else {
-		hdlr = nil
+// BtgTxInfo represents a Bitcoin Gold transaction
+type BtgTxInfo struct {
+	TxID          string       `json:"txid"`
+	Version       int          `json:"version"`
+	Vin           []*BtgTxVin  `json:"vin"`
+	Vout          []*BtgTxVout `json:"vout"`
+	BlockHash     string       `json:"blockHash"`
+	BlockHeight   int          `json:"blockHeight"`
+	Confirmations int          `json:"confirmations"`
+	Time          int64        `json:"time"`
+	BlockTime     int64        `json:"blockTime"`
+	ValueOut      float64      `json:"valueOut"`
+	ValueIn       float64      `json:"valueIn"`
+	Fee           string       `json:"fee"`
+	Hex           string       `json:"hex"`
+}
+
+// BtgTxVin is an input slot
+type BtgTxVin struct {
+	TxID      string `json:"txid"`
+	Vout      int    `json:"vout"`
+	Sequence  int32  `json:"sequence"`
+	N         int    `json:"n"`
+	ScriptSig struct {
+		Asm string `json:"asm"`
+		Hex string `json:"hex"`
+	} `json:"scriptSig"`
+	Addresses []string `json:"addresses"`
+	Value     string   `json:"value"`
+}
+
+// BtgTxVout is an output slot
+type BtgTxVout struct {
+	Value        string `json:"value"`
+	N            int    `json:"n"`
+	ScriptPubKey struct {
+		Addresses []string `json:"addresses"`
+		Asm       string   `json:"asm"`
+		Hex       string   `json:"hex"`
+	} `json:"scriptPubKey"`
+	Spent bool `json:"spent"`
+}
+
+//======================================================================
+// ETC (Ethereum Classic)
+//======================================================================
+
+// EtcChainHandler handles Ethereum Classic-related blockchain operations
+type EtcChainHandler struct {
+	BasicChainHandler
+}
+
+// Balance gets the balance of an Ethereum address
+func (hdlr *EtcChainHandler) Balance(addr, coin string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
+	// perform query
+	hdlr.ratelimiter.Pass()
+	query := fmt.Sprintf("https://blockscout.com/etc/mainnet/api?module=account&action=balance&address=%s", addr)
+	body, err := ChainQuery(context.Background(), query)
+	if err != nil {
+		return -1, err
 	}
-	return
+	data := new(EtcAddrInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return -1, err
+	}
+	// return balance (incoming funds)
+	if data.Result == nil {
+		return -1, err
+	}
+	val, err := strconv.ParseInt(*data.Result, 10, 64)
+	if err != nil {
+		return -1, err
+	}
+	return float64(val) / 1e8, nil
+}
+
+// GetFunds returns incoming transaction for an Ethereum address.
+func (hdlr *EtcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
+	// perform query
+	hdlr.ratelimiter.Pass()
+	query := fmt.Sprintf("https://blockscout.com/etc/mainnet/api?module=account&action=txlist&address=%s", addr)
+	body, err := ChainQuery(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	data := new(EtcTxInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+	// find received funds in transaction outputs
+	funds := make([]*Fund, 0)
+	for _, tx := range data.Result {
+		ts, err := strconv.ParseInt(tx.Timestamp, 10, 64)
+		if err != nil {
+			continue
+		}
+		val, err := strconv.ParseInt(tx.Value, 10, 64)
+		if err != nil {
+			continue
+		}
+		f := &Fund{
+			Seen:   ts,
+			Addr:   addrId,
+			Amount: float64(val) / 1e8,
+		}
+		funds = append(funds, f)
+	}
+	// return funds
+	return funds, nil
+}
+
+// EtcAddrInfo is a response for an address info query
+type EtcAddrInfo struct {
+	Message string  `json:"message"`
+	Result  *string `json:"result"`
+	Status  string  `json:"status"`
+}
+
+// EtcTxInfo is a response for an address transaction query
+type EtcTxInfo struct {
+	Message string `json:"message"`
+	Result  []*struct {
+		BlockHash       string `json:"blockHash"`
+		BlockNumber     string `json:"blockNumber"`
+		Confirmations   string `json:"confirmations"`
+		ContractAddress string `json:"contractAddress"`
+		CumGasUsed      string `json:"cumulativeGasUsed"`
+		From            string `json:"from"`
+		Gas             string `json:"gas"`
+		GasPrice        string `json:"gasPrice"`
+		GasedUsed       string `json:"gasUsed"`
+		Hash            string `json:"hash"`
+		Input           string `json:"input"`
+		IsError         string `json:"isError"`
+		None            string `json:"nonce"`
+		Timestamp       string `jspn:"timeStamp"`
+		To              string `json:"to"`
+		TxIndex         string `json:"transactionIndex"`
+		TxReceipt       string `json:"txreceipt_status"`
+		Value           string `json:"value"`
+	} `json:"result"`
+	Status string `json:"status"`
+}
+
+//======================================================================
+// ZEC (ZCash)
+//======================================================================
+
+/// ZecChainHandler handles ZCash-related blockchain operations
+type ZecChainHandler struct {
+	BasicChainHandler
+}
+
+// Balance gets the balance of a ZCash address
+func (hdlr *ZecChainHandler) Balance(addr, coin string) (float64, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
+	// assemble query
+	hdlr.ratelimiter.Pass()
+	query := fmt.Sprintf("https://api.zcha.in/v2/mainnet/accounts/%s", addr)
+	body, err := ChainQuery(context.Background(), query)
+	if err != nil {
+		return -1, err
+	}
+	data := new(ZecAddrInfo)
+	if err = json.Unmarshal(body, &data); err != nil {
+		return -1, err
+	}
+	// return balance
+	return data.TotalRecv, nil
+}
+
+// GetFunds returns incoming transaction for a ZCash address.
+func (hdlr *ZecChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
+	// only handle one call at a time
+	hdlr.lock.Lock()
+	defer hdlr.lock.Unlock()
+
+	// retrieve list of transactions in chunks
+	funds := make([]*Fund, 0)
+	offset := 0
+	for {
+		// perform query
+		hdlr.ratelimiter.Pass()
+		query := fmt.Sprintf(
+			"https://api.zcha.in/v2/mainnet/accounts/%s/recv"+
+				"?limit=20&offset=%d&sort=timestamp&direction=ascending",
+			addr, offset)
+		body, err := ChainQuery(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		data := make([]*ZecAddrTx, 0)
+		if err = json.Unmarshal(body, &data); err != nil {
+			return nil, err
+		}
+		// find received funds in transaction outputs
+		for _, tx := range data {
+			for _, vout := range tx.Vout {
+				for _, a := range vout.ScriptPubKey.Addresses {
+					if addr == a {
+						f := &Fund{
+							Seen:   tx.Timestamp,
+							Addr:   addrId,
+							Amount: tx.Value,
+						}
+						funds = append(funds, f)
+					}
+				}
+			}
+		}
+		// address next chunk
+		n := len(data)
+		if n < 20 {
+			break
+		}
+		offset += n
+	}
+	// return funds
+	return funds, nil
+}
+
+//----------------------------------------------------------------------
+// internal access helpers
+//----------------------------------------------------------------------
+
+// ZecAddrInfo is a response from the zcha.in API for an address query
+type ZecAddrInfo struct {
+	Address    string  `json:"address"`
+	Balance    float64 `json:"balance"`
+	FirstSeen  int64   `json:"firstSeen"`
+	LastSeen   int64   `json:"lastSeen"`
+	SentCount  int     `json:"sentCount"`
+	RecvCount  int     `json:"recvCount"`
+	MinedCount int     `json:"minedCount"`
+	TotalSent  float64 `json:"totalSent"`
+	TotalRecv  float64 `json:"totalRecv"`
+}
+
+// ZecAddrTx represents a ZCash transaction
+type ZecAddrTx struct {
+	Hash            string        `json:"hash"`
+	MainChain       bool          `json:"mainChain"`
+	Fee             float64       `json:"fee"`
+	Type            string        `json:"type"`
+	Shielded        bool          `json:"shielded"`
+	Index           int           `json:"index"`
+	BlockHash       string        `json:"blockHash"`
+	BlockHeight     int           `json:"blockHeight"`
+	Version         int           `json:"version"`
+	LockTime        int64         `json:"lockTime"`
+	Timestamp       int64         `json:"timestamp"`
+	Time            int           `json:"time"`
+	Vin             []*ZecTxVin   `json:"vin"`
+	Vout            []*ZecTxVout  `json:"vout"`
+	VJoinSplit      []interface{} `json:"vjoinsplit"`
+	VShieldedOutput float64       `json:"vShieldedOutput"`
+	VShieldedSpend  float64       `json:"vShieldedSpend"`
+	ValueBalance    float64       `json:"valueBalance"`
+	Value           float64       `json:"value"`
+	OutputValue     float64       `json:"outputValue"`
+	ShieldedValue   float64       `json:"shieldedValue"`
+	OverWintered    bool          `json:"overwintered"`
+}
+
+// ZecTxVin is an input slot
+type ZecTxVin struct {
+	Coinbase  string     `json:"coinbase"`
+	RetrVOut  *ZecTxVout `json:"retrievedVout"`
+	ScriptSig struct {
+		Asm string `json:"asm"`
+		Hex string `json:"hex"`
+	} `json:"scriptSig"`
+	Sequence int32  `json:"sequence"`
+	TxID     string `json:"txid"`
+	Vout     int    `json:"vout"`
+}
+
+// ZecTxVout is an output slot
+type ZecTxVout struct {
+	N            int `json:"n"`
+	ScriptPubKey struct {
+		Addresses []string `json:"addresses"`
+		Asm       string   `json:"asm"`
+		Hex       string   `json:"hex"`
+		ReqSigs   int      `json:"reqSigs"`
+		Type      string   `json:"type"`
+	} `json:"scriptPubKey"`
+	Value    float64 `json:"value"`
+	ValueZat int64   `json:"valueZat"`
 }
 
 //----------------------------------------------------------------------

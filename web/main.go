@@ -80,7 +80,7 @@ func main() {
 
 	// load handlers; assemble list of coin symbols
 	logger.Println(logger.INFO, "Initializing coin handlers:")
-	if coins, err = lib.InitHandler(cfg, mdl); err != nil {
+	if coins, err = lib.InitHandlers(cfg, mdl); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}

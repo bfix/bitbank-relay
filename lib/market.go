@@ -29,6 +29,9 @@ import (
 	"strings"
 )
 
+type MarketHandler interface {
+}
+
 // MarketDataResponse is a response from the Market API
 type MarketDataResponse struct {
 	Base  string `json:"asset_id_base"`

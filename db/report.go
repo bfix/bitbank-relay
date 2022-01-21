@@ -150,10 +150,15 @@ func doReporting(
 	txList := make([]*ReportTx, 0)
 	var funds []*lib.Fund
 	for _, ai := range list {
+		// skip empty address
+		if ai.Balance < 1e-8 {
+			logger.Printf(logger.INFO, "Skipping empty address '%s'(%s)", ai.Val, ai.CoinSymb)
+			continue
+		}
 		if mode == "fast" {
 			// fast mode: only use "incoming" table to build Tx list
 			if funds, err = mdl.GetFunds(ai.ID); err != nil {
-				logger.Println(logger.ERROR, "Failed to collect address list")
+				logger.Println(logger.ERROR, "Failed to collect funds")
 				return
 			}
 		} else {
@@ -171,18 +176,20 @@ func doReporting(
 		// convert funds into transactions
 		if n := len(funds); n > 0 {
 			logger.Printf(logger.INFO, "Found %d funding transactions for %s (%s).\n", n, ai.Val, ai.CoinSymb)
-		}
-		for _, f := range funds {
-			if f.Seen >= from && f.Seen <= to {
-				tx := &ReportTx{
-					Timestamp: f.Seen,
-					Amount:    f.Amount,
-					Account:   ai.Account,
-					Addr:      ai.Val,
-					Coin:      ai.CoinSymb,
+			for _, f := range funds {
+				if f.Seen >= from && f.Seen <= to {
+					tx := &ReportTx{
+						Timestamp: f.Seen,
+						Amount:    f.Amount,
+						Account:   ai.Account,
+						Addr:      ai.Val,
+						Coin:      ai.CoinSymb,
+					}
+					txList = append(txList, tx)
 				}
-				txList = append(txList, tx)
 			}
+		} else {
+			logger.Printf(logger.INFO, "No funding transactions found for '%s'(%s)", ai.Val, ai.CoinSymb)
 		}
 	}
 	// generate report
@@ -195,7 +202,7 @@ func doReporting(
 		wrt.WriteString("Date;Account;Amount;Coin\n")
 		for _, tx := range txList {
 			fmt.Fprintf(wrt, "%s;\"%s\";%.5f;\"%s\"\n",
-				time.Unix(tx.Timestamp, 0).Format("2006-02-01"),
+				time.Unix(tx.Timestamp, 0).Format("2006-01-02"),
 				tx.Account, tx.Amount, tx.Coin)
 		}
 		report = wrt.Bytes()
