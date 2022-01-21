@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"relay/lib"
+	"strings"
 
 	"github.com/bfix/gospel/logger"
 )
@@ -106,12 +107,12 @@ func main() {
 
 	// load handlers; assemble list of coin symbols
 	logger.Println(logger.INFO, "Initializing coin handlers:")
-	var coins string
+	var coins []string
 	if coins, err = lib.InitHandlers(cfg, mdl); err != nil {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
-	logger.Println(logger.INFO, "   Processed coins: "+coins)
+	logger.Println(logger.INFO, "   Processed coins: "+strings.Join(coins, ","))
 
 	// parse command line arguments (top-level)
 	if fs.NArg() == 0 {

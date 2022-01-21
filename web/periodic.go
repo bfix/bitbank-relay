@@ -62,7 +62,7 @@ func periodicTasks(ctx context.Context, epoch int, balancer chan int64) {
 	if epoch%cfg.Handler.Market.Rescan == 1 {
 		// get new exchange rates
 		logger.Println(logger.INFO, "[periodic] Get market data...")
-		rates, err := lib.GetMarketData(cfg.Handler.Market.Fiat, coins, "")
+		rates, err := lib.GetMarketData(ctx, cfg.Handler.Market.Fiat, -1, coins)
 		if err != nil {
 			logger.Println(logger.ERROR, "[periodic] GetMarketData: "+err.Error())
 		} else {

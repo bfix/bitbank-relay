@@ -101,14 +101,15 @@ type ModelConfig struct {
 
 // MarketHandlerConfig defines settings for cryptocurrency price retrieval.
 type MarketHandlerConfig struct {
-	APIKey string `json:"apikey"` // API access key
+	RateLimits []int  `json:"rateLimits"` // rate limits
+	ApiKey     string `json:"apikey"`     // authentication
 }
 
 // ChainHandlerConfig to sezup blockchain-retrieval handlers
 type ChainHandlerConfig struct {
-	RateLimits []int   `json:"rateLimits"`
-	CoolTime   float64 `json:"coolTime"`
-	ApiKey     string  `json:"apiKey"`
+	RateLimits []int   `json:"rateLimits"` // rate limits
+	CoolTime   float64 `json:"coolTime"`   // cool time between requests
+	ApiKey     string  `json:"apiKey"`     // authentication
 }
 
 type MarketConfig struct {

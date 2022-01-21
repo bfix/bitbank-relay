@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"os"
 	"relay/lib"
+	"sort"
 	"strings"
 	"time"
 
@@ -119,6 +120,8 @@ type ReportTx struct {
 	Coin      string  `json:"coin"`      // coin label
 	Addr      string  `json:"addr"`      // receiving address
 	Amount    float64 `json:"amount"`    // received funds
+	FiatRecv  float64 `json:"fiatRecv"`  // exchange value at receive time
+	FiatNow   float64 `json:"fiatNow"`   // exchange value at report time
 }
 
 func doReporting(
@@ -192,18 +195,38 @@ func doReporting(
 			logger.Printf(logger.INFO, "No funding transactions found for '%s'(%s)", ai.Val, ai.CoinSymb)
 		}
 	}
-	// generate report
 	logger.Printf(logger.INFO, "Found %d reportable transactions.\n", len(txList))
+
+	// sort list
+	sort.Slice(txList, func(i, j int) bool {
+		return txList[i].Timestamp < txList[j].Timestamp
+	})
+	// aggregate data: get fiat value of funds at receive and report time
+	logger.Println(logger.INFO, "Aggregating exchange values for funds...")
+	for _, tx := range txList {
+		// exchange value at receive time
+		var rate map[string]float64
+		if rate, err = lib.GetMarketData(ctx, cfg.Handler.Market.Fiat, tx.Timestamp, []string{tx.Coin}); err != nil {
+			return
+		}
+		tx.FiatRecv = tx.Amount * rate[tx.Coin]
+		// exchange value at report time
+		if rate, err = lib.GetMarketData(ctx, cfg.Handler.Market.Fiat, -1, []string{tx.Coin}); err != nil {
+			return
+		}
+		tx.FiatNow = tx.Amount * rate[tx.Coin]
+	}
+	// generate report
 	switch out {
 	case "json":
 		return json.Marshal(txList)
 	case "csv":
 		wrt := new(bytes.Buffer)
-		wrt.WriteString("Date;Account;Amount;Coin\n")
+		wrt.WriteString("Date;Account;Amount;Coin;FiatRecv;FiatNow\n")
 		for _, tx := range txList {
-			fmt.Fprintf(wrt, "%s;\"%s\";%.5f;\"%s\"\n",
+			fmt.Fprintf(wrt, "%s;\"%s\";%.5f;\"%s\";%.2f;%.2f\n",
 				time.Unix(tx.Timestamp, 0).Format("2006-01-02"),
-				tx.Account, tx.Amount, tx.Coin)
+				tx.Account, tx.Amount, tx.Coin, tx.FiatRecv, tx.FiatNow)
 		}
 		report = wrt.Bytes()
 	}

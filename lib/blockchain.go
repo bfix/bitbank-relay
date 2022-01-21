@@ -122,7 +122,7 @@ func (hdlr *CciChainHandler) Balance(addr, coin string) (float64, error) {
 	if hdlr.apiKey != "" {
 		query += fmt.Sprintf("&key=%s", hdlr.apiKey)
 	}
-	body, err := ChainQuery(context.Background(), query)
+	body, err := HTTPQuery(context.Background(), query)
 	if err != nil {
 		return -1, err
 	}
@@ -141,7 +141,7 @@ func (hdlr *CciChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 	if hdlr.apiKey != "" {
 		query += fmt.Sprintf("&key=%s", hdlr.apiKey)
 	}
-	body, err := ChainQuery(context.Background(), query)
+	body, err := HTTPQuery(context.Background(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (hdlr *CciChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 		if hdlr.apiKey != "" {
 			query += fmt.Sprintf("?key=%s", hdlr.apiKey)
 		}
-		if body, err = ChainQuery(context.Background(), query); err != nil {
+		if body, err = HTTPQuery(context.Background(), query); err != nil {
 			return nil, err
 		}
 		// parse response
@@ -275,7 +275,7 @@ func (hdlr *BcChainHandler) query(addr, coin string) (*BlockchairAddrInfo, error
 	if hdlr.apiKey != "" {
 		query += fmt.Sprintf("?key=%s", hdlr.apiKey)
 	}
-	body, err := ChainQuery(context.Background(), query)
+	body, err := HTTPQuery(context.Background(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func (hdlr *BcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, co
 		if hdlr.apiKey != "" {
 			query += fmt.Sprintf("?key=%s", hdlr.apiKey)
 		}
-		body, err := ChainQuery(context.Background(), query)
+		body, err := HTTPQuery(context.Background(), query)
 		if err != nil {
 			return nil, err
 		}
@@ -490,7 +490,7 @@ func (hdlr *BtgChainHandler) Balance(addr, coin string) (float64, error) {
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
-	body, err := ChainQuery(context.Background(), query)
+	body, err := HTTPQuery(context.Background(), query)
 	if err != nil {
 		return -1, err
 	}
@@ -516,7 +516,7 @@ func (hdlr *BtgChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 	// perform query (stage 1)
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
-	body, err := ChainQuery(context.Background(), query)
+	body, err := HTTPQuery(context.Background(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -530,7 +530,7 @@ func (hdlr *BtgChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 		// perform query (stage 2)
 		hdlr.ratelimiter.Pass()
 		query := fmt.Sprintf("https://btgexplorer.com/api/tx/%s", tx)
-		body, err := ChainQuery(ctx, query)
+		body, err := HTTPQuery(ctx, query)
 		if err != nil {
 			continue
 		}
@@ -642,7 +642,7 @@ func (hdlr *EtcChainHandler) Balance(addr, coin string) (float64, error) {
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://blockscout.com/etc/mainnet/api?module=account&action=balance&address=%s", addr)
-	body, err := ChainQuery(context.Background(), query)
+	body, err := HTTPQuery(context.Background(), query)
 	if err != nil {
 		return -1, err
 	}
@@ -670,7 +670,7 @@ func (hdlr *EtcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://blockscout.com/etc/mainnet/api?module=account&action=txlist&address=%s", addr)
-	body, err := ChainQuery(ctx, query)
+	body, err := HTTPQuery(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -751,7 +751,7 @@ func (hdlr *ZecChainHandler) Balance(addr, coin string) (float64, error) {
 	// assemble query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://api.zcha.in/v2/mainnet/accounts/%s", addr)
-	body, err := ChainQuery(context.Background(), query)
+	body, err := HTTPQuery(context.Background(), query)
 	if err != nil {
 		return -1, err
 	}
@@ -779,7 +779,7 @@ func (hdlr *ZecChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 			"https://api.zcha.in/v2/mainnet/accounts/%s/recv"+
 				"?limit=20&offset=%d&sort=timestamp&direction=ascending",
 			addr, offset)
-		body, err := ChainQuery(ctx, query)
+		body, err := HTTPQuery(ctx, query)
 		if err != nil {
 			return nil, err
 		}
@@ -887,7 +887,7 @@ type ZecTxVout struct {
 // Helper functions
 //----------------------------------------------------------------------
 
-func ChainQuery(ctx context.Context, query string) ([]byte, error) {
+func HTTPQuery(ctx context.Context, query string) ([]byte, error) {
 	// time-out HTTP client
 	toCtx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()

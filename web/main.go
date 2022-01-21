@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/signal"
 	"relay/lib"
+	"strings"
 	"syscall"
 	"time"
 
@@ -37,8 +38,8 @@ import (
 var (
 	mdl     *lib.Model  = nil
 	cfg     *lib.Config = nil
-	coins   string      = ""
-	Version string      = "v0.0.0"
+	coins   []string
+	Version string = "v0.0.0"
 )
 
 // Application entry point
@@ -84,7 +85,7 @@ func main() {
 		logger.Println(logger.ERROR, err.Error())
 		return
 	}
-	logger.Println(logger.INFO, "   Added coins: "+coins)
+	logger.Println(logger.INFO, "   Added coins: "+strings.Join(coins, ","))
 	logger.Println(logger.INFO, "Done.")
 
 	// Prepare context

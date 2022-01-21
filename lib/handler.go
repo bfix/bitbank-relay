@@ -122,7 +122,7 @@ func (hdlr *Handler) GetFunds(ctx context.Context, addrId int64, addr string) ([
 //----------------------------------------------------------------------
 // Setup handler list from configuration
 
-func InitHandlers(cfg *Config, mdl *Model) (coins string, err error) {
+func InitHandlers(cfg *Config, mdl *Model) (coins []string, err error) {
 
 	// initialize shared handler instances:
 	// ------------------------------------
@@ -132,19 +132,21 @@ func InitHandlers(cfg *Config, mdl *Model) (coins string, err error) {
 			hdlr.Init(hdlrCfg)
 		}
 	}
+	// (2) market handlers
+	for name, hdlrCfg := range cfg.Handler.Market.Service {
+		if hdlr, ok := baseMarketHdlrs[name]; ok {
+			hdlr.Init(hdlrCfg)
+		}
+	}
 
 	// load actual coin handlers; assemble list of coin symbols
-	coins = ""
 	for _, coin := range cfg.Coins {
 		// check if coin is in model
 		if _, err = mdl.GetCoin(coin.Symb); err != nil {
 			return
 		}
 		// add to list of coins
-		if len(coins) > 0 {
-			coins += ","
-		}
-		coins += coin.Symb
+		coins = append(coins, coin.Symb)
 		// get coin handler
 		var hdlr *Handler
 		if hdlr, err = NewHandler(coin, wallet.AddrMain); err != nil {
