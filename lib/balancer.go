@@ -109,7 +109,7 @@ func StartBalancer(ctx context.Context, mdl *Model) chan int64 {
 					// check if account limit is reached...
 					if hdlr.limit < balance*rate {
 						// yes: close address
-						logger.Printf(logger.INFO, "Balancer[%d]: Closing address '%s' with balance=%f", pid, addr, balance)
+						logger.Printf(logger.INFO, "Balancer[%d]: Closing address '%s' with balance=%f", pid, addr, newBalance)
 						if err = mdl.CloseAddress(ID); err != nil {
 							logger.Printf(logger.ERROR, "Balancer[%d] CloseAddress: %s", pid, err.Error())
 							return
