@@ -64,7 +64,8 @@ func GetMarketData(ctx context.Context, mdl *Model, fiat string, date int64, coi
 	rates := make(map[string]float64)
 	for _, coin := range coins {
 		// check rates table first
-		rate, err := mdl.GetRate(date, coin, fiat)
+		dt := time.Unix(date, 0).Format("2006-01-02")
+		rate, err := mdl.GetRate(dt, coin, fiat)
 		if err != nil {
 			logger.Println(logger.ERROR, "GetRate: "+err.Error())
 			continue
@@ -72,8 +73,12 @@ func GetMarketData(ctx context.Context, mdl *Model, fiat string, date int64, coi
 		if rate < 0 {
 			// not in rates table: query market handler.
 			if rate, err = hdlr.HistoricalRate(ctx, date, fiat, coin); err != nil {
-				logger.Println(logger.ERROR, "GetRate: "+err.Error())
+				logger.Println(logger.ERROR, "HistoricalRate: "+err.Error())
 				continue
+			}
+			// add rate to table
+			if err = mdl.SetRate(dt, coin, fiat, rate); err != nil {
+				logger.Println(logger.ERROR, "SetRate: "+err.Error())
 			}
 		}
 		rates[coin] = rate

@@ -1056,20 +1056,25 @@ func (mdl *Model) UpdateRate(dt, coin, fiat string, rate float64) error {
 	if _, err := mdl.inst.Exec("update coin set rate=? where symbol=?", rate, coin); err != nil {
 		return err
 	}
-	// update rate in coin record
-	_, err := mdl.inst.Exec(
-		"insert into rates(dt,coin,rate,fiat) values(?,?,?,?)"+
-			" on duplicate key update rate=(n*rate+?)/(n+1), n=n+1",
-		dt, coin, rate, fiat, rate)
-	return err
+	// update rate in rates table
+	return mdl.SetRate(dt, coin, fiat, rate)
 }
 
 // GetRate returns a historical exchange rate for coin from rates table.
-func (mdl *Model) GetRate(date int64, coin, fiat string) (rate float64, err error) {
-	dt := time.Unix(date, 0).Format("2006-01-02")
+func (mdl *Model) GetRate(dt, coin, fiat string) (rate float64, err error) {
 	row := mdl.inst.QueryRow("select rate from rates where dt=? and coin=? and fiat=?", dt, coin, fiat)
 	if err = row.Scan(&rate); err != nil {
 		rate = -1
 	}
 	return
+}
+
+// SetRate sets a historical exchange rate for coin in rates table.
+func (mdl *Model) SetRate(dt, coin, fiat string, rate float64) error {
+	// update rate in rates table
+	_, err := mdl.inst.Exec(
+		"insert into rates(dt,coin,rate,fiat) values(?,?,?,?)"+
+			" on duplicate key update rate=(n*rate+?)/(n+1), n=n+1",
+		dt, coin, rate, fiat, rate)
+	return err
 }
