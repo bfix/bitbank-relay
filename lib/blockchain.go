@@ -658,7 +658,7 @@ func (hdlr *EtcChainHandler) Balance(addr, coin string) (float64, error) {
 	if err != nil {
 		return -1, err
 	}
-	return float64(val) / 1e8, nil
+	return float64(val) / 1e18, nil
 }
 
 // GetFunds returns incoming transaction for an Ethereum address.
@@ -692,7 +692,7 @@ func (hdlr *EtcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 		f := &Fund{
 			Seen:   ts,
 			Addr:   addrId,
-			Amount: float64(val) / 1e8,
+			Amount: float64(val) / 1e18,
 		}
 		funds = append(funds, f)
 	}
