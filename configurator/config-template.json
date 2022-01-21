@@ -51,8 +51,8 @@
 			"blockscout.com": {
 				"apiKey": "",
 				"rates": [
-					5,
-					30,
+					0,
+					6,
 					0,
 					1440
 				]
