@@ -194,7 +194,7 @@ window.localStorage.setItem("callstack", callstack);
                 {{end}}
             </td>
             <td>{{trim (mul .Balance .Rate) 2}}</td>
-            <td>{{.Coin}}</td>
+            <td>{{.CoinSymb}}</td>
             <td>{{.Balance}}</td>
             <td>{{.Account}}</td>
             <td>{{.LastCheck}}</td>
