@@ -91,10 +91,10 @@ type ServiceConfig struct {
 
 // ModelConfig for model-related settings.
 type ModelConfig struct {
-	DbEngine    string `json:"dbEngine"`    // mode (mysql, sqlite3, ...)
-	DbConnect   string `json:"dbConnect"`   // database connect string
-	BalanceWait []int  `json:"balanceWait"` // wait parameters [min, factor, max]
-	TxTTL       int    `json:"txTTL"`       // Time-to-live for Tx
+	DbEngine    string    `json:"dbEngine"`    // mode (mysql, sqlite3, ...)
+	DbConnect   string    `json:"dbConnect"`   // database connect string
+	BalanceWait []float64 `json:"balanceWait"` // wait parameters [min, factor, max]
+	TxTTL       int       `json:"txTTL"`       // Time-to-live for Tx
 }
 
 //----------------------------------------------------------------------

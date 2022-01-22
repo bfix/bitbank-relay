@@ -465,14 +465,14 @@ func (mdl *Model) NextUpdate(ID int64, reset bool) error {
 		return ErrModelNotAvailable
 	}
 	// set next wait time; wait time is randomized
-	f := float64(mdl.cfg.BalanceWait[1] - 1)
-	if f < 1.0 {
-		f = 1.0
+	f := mdl.cfg.BalanceWait[1]
+	r := rand.NormFloat64()*(0.25*f) + f
+	if r < 1.0 {
+		r = 1.0
 	}
-	f += rand.ExpFloat64()
-	wt := fmt.Sprintf("least(%f*waitCheck,%d)", f, mdl.cfg.BalanceWait[2])
+	wt := fmt.Sprintf("least(%f*waitCheck,%d)", r, int(mdl.cfg.BalanceWait[2]))
 	if reset {
-		wt = fmt.Sprintf("%d", mdl.cfg.BalanceWait[0])
+		wt = fmt.Sprintf("%d", int(mdl.cfg.BalanceWait[0]))
 	}
 	now := time.Now().Unix()
 	_, err := mdl.inst.Exec(
