@@ -660,6 +660,15 @@ func (mdl *Model) UpdateBalance(ID int64, balance float64) error {
 	return err
 }
 
+// Incoming is an incoming transaction
+type Incoming struct {
+	Date    string
+	Account string
+	Coin    string
+	Amount  float64
+	Value   float64
+}
+
 // Incoming records funds received by an address
 func (mdl *Model) Incoming(ID int64, amount float64) error {
 	// check for valid repository
@@ -670,6 +679,25 @@ func (mdl *Model) Incoming(ID int64, amount float64) error {
 	now := time.Now().Unix()
 	_, err := mdl.inst.Exec("insert into incoming(firstSeen,addr,amount) values(?,?,?)", now, ID, amount)
 	return err
+}
+
+// ListIncoming returns a list of recent incoming funds.
+func (mdl *Model) ListIncoming(n int) (list []*Incoming, err error) {
+	var rows *sql.Rows
+	if rows, err = mdl.inst.Query(
+		"select firstSeen,account,coin,amount,val from v_incoming order by firstSeen desc limit ?", n); err != nil {
+		return
+	}
+	for rows.Next() {
+		i := new(Incoming)
+		var dt int64
+		if err = rows.Scan(&dt, &i.Account, &i.Coin, &i.Amount, &i.Value); err != nil {
+			return
+		}
+		i.Date = time.Unix(dt, 0).Format("2006-01-02 15:04:05")
+		list = append(list, i)
+	}
+	return
 }
 
 // Fund represents an entry in the 'incoming' table (incoming fund)

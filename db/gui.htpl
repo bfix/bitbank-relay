@@ -126,6 +126,26 @@ window.localStorage.setItem("callstack", callstack);
 </script>
 <div>
     {{$fiat := .Fiat}}
+    {{if .Incoming}}
+    <div class="heading">Recently received funds</div>
+        <table>
+            <tr class="header">
+                <td>Date</td>
+                <td>Account</td>
+                <td>Amount</td>
+                <td>Value</td>
+            </tr>
+            {{range .Incoming}}
+            <tr class="row">
+                <td>{{.Date}}</td>
+                <td>{{.Account}}</td>
+                <td>{{trim .Amount 5}} {{.Coin}}</td>
+                <td>{{trim .Value 2}} {{$fiat}}</td>
+            </tr>
+            {{end}}
+        </table>
+    </div>
+    {{end}}
     <div class="heading">Cryptocurrencies</div>
     <div class="row">
         {{range .Coins}}

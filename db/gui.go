@@ -112,6 +112,7 @@ func gui(args []string) {
 // DashboardData holds all information to render the dashboard view.
 type DashboardData struct {
 	Fiat      string             `json:"fiat"`      // name of the fiat currency to use
+	Incoming  []*lib.Incoming    `json:"incoming"`  // list of recently incoming funds
 	Coins     []*lib.AccCoinInfo `json:"coins"`     // list of active coins
 	Accounts  []*lib.AccntInfo   `json:"accounts"`  // list of active accounts
 	Addresses []*lib.AddrInfo    `json:"addresses"` // list of (active) addresses
@@ -136,6 +137,11 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// collect address info
 	if dd.Addresses, err = mdl.GetAddresses(0, 0, 0, false); err != nil {
+		io.WriteString(w, "ERROR: "+err.Error())
+		return
+	}
+	// collect list of recently received funds
+	if dd.Incoming, err = mdl.ListIncoming(25); err != nil {
 		io.WriteString(w, "ERROR: "+err.Error())
 		return
 	}

@@ -162,7 +162,8 @@ create view v_incoming as select
     i.firstSeen as firstSeen, -- time funds first seen
     p.name as account,        -- receiver label
     c.label as coin,          -- coin symbol
-    i.amount as amount        -- amount of funds
+    i.amount as amount,       -- amount of funds
+    c.rate * i.amount as val  -- exchange value
 from
     incoming i, addr a, account p, coin c
 where
