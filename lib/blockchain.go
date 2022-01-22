@@ -85,6 +85,7 @@ var (
 // CciChainHandler handles multi-coin blockchain operations
 type CciChainHandler struct {
 	lastCall    int64      // time last used (UnixMilli)
+	coolTime    float64    // time between calls
 	apiKey      string     // optional API key
 	initialized bool       // handler set-up?
 	lock        sync.Mutex // serialize operations
@@ -99,8 +100,9 @@ func (hdlr *CciChainHandler) wait(withLock bool) {
 	}
 
 	delay := time.Now().UnixMilli() - hdlr.lastCall
-	if delay < 10000 {
-		time.Sleep(time.Duration(10000-delay) * time.Millisecond)
+	bounds := int64(hdlr.coolTime * 1000)
+	if delay < bounds {
+		time.Sleep(time.Duration(bounds-delay) * time.Millisecond)
 	}
 	hdlr.lastCall = time.Now().UnixMilli()
 }
@@ -111,6 +113,7 @@ func (hdlr *CciChainHandler) Init(cfg *ChainHandlerConfig) {
 	if !hdlr.initialized {
 		hdlr.initialized = true
 		hdlr.apiKey = cfg.ApiKey
+		hdlr.coolTime = cfg.CoolTime
 	}
 }
 
