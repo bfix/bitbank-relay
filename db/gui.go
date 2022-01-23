@@ -44,18 +44,25 @@ import (
 var fsys embed.FS
 
 var (
-	tpl *template.Template // HTML templates
-	srv *http.Server       // HTTP server
+	tpl    *template.Template // HTML templates
+	srv    *http.Server       // HTTP server
+	prefix string             // URL prefix (if behind reverse proxy)
 )
+
+// PageData for generic data used to render page
+type PageData struct {
+	Prefix string // URL prefix
+}
 
 // Start the GUI for model management and relay maintenance
 func gui(args []string) {
 	// parse arguments
 	flags := flag.NewFlagSet("gui", flag.ExitOnError)
 	var (
-		listen string
+		listen string // listen address:port for GUI web service
 	)
 	flags.StringVar(&listen, "l", "localhost:8080", "Listen address for web GUI")
+	flags.StringVar(&prefix, "p", "", "URL prefix")
 	flags.Parse(args)
 
 	// read and prepare templates
@@ -111,6 +118,7 @@ func gui(args []string) {
 
 // DashboardData holds all information to render the dashboard view.
 type DashboardData struct {
+	PageData
 	Fiat      string             `json:"fiat"`      // name of the fiat currency to use
 	Incoming  []*lib.Incoming    `json:"incoming"`  // list of recently incoming funds
 	Coins     []*lib.AccCoinInfo `json:"coins"`     // list of active coins
@@ -122,6 +130,7 @@ type DashboardData struct {
 func guiHandler(w http.ResponseWriter, r *http.Request) {
 	// collect information for the dashboard
 	dd := new(DashboardData)
+	dd.Prefix = prefix
 	dd.Fiat = cfg.Handler.Market.Fiat
 
 	// collect coin info
@@ -155,6 +164,7 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
 
 // CoinData holds the information needed to render a coin page
 type CoinData struct {
+	PageData
 	Fiat string           `json:"fiat"` // fiat currency
 	Coin *lib.AccCoinInfo `json:"coin"` // info about coin
 }
@@ -164,6 +174,7 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 	// show coin info
 	query := r.URL.Query()
 	cd := new(CoinData)
+	cd.Prefix = prefix
 	cd.Fiat = cfg.Handler.Market.Fiat
 
 	if id, ok := queryInt(query, "id"); ok {
@@ -185,7 +196,7 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			// do a redirect after switching assignments
-			http.Redirect(w, r, fmt.Sprintf("/coin/?id=%d", id), http.StatusFound)
+			http.Redirect(w, r, fmt.Sprintf("%s/coin/?id=%d", prefix, id), http.StatusFound)
 			return
 		}
 		// get assignments from model
@@ -214,6 +225,7 @@ func coinHandler(w http.ResponseWriter, r *http.Request) {
 
 // AccountData holds the information needed to render an "account" page.
 type AccountData struct {
+	PageData
 	Fiat  string         `json:"fiat"`  // fiat currency
 	Accnt *lib.AccntInfo `json:"accnt"` // info about account
 }
@@ -223,6 +235,7 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 	// show account info
 	query := r.URL.Query()
 	ad := new(AccountData)
+	ad.Prefix = prefix
 	ad.Fiat = cfg.Handler.Market.Fiat
 
 	if id, ok := queryInt(query, "id"); ok {
@@ -244,7 +257,7 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			// do a redirect after switch assignments
-			http.Redirect(w, r, fmt.Sprintf("/account/?id=%d", id), http.StatusFound)
+			http.Redirect(w, r, fmt.Sprintf("%s/account/?id=%d", prefix, id), http.StatusFound)
 			return
 		}
 		// get assignments from model
@@ -273,6 +286,7 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 
 // AddressData holds the information needed to render an "address" page.
 type AddressData struct {
+	PageData
 	Mode    int               `json:"mode"`    // selection mode
 	Account string            `json:"account"` // account name
 	Coin    string            `json:"coin"`    // coin name
@@ -288,6 +302,7 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 	// show address info
 	query := r.URL.Query()
 	ad := new(AddressData)
+	ad.Prefix = prefix
 	ad.Fiat = cfg.Handler.Market.Fiat
 	ad.Links = make(map[string]string)
 
@@ -310,7 +325,7 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 				logger.Printf(logger.ERROR, "addressHandler: "+err.Error())
 			}
 			// redirect to address page (id-view)
-			http.Redirect(w, r, fmt.Sprintf("/addr/?id=%d", id), http.StatusFound)
+			http.Redirect(w, r, fmt.Sprintf("%s/addr/?id=%d", prefix, id), http.StatusFound)
 		}
 		// normal address selection
 		ad.Addrs, err = mdl.GetAddresses(id, 0, 0, true)
@@ -361,8 +376,9 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 // transaction handler
 //======================================================================
 
-// TxData holds information needed to rended a transaction page
+// TxData holds information needed to render a transaction page
 type TxData struct {
+	PageData
 	Mode    int                `json:"mode"`    // 0=all, 1=addr, 2=account, 3=coin
 	Address string             `json:"address"` // address string
 	Account string             `json:"account"` // account name
@@ -381,6 +397,7 @@ func transactionHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	query := r.URL.Query()
 	td := new(TxData)
+	td.Prefix = prefix
 	td.Mode = 0
 	td.Links = make(map[string]string)
 
@@ -425,6 +442,7 @@ func transactionHandler(w http.ResponseWriter, r *http.Request) {
 
 // NewData holds the data needed to render a "Create new ..." dialog
 type NewData struct {
+	PageData
 	Mode string `json:"mode"` // kind of object to be created
 }
 
@@ -432,6 +450,7 @@ func newHandler(w http.ResponseWriter, r *http.Request) {
 	// GET requests initiate a "new" dialog
 	if r.Method == "GET" {
 		nd := new(NewData)
+		nd.Prefix = prefix
 		switch r.URL.Query().Get("m") {
 		// create new account
 		case "accnt":
@@ -466,7 +485,7 @@ func newHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// redirect back to main page
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, prefix+"/", http.StatusFound)
 }
 
 //======================================================================
@@ -500,7 +519,7 @@ func logoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// redirect back to coin page
-	http.Redirect(w, r, "/coin/?id="+id, http.StatusFound)
+	http.Redirect(w, r, prefix+"/coin/?id="+id, http.StatusFound)
 }
 
 //======================================================================

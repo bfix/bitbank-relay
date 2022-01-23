@@ -120,10 +120,7 @@
 {{end}}
 
 {{define "dashboard"}}
-<script>
-var callstack = [ "/" ];
-window.localStorage.setItem("callstack", callstack);
-</script>
+{{$prefix := .Prefix}}
 <div>
     {{$fiat := .Fiat}}
     {{if .Incoming}}
@@ -151,7 +148,7 @@ window.localStorage.setItem("callstack", callstack);
         {{range .Coins}}
         <div class="cell box">
             <div class="title">
-                <a href="/coin/?id={{.ID}}">{{.Label}}</a>
+                <a href="{{$prefix}}/coin/?id={{.ID}}">{{.Label}}</a>
             </div>
             <div class="cell spacer-right">
                 <img src="data:image/svg+xml;base64,{{.Logo}}" height="32px"/>
@@ -172,14 +169,14 @@ window.localStorage.setItem("callstack", callstack);
     <div class="heading">
         Accounts
         <div style="float: right">
-            <a href="/new/?m=accnt"><input type="button" value="Add new account..."/></a>
+            <a href="{{$prefix}}/new/?m=accnt"><input type="button" value="Add new account..."/></a>
         </div>
     </div>
     <div class="row">
         {{range .Accounts}}
         <div class="cell box">
             <div class="title">
-                <a href="/account/?id={{.ID}}">{{.Name}}</a>
+                <a href="{{$prefix}}/account/?id={{.ID}}">{{.Name}}</a>
             </div>
             <div class="large">
                 <span class="balance">{{trim .Total 2}}</span>&nbsp;{{$fiat}}
@@ -203,7 +200,7 @@ window.localStorage.setItem("callstack", callstack);
         </tr>
         {{range .Addresses}}
         <tr class="row">
-            <td><a href="/addr/?id={{.ID}}">{{.Val}}</a></td>
+            <td><a href="{{$prefix}}/addr/?id={{.ID}}">{{.Val}}</a></td>
             <td>
                 {{if eq .Status 0}}
                     <span style="color: green;">&#x2714;</span>
@@ -227,9 +224,10 @@ window.localStorage.setItem("callstack", callstack);
 {{end}}
 
 {{define "new"}}
+{{$prefix := .Prefix}}
 {{if eq .Mode "accnt"}}
     <h1>Creating new account:</h1>
-    <form method="POST" action="/new/">
+    <form method="POST" action="{{$prefix}}/new/">
         <input type="hidden" name="mode" value="accnt"/>
         <table>
             <tr>
@@ -253,13 +251,14 @@ window.localStorage.setItem("callstack", callstack);
 {{end}}
 
 {{define "coin"}}
+{{$prefix := .Prefix}}
 <div class="row">
     <div class="cell spacer-right">
         <img src="data:image/svg+xml;base64,{{.Coin.Logo}}" height="96px"/>
     </div>
     <div class="cell">
         <p><span class="large">{{.Coin.Label}} ({{.Coin.Symbol}})</span></p>
-        <form method="POST" action="/logo/" enctype="multipart/form-data">
+        <form method="POST" action="{{$prefix}}/logo/" enctype="multipart/form-data">
             <input type="hidden" name="id" value="{{.Coin.ID}}"/>
             <input type="hidden" name="coin" value="{{.Coin.Symbol}}"/>
             <input type="file" name="logo" accept="image/svg+xml"/>
@@ -286,7 +285,7 @@ window.localStorage.setItem("callstack", callstack);
     <tr>
         <td class="label">Transactions:</td>
         <td>
-            <a href="/tx/?coin={{.Coin.ID}}">
+            <a href="{{$prefix}}/tx/?coin={{.Coin.ID}}">
                 <input type="button" value="{{ .Coin.NumTx}} transactions"/>
             </a>
         </td>
@@ -337,7 +336,7 @@ window.localStorage.setItem("callstack", callstack);
                         accept = "&accept=" + accept;
                     } else
                         accept = "";
-                    document.getElementById('accnt-btn').href = "/coin/?id={{.Coin.ID}}" + accept;
+                    document.getElementById('accnt-btn').href = "{{$prefix}}/coin/?id={{.Coin.ID}}" + accept;
                 }
             </script>
             <table class="rowed">
@@ -356,7 +355,7 @@ window.localStorage.setItem("callstack", callstack);
                     <td><span>
                         {{$addrs := index .Dict "addrs"}}
                         {{if gt $addrs 0}}
-                            <a href="/addr/?accnt={{.ID}}&coin={{$coin.ID}}">
+                            <a href="{{$prefix}}/addr/?accnt={{.ID}}&coin={{$coin.ID}}">
                                 <input type="button" value="{{$addrs}} address(es)"/>
                             </a>
                         {{end}}
@@ -365,12 +364,12 @@ window.localStorage.setItem("callstack", callstack);
             {{end}}
             </table>
             <br/>
-            <a id="accnt-btn" href="/coin/?id={{.Coin.ID}}"><input id="accnt-apply" type="button" value="Apply changes" disabled onClick="submit()" /></a>
+            <a id="accnt-btn" href="{{$prefix}}/coin/?id={{.Coin.ID}}"><input id="accnt-apply" type="button" value="Apply changes" disabled onClick="submit()" /></a>
         </td>
     </tr>
 </table>
 <hr/>
-<a href="/"><input type="button" value="Back"/></a>
+<a href="{{$prefix}}/"><input type="button" value="Back"/></a>
 {{end}}
 
 {{define "account"}}
@@ -381,6 +380,7 @@ window.localStorage.setItem("callstack", callstack);
 </div>
 <hr/>
 {{$fiat := .Fiat}}
+{{$prefix := .Prefix}}
 {{$accnt := .Accnt}}
 <table>
     <tr>
@@ -390,7 +390,7 @@ window.localStorage.setItem("callstack", callstack);
     <tr>
         <td class="label">Transactions:</td>
         <td>
-            <a href="/tx/?accnt={{.Accnt.ID}}">
+            <a href="{{$prefix}}/tx/?accnt={{.Accnt.ID}}">
                 <input type="button" value="{{ .Accnt.NumTx}} transactions"/>
             </a>
         </td>
@@ -441,7 +441,7 @@ window.localStorage.setItem("callstack", callstack);
                         accept = "&accept=" + accept;
                     } else
                         accept = "";
-                    document.getElementById('coin-btn').href = "/account/?id={{.Accnt.ID}}" + accept;
+                    document.getElementById('coin-btn').href = "{{$prefix}}/account/?id={{.Accnt.ID}}" + accept;
                 }
             </script>
             <table class="rowed">
@@ -462,7 +462,7 @@ window.localStorage.setItem("callstack", callstack);
                     <td><span>
                         {{$addrs := index .Dict "addrs"}}
                         {{if gt $addrs 0}}
-                            <a href="/addr/?accnt={{$accnt.ID}}&coin={{.ID}}">
+                            <a href="{{$prefix}}/addr/?accnt={{$accnt.ID}}&coin={{.ID}}">
                                 <input type="button" value="{{$addrs}} address(es)"/>
                             </a>
                         {{end}}
@@ -471,24 +471,25 @@ window.localStorage.setItem("callstack", callstack);
             {{end}}
             </table>
             <br/>
-            <a id="coin-btn" href="/account/?id={{.Accnt.ID}}"><input id="coin-apply" type="button" value="Apply changes" disabled onClick="submit()" /></a>
+            <a id="coin-btn" href="{{$prefix}}/account/?id={{.Accnt.ID}}"><input id="coin-apply" type="button" value="Apply changes" disabled onClick="submit()" /></a>
         </td>
     </tr>
 </table>
 <hr/>
-<a href="/"><input type="button" value="Back"/></a>
+<a href="{{$prefix}}/"><input type="button" value="Back"/></a>
 {{end}}
 
 {{define "address"}}
+{{$prefix := .Prefix}}
 <script>
 function confirmClose(id) {
     if (confirm("Really close address?")) {
-        window.location.href = "/addr/?id="+id+"&m=close";
+        window.location.href = "{{$prefix}}/addr/?id="+id+"&m=close";
     }
 }
 function confirmLock(id) {
     if (confirm("Are all coins on this address spent\nand do you really want to lock it?")) {
-        window.location.href = "/addr/?id="+id+"&m=lock";
+        window.location.href = "{{$prefix}}/addr/?id="+id+"&m=lock";
     }
 }
 </script>
@@ -512,7 +513,7 @@ function confirmLock(id) {
                     </div>
                 {{end}}
                 <div style="float: right; margin-left: 0.5em;">
-                    <a href="/addr/?id={{.ID}}&m=sync"><input type="button" value="Re-check balance"/></a>
+                    <a href="{{$prefix}}/addr/?id={{.ID}}&m=sync"><input type="button" value="Re-check balance"/></a>
                 </div>
             {{else if eq .Status 1}}
                 <div style="float: right;">
@@ -527,7 +528,7 @@ function confirmLock(id) {
                 <tr>
                     <td class="label">Coins:</td>
                     <td>
-                        <span>{{.Balance}} {{.Coin}}</span>
+                        <span>{{.Balance}} {{.CoinSymb}}</span>
                         {{if eq .LastCheck ""}}
                         (not checked yet)
                         {{else}}
@@ -562,7 +563,7 @@ function confirmLock(id) {
                 <tr>
                     <td class="label">Transactions:</td>
                     <td>
-                        <a href="/tx/?addr={{.ID}}">
+                        <a href="{{$prefix}}/tx/?addr={{.ID}}">
                             <input type="button" value="{{.RefCount}} transactions"/>
                         </a>
                     </td>
@@ -574,11 +575,12 @@ function confirmLock(id) {
 {{end}}
 <hr/>
 {{range $label,$url := .Links}}
-<a href="{{$url}}"><input type="button" value="{{$label}}"/></a>&nbsp;
+<a href="{{$prefix}}{{$url}}"><input type="button" value="{{$label}}"/></a>&nbsp;
 {{end}}
 {{end}}
 
 {{define "tx"}}
+{{$prefix := .Prefix}}
 {{if not .Txs}}
     <h1>No transactions found...</h1>
 {{else}}
@@ -637,6 +639,6 @@ function confirmLock(id) {
 {{end}}
 <hr/>
 {{range $label,$url := .Links}}
-<a href="{{$url}}"><input type="button" value="{{$label}}"/></a>&nbsp;
+<a href="{{$prefix}}{{$url}}"><input type="button" value="{{$label}}"/></a>&nbsp;
 {{end}}
 {{end}}
