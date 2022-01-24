@@ -26,7 +26,7 @@ This software is not yet ready for productive use.
 
 # Introduction
 
-The `bb_relay` software enables individuals and small organizations to accept
+The `bitbank-relay` software enables individuals and small organizations to accept
 cryptocurrencies (Bitcoin, Ethereum and ten other Altcoins) on their webpage.
 
 To manage the received coins it is highly recommended to use a multi-coin
@@ -39,7 +39,7 @@ If you want to build the software yourself, you need `Go v1.16+` that can be
 environment variables as described in the Go documentation.
 
 After you have cloned the repository to your local machine (and every time
-you pull a newer version), you should update the dependencies for `bb_relay`:
+you pull a newer version), you should update the dependencies for `bitbank-relay`:
 
 ```bash
 go mod tidy
@@ -74,7 +74,7 @@ cd ..
 
 # Configuration
 
-You need to configure/setup the `bb_relay` package in parallel with the
+You need to configure/setup the `bitbank-relay` package in parallel with the
 multi-coin HD wallet you want to use to manage incoming crypto funds. You can
 either do this semi-automatically or manually.
 
@@ -83,7 +83,7 @@ The steps are described in a separate
 
 # Deployment
 
-The deployment for `bb_relay` includes:
+The deployment for `bitbank-relay` includes:
 
 * `web` executable (from the `web/` folder)
 * `config.json` (the genrated/edited configuration file)
@@ -101,20 +101,9 @@ in a separate [README](https://github.com/bfix/bitbank-relay/tree/master/db).
 
 # Testing
 
-To run the unit tests in `lib/`, you need to set environment variables:
-
-```bash
-export COINAPI_APIKEY="..."
-export BLOCKCHAIR_APIKEY="..."
-```
-
-The `COINAPI_APIKEY` is mandatory; the `BLOCKCHAIR_APIKEY` is optional. If
-you see API errors while retreiving address balances, you might re-consider
-using an API key for the Blockchair service.
+To run the unit tests in `lib/`:
 
 ```bash
 cd lib/
 go test -v
 ```
-
-WARNING: The rate limiter test is running for some minutes; be patient.

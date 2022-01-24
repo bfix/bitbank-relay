@@ -87,48 +87,88 @@ be sent to the console.
 
 ```json
 "model": {
-    "mode": "mysql",
-    "connect": "bb_relay:bb_relay@tcp(127.0.0.1:3306)/BB_Relay"
-}
+    "dbEngine": "mysql",
+    "dbConnect": "bb_relay:bb_relay@tcp(127.0.0.1:3306)/BB_Relay",
+    "balanceWait": [
+        300,
+        2,
+        604800
+    ],
+    "txTTL": 900
+},
 ```
 
-* **mode** defines which database engine to use (`mysql` or `sqlite3`).
+* **dnEngine** defines which database engine to use (`mysql` or `sqlite3`).
 
-* **connect** specifies the connect string for the database; its format and
+* **dbConnect** specifies the connect string for the database; its format and
 content depends on the specific database engine used.
 
-### "balancer"
+* **balanceWait** defines the delay between balance checks and contains three
+values: the first specifies the minimum wait time (for new or updated addresses;
+defaults to 5 minutes). The third value is the maximum wait time (a week). The
+second number specifies the mean value for the factor to increase wait time in
+case of unchanged addresses; it is randomized within bounds to spread balance
+checks across time.
+
+* **txTTL** is the time-to-live for transactions (defaults to 15 minutes)
+
+### "handler"
 
 ```json
-"balancer": {
-    "accountLimit": 10000,
-    "rescan": 48,
-    "apikeys": {
-        "blockchair": ""
+"handler": {
+    "blockchain": {
+        "blockchair.com": {
+            "apiKey": "",
+            "rateLimits": [ 5, 30, 0, 1440 ]
+        },
+        "cryptoid.info": {
+            "apiKey": "",
+            "coolTime": 10.0
+        },
+        "btgexplorer.com": {
+            "apiKey": "",
+            "rates": [ 5, 30, 0, 1440 ]
+        },
+        "zcha.in": {
+            "apiKey": "",
+            "rates": [ 5, 30, 0, 1440 ]
+        },
+        "blockscout.com": {
+            "apiKey": "",
+            "rates": [ 0, 6, 0, 1440 ]
+        }
+    },
+    "market": {
+        "fiat": "EUR",
+        "rescan": 72,
+        "service": {
+            "coinapi.io": {
+                "apiKey": ""
+            }
+        }
     }
-}
+},
 ```
 
-* **accountLimit** specifies the amount of fiat currency (see `market`) when
-an address is closed automatically (not shown again as a receiving address).
+The `handler`section has two subsections, describing the handlers used for
+blockchain and market requests (balance checks, rate updates, etc.)
+`bitbank-relay` comes with a number of services defined:
 
-* **rescan** defines the number of epochs between address balance checks.
+#### "blockchain"
 
-* **apikeys** is reserved for defining API keys for services that return
-address balances for specific cryptocurrencies. Currently only an API key
-for "BlockChair.com" is used (and you only need it if you have more than
-1440 balance requests a day; watch the log files for messages that indicate
-you need an API key for that service).
+* **apiKey** specifies an API keys for the service. Some serivces offer free
+plans but allow only a limited number of requests. If you need a better plan
+(usually paid), you should ask for an API key to make use of that.
+
+* **rates** defines the rate limits imposed by a service. It is an array of
+integer values corresponding to the rate limits "per second", "per minute",
+"per hour", "per day" and "per week". A value of "0" means the rate limit is
+not defined and requests are limited by the next higher (non-null) rate limit.
+
+* **coolTime** defines a fixed wait time between two requests; it is used as
+an alternative to the `rates`definition.
 
 ### "market"
-
-```json
-"market": {
-    "fiat": "EUR",
-    "rescan": 72,
-    "apikey": ""
-}
-```
 
 * **fiat** is the standard name for the fiat currency you want to use
 internally and should be specified in capital letters. This is the currency
@@ -136,8 +176,14 @@ used in the `balancer` section for `accountLimit` field.
 
 * **rescan** is the number of epochs between market price retreival.
 
-* **apikey** is the API token you received after registering with
-[CoinAPI.io](https://coinapi.io).
+* **service**
+
+Defines a list of market services; the parameters of a service (`apiKey`,
+`rates` and `coolTime`) have the same meaning than the corresponding 
+parameters in `blockchain` handlers.
+
+To retrieve market data, you need a free registration and an API token
+you receive after registering with [CoinAPI.io](https://coinapi.io).
 
 ### "coins"
 
@@ -148,7 +194,10 @@ used in the `balancer` section for `accountLimit` field.
         "path": "m/49'/0'/0'",
         "mode": "P2SH",
         "pk": "",
-        "addr": ""
+        "addr": "",
+        "explorer": "<explorer URL pattern for address like https://.../%s>",
+        "accountLimit": 10000,
+        "blockchain": "<handler name>"
     },
     :
 ]
@@ -170,6 +219,15 @@ change that value during customization.
 
 * **addr** is the first address withn an account (index 0). This value is used
 to verify a coin setup at start-up.
+
+* **explorer** defines the URL pattern for viewing an address with a blockchain
+explorer.
+
+* **accountLimit** defines how much funds (in fiat currency) an address can hold
+(accumulate), before it is automatically closed.
+
+* **blockchain** specifies the name of the blockchain handler that is used to
+manage/query address balances for the coin.
 
 ## Semi-automatic configuration
 
@@ -225,9 +283,10 @@ entries in the `coins` section:
         "path": "m/49'/0'/0'",
         "mode": "P2SH",
         "pk": "",
-        "addr": ""
+        "addr": "",
+        :
     },
-
+    :
 ```
 
 Use the wallet UI to extract the `xpub` key for an account and insert the
