@@ -64,6 +64,8 @@ func gui(args []string) {
 	flags.StringVar(&listen, "l", "localhost:8080", "Listen address for web GUI")
 	flags.StringVar(&prefix, "p", "", "URL prefix")
 	flags.Parse(args)
+	// normalize prefix (no trailing slash)
+	prefix = strings.TrimRight(prefix, "/")
 
 	// read and prepare templates
 	tpl = template.New("gui")
