@@ -264,6 +264,8 @@ with numbers too:
 +---+---+---+
 | 1 | 2 | 3 |
 +---+---+---+
+
+PIN? █
 ```
 
 Locate the first pin digit position on the Trezor and enter the corresponding
