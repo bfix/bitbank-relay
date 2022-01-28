@@ -218,6 +218,9 @@ func main() {
 				continue
 			}
 		}
+	} else {
+		fmt.Printf("<<< ERROR: invalid mode '%s'\n", mode)
+		return
 	}
 	// save to configuration file
 	if err = lib.WriteConfigFile(outConf, cfg); err != nil {
