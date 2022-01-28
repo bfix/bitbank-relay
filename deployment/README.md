@@ -23,17 +23,17 @@ The deployment for `bitbank-relay` includes:
 
 1. `bitbank-relay-web` executable (if build with GNU make, or the file
 `web/web` if build manually)
-1. `bitbank-relay-db` executable (if build with GNU make, or the file
+2. `bitbank-relay-db` executable (if build with GNU make, or the file
 `db/db` if build manually)
-1. `config.json` (the genrated/edited configuration file)
-1. an initialized relay database (MySQL (recommended) or SQLite3 (testing only))
-1. integration into a website for use
+3. `config.json` (the genrated/edited configuration file)
+4. an initialized relay database (MySQL (recommended) or SQLite3 (testing only))
+5. integration into a website for use
 
 Steps 4 and 5 are described in detail below; as an amendment some words
 about running and maintaining the bitbank-relay can be found in the
 "Operation" section.
 
-## (3) Relay database
+## (Step 4) Relay database
 
 The `config.json` specifies which database engine to use and how to access it.
 
@@ -111,7 +111,7 @@ add individual logo files by running:
 
 The database is now set-up for productive use.
 
-## (4) Integration into a website for use
+## (Step 5) Integration into a website for use
 
 This is the tricky part... Usually you have to integrate the new relay
 functionality into an existing site, so your choices on how to do that
@@ -245,6 +245,9 @@ The service will listen on port `8080` and will accept any source IP
 
 Once the service is started, visit the management webpages with a decent
 modern browser.
+
+If you run the pages behind a reverse proxy (e.g. nginx) on a path, don't
+forget to use the `-p <prefix>` option!
 
 ## Crptocurrency details
 
