@@ -237,8 +237,9 @@ manage/query address balances for the coin.
 
 # Automatic configuration
 
-This assumes that you are going to setup an existing, initialized and empty
-Trezor device. The device should only be used for the `bitbank-relay`. This is
+This assumes that you are going to setup an existing and initialized Trezor
+device. The wallet should only be used for `bitbank-relay`, so the easiest way
+is to use a passphrase-protected "hidden wallet" on the Trezor. This is
 the recommended way and standard procedure for most setups. The Trezor device
 can then easily be used to manage all incoming funds in a single wallet like
 Trezor Suite that runs locally on your machine.

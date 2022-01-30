@@ -75,8 +75,8 @@ cd ..
 # Configuration
 
 You need to configure/setup the `bitbank-relay` package in parallel with the
-multi-coin HD wallet you want to use to manage incoming crypto funds. You can
-either do this semi-automatically or manually.
+multi-coin HD wallet / Trezor device you want to use to manage incoming crypto
+funds. You can either do this automatically, semi-automatically or manually.
 
 The steps are described in a separate
 [README](https://github.com/bfix/bitbank-relay/tree/master/configurator).
