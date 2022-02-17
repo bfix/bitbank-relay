@@ -260,6 +260,15 @@ var (
 		"ltc":  "litecoin",
 		"eth":  "ethereum",
 	}
+	// map coin ticker into scale used by handler instance
+	bcScaleMap = map[string]float64{
+		"btc":  1e8,
+		"bch":  1e8,
+		"dash": 1e8,
+		"doge": 1e8,
+		"ltc":  1e8,
+		"eth":  1e18,
+	}
 )
 
 // query address information (incl. transaction list)
@@ -302,7 +311,15 @@ func (hdlr *BcChainHandler) Balance(addr, coin string) (float64, error) {
 		return -1, err
 	}
 	// return response
-	return float64(data.Data[addr].Address.Received) / 1e8, nil
+	ai := data.Data[addr].Address
+	rcv := ai.Received
+	if len(ai.ReceivedApprox) > 0 {
+		rcv, err = strconv.ParseFloat(ai.ReceivedApprox, 64)
+		if err != nil {
+			return -1, err
+		}
+	}
+	return rcv / bcScaleMap[coin], nil
 }
 
 // GetFunds returns a list of incoming funds for the address
@@ -391,6 +408,7 @@ type BlockchairAddrInfo struct {
 			Balance            interface{}            `json:"balance"`
 			BalanceUSD         float64                `json:"balance_usd"`
 			Received           float64                `json:"received"`
+			ReceivedApprox     string                 `json:"received_approximate"`
 			ReceivedUSD        float64                `json:"received_usd"`
 			Spent              float64                `json:"spent"`
 			SpentUSD           float64                `json:"spent_usd"`
