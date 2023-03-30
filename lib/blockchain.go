@@ -42,7 +42,7 @@ import (
 // ChainHandler interface for blockchain-related processing
 type ChainHandler interface {
 	Init(cfg *ChainHandlerConfig)
-	Balance(addr, coin string) (float64, error)
+	Balance(ctx context.Context, addr, coin string) (float64, error)
 	GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error)
 }
 
@@ -118,14 +118,14 @@ func (hdlr *CciChainHandler) Init(cfg *ChainHandlerConfig) {
 }
 
 // Balance gets the balance of a Bitcoin address
-func (hdlr *CciChainHandler) Balance(addr, coin string) (float64, error) {
+func (hdlr *CciChainHandler) Balance(ctx context.Context, addr, coin string) (float64, error) {
 	// perform query
 	hdlr.wait(true)
 	query := fmt.Sprintf("https://chainz.cryptoid.info/%s/api.dws?q=getreceivedbyaddress&a=%s", coin, addr)
 	if hdlr.apiKey != "" {
 		query += fmt.Sprintf("&key=%s", hdlr.apiKey)
 	}
-	body, err := HTTPQuery(context.Background(), query)
+	body, err := HTTPQuery(ctx, query)
 	if err != nil {
 		return -1, err
 	}
@@ -144,7 +144,7 @@ func (hdlr *CciChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 	if hdlr.apiKey != "" {
 		query += fmt.Sprintf("&key=%s", hdlr.apiKey)
 	}
-	body, err := HTTPQuery(context.Background(), query)
+	body, err := HTTPQuery(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ var (
 )
 
 // query address information (incl. transaction list)
-func (hdlr *BcChainHandler) query(addr, coin string) (*BlockchairAddrInfo, error) {
+func (hdlr *BcChainHandler) query(ctx context.Context, addr, coin string) (*BlockchairAddrInfo, error) {
 	// only handle one call at a time
 	hdlr.lock.Lock()
 	defer hdlr.lock.Unlock()
@@ -287,7 +287,7 @@ func (hdlr *BcChainHandler) query(addr, coin string) (*BlockchairAddrInfo, error
 	if hdlr.apiKey != "" {
 		query += fmt.Sprintf("?key=%s", hdlr.apiKey)
 	}
-	body, err := HTTPQuery(context.Background(), query)
+	body, err := HTTPQuery(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -304,9 +304,9 @@ func (hdlr *BcChainHandler) query(addr, coin string) (*BlockchairAddrInfo, error
 }
 
 // Balance gets the balance of a coin address
-func (hdlr *BcChainHandler) Balance(addr, coin string) (float64, error) {
+func (hdlr *BcChainHandler) Balance(ctx context.Context, addr, coin string) (float64, error) {
 	// get address information
-	data, err := hdlr.query(addr, coin)
+	data, err := hdlr.query(ctx, addr, coin)
 	if err != nil {
 		return -1, err
 	}
@@ -325,7 +325,7 @@ func (hdlr *BcChainHandler) Balance(addr, coin string) (float64, error) {
 // GetFunds returns a list of incoming funds for the address
 func (hdlr *BcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, coin string) ([]*Fund, error) {
 	// get address information
-	data, err := hdlr.query(addr, coin)
+	data, err := hdlr.query(ctx, addr, coin)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func (hdlr *BcChainHandler) GetFunds(ctx context.Context, addrId int64, addr, co
 		if hdlr.apiKey != "" {
 			query += fmt.Sprintf("?key=%s", hdlr.apiKey)
 		}
-		body, err := HTTPQuery(context.Background(), query)
+		body, err := HTTPQuery(ctx, query)
 		if err != nil {
 			return nil, err
 		}
@@ -503,7 +503,7 @@ type BtgChainHandler struct {
 }
 
 // Balance gets the balance of a Bitcoin Gold address
-func (hdlr *BtgChainHandler) Balance(addr, coin string) (float64, error) {
+func (hdlr *BtgChainHandler) Balance(ctx context.Context, addr, coin string) (float64, error) {
 	// only handle one call at a time
 	hdlr.lock.Lock()
 	defer hdlr.lock.Unlock()
@@ -511,7 +511,7 @@ func (hdlr *BtgChainHandler) Balance(addr, coin string) (float64, error) {
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
-	body, err := HTTPQuery(context.Background(), query)
+	body, err := HTTPQuery(ctx, query)
 	if err != nil {
 		return -1, err
 	}
@@ -537,7 +537,7 @@ func (hdlr *BtgChainHandler) GetFunds(ctx context.Context, addrId int64, addr, c
 	// perform query (stage 1)
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://btgexplorer.com/api/address/%s", addr)
-	body, err := HTTPQuery(context.Background(), query)
+	body, err := HTTPQuery(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -655,7 +655,7 @@ type EtcChainHandler struct {
 }
 
 // Balance gets the balance of an Ethereum address
-func (hdlr *EtcChainHandler) Balance(addr, coin string) (float64, error) {
+func (hdlr *EtcChainHandler) Balance(ctx context.Context, addr, coin string) (float64, error) {
 	// only handle one call at a time
 	hdlr.lock.Lock()
 	defer hdlr.lock.Unlock()
@@ -663,7 +663,7 @@ func (hdlr *EtcChainHandler) Balance(addr, coin string) (float64, error) {
 	// perform query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://blockscout.com/etc/mainnet/api?module=account&action=balance&address=%s", addr)
-	body, err := HTTPQuery(context.Background(), query)
+	body, err := HTTPQuery(ctx, query)
 	if err != nil {
 		return -1, err
 	}
@@ -758,13 +758,13 @@ type EtcTxInfo struct {
 // ZEC (ZCash)
 //======================================================================
 
-/// ZecChainHandler handles ZCash-related blockchain operations
+// / ZecChainHandler handles ZCash-related blockchain operations
 type ZecChainHandler struct {
 	BasicChainHandler
 }
 
 // Balance gets the balance of a ZCash address
-func (hdlr *ZecChainHandler) Balance(addr, coin string) (float64, error) {
+func (hdlr *ZecChainHandler) Balance(ctx context.Context, addr, coin string) (float64, error) {
 	// only handle one call at a time
 	hdlr.lock.Lock()
 	defer hdlr.lock.Unlock()
@@ -772,7 +772,7 @@ func (hdlr *ZecChainHandler) Balance(addr, coin string) (float64, error) {
 	// assemble query
 	hdlr.ratelimiter.Pass()
 	query := fmt.Sprintf("https://api.zcha.in/v2/mainnet/accounts/%s", addr)
-	body, err := HTTPQuery(context.Background(), query)
+	body, err := HTTPQuery(ctx, query)
 	if err != nil {
 		return -1, err
 	}

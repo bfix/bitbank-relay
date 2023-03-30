@@ -108,9 +108,9 @@ func (hdlr *Handler) GetAddress(idx int) (string, error) {
 }
 
 // GetBalance returns the balance for a given address
-func (hdlr *Handler) GetBalance(addr string) (float64, error) {
+func (hdlr *Handler) GetBalance(ctx context.Context, addr string) (float64, error) {
 	// call balance function
-	return hdlr.chain.Balance(addr, hdlr.symb)
+	return hdlr.chain.Balance(ctx, addr, hdlr.symb)
 }
 
 // GetTxList returns a list of transaction for an address

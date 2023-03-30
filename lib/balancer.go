@@ -82,7 +82,7 @@ func StartBalancer(ctx context.Context, mdl *Model) chan int64 {
 						return
 					}
 					// perform balance check
-					newBalance, err := hdlr.GetBalance(addr)
+					newBalance, err := hdlr.GetBalance(ctx, addr)
 					if err != nil {
 						logger.Printf(logger.ERROR, "Balancer[%d] sync failed: %s", pid, err.Error())
 						return
