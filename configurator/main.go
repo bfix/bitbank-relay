@@ -115,21 +115,27 @@ func main() {
 		// Ask for passphrase
 		// N.B.: This is not a BIP39 password added to the list of seed words,
 		// but a passphrase used to generate the seed words for a BIP39 wallet.
-		fmt.Printf(">>> Passphrase: ")
+		fmt.Printf(">>> Passphrase (Entropy): ")
 		rdr := bufio.NewReader(os.Stdin)
-		in, _, err := rdr.ReadLine()
+		pp1, _, err := rdr.ReadLine()
 		if err != nil {
 			fmt.Println("<<< ERROR: " + err.Error())
 			return
 		}
 		// compute entropy, seed words and seed value
-		ent := sha256.Sum256(in)
+		ent := sha256.Sum256(pp1)
 		words, err := wallet.EntropyToWords(ent[:])
 		if err != nil {
 			fmt.Println("<<< ERROR: " + err.Error())
 			return
 		}
-		seed, _ := wallet.WordsToSeed(words, "")
+		fmt.Printf(">>>    Password (BIP 39): ")
+		pp2, _, err := rdr.ReadLine()
+		if err != nil {
+			fmt.Println("<<< ERROR: " + err.Error())
+			return
+		}
+		seed, _ := wallet.WordsToSeed(words, string(pp2))
 
 		// output computed information
 		fmt.Printf("<<<    Entropy: %s\n", hex.EncodeToString(ent[:]))
