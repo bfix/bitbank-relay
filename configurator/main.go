@@ -149,7 +149,11 @@ func main() {
 		fmt.Println("<<<------------------------------------------------")
 
 		// create a HD wallet for the given seed
-		hd := wallet.NewHD(seed)
+		var hd *wallet.HD
+		if hd, err = wallet.NewHD(seed); err != nil {
+			fmt.Println("<<< ERROR: " + err.Error())
+			return
+		}
 		pk := hd.MasterPublic()
 		fmt.Printf("<<< Master Pub: %s\n", pk)
 		sk := hd.MasterPrivate()
