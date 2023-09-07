@@ -23,11 +23,10 @@ package lib
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
-	"strings"
 
 	"github.com/bfix/gospel/bitcoin/wallet"
+	"github.com/bfix/gospel/logger"
 )
 
 //----------------------------------------------------------------------
@@ -41,39 +40,26 @@ type CoinConfig struct {
 	Addr       string  `json:"addr"`       // address for base derivation path
 	Limit      float64 `json:"limit"`      // limit for receiving addresses
 	Explorer   string  `json:"explorer"`   // address explorer URL
-	Blockchain string  `json:"blockchain"` // blockchain handler rerefence
+	Blockchain string  `json:"blockchain"` // blockchain handler reference
 }
 
 // GetMode returns the numeric value of mode (P2PKH, P2SH, ...)
 func (c *CoinConfig) GetMode() int {
-	switch strings.ToUpper(c.Mode) {
-	case "P2PKH":
-		return wallet.AddrP2PKH
-	case "P2SH":
-		return wallet.AddrP2SH
-	case "P2WPKH":
-		return wallet.AddrP2WPKH
-	case "P2WSH":
-		return wallet.AddrP2WSH
-	case "P2WPKHinP2SH":
-		return wallet.AddrP2WPKHinP2SH
-	case "P2WSHinP2SH":
-		return wallet.AddrP2WSHinP2SH
-	}
-	return -1
+	return wallet.GetAddrMode(c.Mode)
 }
 
 // GetXDVersion returns the extended data version for coin
 func (c *CoinConfig) GetXDVersion() uint32 {
 	m := c.GetMode()
 	if m < 0 {
-		return wallet.XpubVersion
+		logger.Printf(logger.INFO, "CoinConfig: mode defaults to 'P2PKH'")
+		m = wallet.AddrP2PKH
 	}
 	coin, _ := wallet.GetCoinInfo(c.Symb)
 	if coin < 0 {
 		return 0
 	}
-	return wallet.GetXDVersion(coin, m, wallet.AddrMain, true)
+	return wallet.GetXDVersion(coin, m, wallet.NetwMain, true)
 }
 
 //----------------------------------------------------------------------
@@ -149,7 +135,7 @@ func ReadConfigFile(fname string) (*Config, error) {
 
 // ReadConfig to parse configurations from a reader
 func ReadConfig(rdr io.Reader) (*Config, error) {
-	data, err := ioutil.ReadAll(rdr)
+	data, err := io.ReadAll(rdr)
 	if err != nil {
 		return nil, err
 	}

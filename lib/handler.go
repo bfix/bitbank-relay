@@ -104,7 +104,7 @@ func (hdlr *Handler) GetAddress(idx int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return wallet.MakeAddress(pk, hdlr.coin, hdlr.mode, hdlr.netw), nil
+	return wallet.MakeAddress(pk, hdlr.coin, hdlr.mode, hdlr.netw)
 }
 
 // GetBalance returns the balance for a given address
@@ -149,7 +149,7 @@ func InitHandlers(cfg *Config, mdl *Model) (coins []string, err error) {
 		coins = append(coins, coin.Symb)
 		// get coin handler
 		var hdlr *Handler
-		if hdlr, err = NewHandler(coin, wallet.AddrMain); err != nil {
+		if hdlr, err = NewHandler(coin, wallet.NetwMain); err != nil {
 			return
 		}
 		// verify handler
@@ -174,11 +174,11 @@ func InitHandlers(cfg *Config, mdl *Model) (coins []string, err error) {
 func GetNetwork(netw string) int {
 	switch strings.ToLower(netw) {
 	case "main":
-		return wallet.AddrMain
+		return wallet.NetwMain
 	case "test":
-		return wallet.AddrTest
+		return wallet.NetwTest
 	case "reg":
-		return wallet.AddrReg
+		return wallet.NetwReg
 	}
 	return -1
 }
