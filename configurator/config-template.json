@@ -72,7 +72,7 @@
 		{
 			"symb": "btc",
 			"path": "m/49'/0'/0'",
-			"mode": "P2SH",
+			"mode": "P2WPKHinP2SH",
 			"pk": "",
 			"addr": "",
 			"explorer": "https://www.blockchain.com/btc/address/%s",
@@ -92,7 +92,7 @@
 		{
 			"symb": "btg",
 			"path": "m/49'/156'/0'",
-			"mode": "P2SH",
+			"mode": "P2WPKHinP2SH",
 			"pk": "",
 			"addr": "",
 			"explorer": "https://explorer.bitcoingold.org/insight/address/%s",
@@ -112,7 +112,7 @@
 		{
 			"symb": "dgb",
 			"path": "m/49'/20'/0'",
-			"mode": "P2SH",
+			"mode": "P2WPKHinP2SH",
 			"pk": "",
 			"addr": "",
 			"explorer": "https://chainz.cryptoid.info/dgb/address.dws?%s.htm",
@@ -131,8 +131,8 @@
 		},
 		{
 			"symb": "ltc",
-			"path": "m/49'/2'/0'",
-			"mode": "P2SH",
+			"path": "m/44'/2'/0'",
+			"mode": "P2PKH",
 			"pk": "",
 			"addr": "",
 			"explorer": "https://chainz.cryptoid.info/ltc/address.dws?%s.htm",
@@ -152,7 +152,7 @@
 		{
 			"symb": "vtc",
 			"path": "m/49'/28'/0'",
-			"mode": "P2SH",
+			"mode": "P2WPKHinP2SH",
 			"pk": "",
 			"addr": "",
 			"explorer": "https://chainz.cryptoid.info/vtc/address.dws?%s.htm",
@@ -176,7 +176,7 @@
 			"pk": "",
 			"addr": "",
 			"explorer": "https://www.blockchain.com/eth/address/%s",
-			"accountLimit": 10000,
+			"accountLimit": 0,
 			"blockchain": "blockchair.com"
 		},
 		{
@@ -186,7 +186,7 @@
 			"pk": "",
 			"addr": "",
 			"explorer": "https://etcblockexplorer.com/address/%s",
-			"accountLimit": 10000,
+			"accountLimit": 0,
 			"blockchain": "blockscout.com"
 		}
 	]
