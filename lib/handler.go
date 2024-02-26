@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/bfix/gospel/bitcoin"
+	"github.com/bfix/gospel/bitcoin/script"
 	"github.com/bfix/gospel/bitcoin/wallet"
 )
 
@@ -104,7 +105,18 @@ func (hdlr *Handler) GetAddress(idx int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return wallet.MakeAddress(pk, hdlr.coin, hdlr.mode, hdlr.netw)
+
+	switch hdlr.mode {
+	case wallet.AddrP2PKH, wallet.AddrP2WPKH, wallet.AddrP2WPKHinP2SH, -1:
+		return wallet.MakeAddress(pk, hdlr.coin, hdlr.mode, hdlr.netw)
+	case wallet.AddrP2SH:
+		scr := script.NewScript()
+		scr.Add(script.NewStatement(0))
+		scr.Add(script.NewDataStatement(pk.Bytes()))
+		return wallet.MakeAddressScript(scr, hdlr.coin, hdlr.mode, hdlr.netw)
+	default:
+		return "", wallet.ErrMkAddrVersion
+	}
 }
 
 // GetBalance returns the balance for a given address
