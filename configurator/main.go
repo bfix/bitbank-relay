@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------
 // This file is part of 'bitbank-relay'.
-// Copyright (C) 2021 Bernd Fix  >Y<
+// Copyright (C) 2021-2024, Bernd Fix  >Y<
 //
 // 'bitbank-relay' is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -45,7 +45,7 @@ var Version string = "v0.0.0"
 func main() {
 	fmt.Println("======================================")
 	fmt.Println("bitbank-relay-configurator " + Version)
-	fmt.Println("(c) 2021-2022, Bernd Fix           >Y<")
+	fmt.Println("(c) 2021-2024, Bernd Fix           >Y<")
 	fmt.Println("======================================")
 
 	// parse and process command-line options
@@ -143,7 +143,7 @@ func main() {
 		fmt.Println("<<<------------------------------------------------")
 		fmt.Println("<<< Seed words:")
 		n := len(words) / 2
-		for i := 0; i < n; i++ {
+		for i := range n {
 			fmt.Printf("<<<    %2d: %-20s %2d: %-20s\n", i+1, words[i], i+n+1, words[i+n])
 		}
 		fmt.Println("<<<------------------------------------------------")
@@ -181,7 +181,7 @@ func main() {
 			}
 
 			// compute addresses; save first for check
-			for idx := 0; idx < 10; idx++ {
+			for idx := range 10 {
 				addr, err := hdlr.GetAddress(idx)
 				if err != nil {
 					fmt.Println("<<< ERROR: " + err.Error())

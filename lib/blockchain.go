@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------
 // This file is part of 'bitbank-relay'.
-// Copyright (C) 2021 Bernd Fix >Y<
+// Copyright (C) 2021-2024, Bernd Fix >Y<
 //
 // 'bitbank-relay' is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -24,7 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"sync"
@@ -925,5 +925,5 @@ func HTTPQuery(ctx context.Context, query string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	// read and parse response
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }

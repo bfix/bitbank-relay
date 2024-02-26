@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------
 // This file is part of 'bitbank-relay'.
-// Copyright (C) 2021 Bernd Fix >Y<
+// Copyright (C) 2021-2024, Bernd Fix >Y<
 //
 // 'bitbank-relay' is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published

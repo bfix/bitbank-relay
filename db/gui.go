@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------
 // This file is part of 'bitbank-relay'.
-// Copyright (C) 2021 Bernd Fix  >Y<
+// Copyright (C) 2021-2024, Bernd Fix  >Y<
 //
 // 'bitbank-relay' is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -27,7 +27,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -509,7 +508,7 @@ func logoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 	// get logo data
-	body, err := ioutil.ReadAll(file)
+	body, err := io.ReadAll(file)
 	if err != nil {
 		logger.Printf(logger.ERROR, "ParseForm() err: %v", err)
 		return

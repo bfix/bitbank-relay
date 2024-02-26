@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------
 // This file is part of 'bitbank-relay'.
-// Copyright (C) 2021 Bernd Fix >Y<
+// Copyright (C) 2021-2024, Bernd Fix >Y<
 //
 // 'bitbank-relay' is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -24,7 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -151,7 +151,7 @@ func (hdlr *CoinapiMarketHandler) CurrentRates(
 	if err != nil {
 		return nil, err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,7 @@ func (hdlr *CoinapiMarketHandler) HistoricalRate(
 	if err != nil {
 		return -1, err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
 	}
