@@ -59,10 +59,11 @@ package lib
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"math/rand"
+	mrand "math/rand"
 	"sort"
 	"time"
 
@@ -478,7 +479,7 @@ func (mdl *Model) NextUpdate(ID int64, reset bool) error {
 	}
 	// set next wait time; wait time is randomized
 	f := mdl.cfg.BalanceWait[1]
-	r := rand.NormFloat64()*(0.25*f) + f
+	r := mrand.NormFloat64()*(0.25*f) + f
 	if r < 1.0 {
 		r = 1.0
 	}
@@ -894,7 +895,7 @@ func (mdl *Model) GetAccountID(label string) (accnt int64, err error) {
 		return 0, ErrModelNotAvailable
 	}
 	// query ID
-	row := mdl.inst.QueryRow("select id from accnt where label=?", label)
+	row := mdl.inst.QueryRow("select id from account where label=?", label)
 	err = row.Scan(&accnt)
 	return
 }
