@@ -4,7 +4,7 @@ ifeq ($(VERSION),)
     VERSION = 0.0.0
 endif
 
-all: bitbank-relay-configurator bitbank-relay-db bitbank-relay-web
+all: bitbank-relay-configurator bitbank-relay-db bitbank-relay-web bitbank-relay-play
 
 lib := $(wildcard lib/*.go)
 
@@ -18,4 +18,8 @@ bitbank-relay-db: $(wildcard db/*.go) db/gui.htpl $(lib)
 
 bitbank-relay-web: $(wildcard web/*.go) $(lib)
 	go build -o $@ -ldflags "-X main.Version=$(VERSION)" relay/web
+	strip --strip-all $@
+
+bitbank-relay-play: $(wildcard play/*.go) play/gui.htpl $(lib)
+	go build -o $@ -ldflags "-X main.Version=$(VERSION)" relay/play
 	strip --strip-all $@
