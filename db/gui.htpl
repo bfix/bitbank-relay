@@ -172,6 +172,7 @@
             <a href="{{$prefix}}/new/?m=accnt"><input type="button" value="Add new account..."/></a>
         </div>
     </div>
+    {{if .Accounts}}
     <div class="row">
         {{range .Accounts}}
         <div class="cell box">
@@ -184,8 +185,12 @@
         </div>
         {{end}}
     </div>
+    {{else}}
+        <h3>No accounts defined yet.</h3>
+    {{end}}
 
     <div class="heading">Addresses</div>
+    {{if .Addresses}}
     <table width="100%">
         <tr class="header">
             <td>Address</td>
@@ -220,6 +225,9 @@
         </tr>
         {{end}}
     </table>
+    {{else}}
+        <h3>No addresses assigned yet.</h3>
+    {{end}}
 </div>
 {{end}}
 
