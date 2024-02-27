@@ -169,7 +169,7 @@ func (mdl *Model) getItems(query string, args ...interface{}) (list []*Item, err
 		// assemble item
 		item := new(Item)
 		item.ID = values[0].(int64)
-		item.Name = string(values[1].([]uint8))
+		item.Name = string(values[1].(string))
 		item.Status = (values[2].(int64) != 0)
 		item.Dict = make(map[string]interface{})
 		for i := range values[3:] {
@@ -248,7 +248,11 @@ func (mdl *Model) GetCoinInfo(coinID int64) (*CoinInfo, error) {
 	row := mdl.inst.QueryRow("select symbol,label,logo,rate from coin where id=?", coinID)
 	e := new(CoinInfo)
 	e.ID = coinID
-	err := row.Scan(&e.Symbol, &e.Label, &e.Logo, &e.Rate)
+	var logo sql.NullString
+	err := row.Scan(&e.Symbol, &e.Label, &logo, &e.Rate)
+	if logo.Valid {
+		e.Logo = logo.String
+	}
 	return e, err
 }
 
@@ -262,7 +266,11 @@ func (mdl *Model) GetCoin(symb string) (ci *CoinInfo, err error) {
 	row := mdl.inst.QueryRow("select id,label,logo,rate from coin where symbol=?", symb)
 	ci = new(CoinInfo)
 	ci.Symbol = symb
-	err = row.Scan(&ci.ID, &ci.Label, &ci.Logo, &ci.Rate)
+	var logo sql.NullString
+	err = row.Scan(&ci.ID, &ci.Label, &logo, &ci.Rate)
+	if logo.Valid {
+		ci.Logo = logo.String
+	}
 	return
 }
 
@@ -294,12 +302,11 @@ func (mdl *Model) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err error)
 			c.label as label,
 			c.logo as logo,
 			c.rate as rate,
-			sum(a.balance) as total,
-			sum(a.refCnt) as refs
-		from
-			coin c, addr a
-		where
-			c.id = a.coin and a.stat < 2`
+			coalesce(sum(a.balance),0) as total,
+			coalesce(sum(a.refCnt),0) as refs
+		from coin c
+		left join addr a
+		on c.id = a.coin and a.stat < 2`
 	if coin != 0 {
 		query += fmt.Sprintf(" and c.id=%d", coin)
 	}
