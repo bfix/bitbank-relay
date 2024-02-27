@@ -40,7 +40,7 @@ func main() {
 	// welcome
 	defer logger.Flush()
 	logger.Println(logger.INFO, "===============================")
-	logger.Println(logger.INFO, "bitbank-relay-db         "+Version)
+	logger.Println(logger.INFO, "bitbank-relay-db "+Version)
 	logger.Println(logger.INFO, "(c) 2021-2024, Bernd Fix    >Y<")
 	logger.Println(logger.INFO, "===============================")
 
