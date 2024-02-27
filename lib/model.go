@@ -308,7 +308,7 @@ func (mdl *Model) GetAccumulatedCoin(coin int64) (aci []*AccCoinInfo, err error)
 		left join addr a
 		on c.id = a.coin and a.stat < 2`
 	if coin != 0 {
-		query += fmt.Sprintf(" and c.id=%d", coin)
+		query += fmt.Sprintf(" where c.id=%d", coin)
 	}
 	query += " group by c.id"
 
