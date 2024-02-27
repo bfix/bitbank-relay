@@ -3,7 +3,7 @@
 
 # Bitbank - Relay
 
-(c) 2021-2022 Bernd Fix <brf@hoi-polloi.org>   >Y<
+(c) 2021-2024 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
 bitbank-relay is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published
@@ -20,11 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 SPDX-License-Identifier: AGPL3.0-or-later
 
-# WARNING
+## WARNING
 
 This software is not yet ready for productive use.
 
-# Introduction
+## Introduction
 
 The `bitbank-relay` software enables individuals and small organizations to accept
 cryptocurrencies (Bitcoin, Ethereum and ten other Altcoins) on their webpage.
@@ -32,7 +32,7 @@ cryptocurrencies (Bitcoin, Ethereum and ten other Altcoins) on their webpage.
 To manage the received coins it is highly recommended to use a multi-coin
 HD wallet with optional [Trezor support](https://trezor.io).
 
-# Build
+## Build
 
 If you want to build the software yourself, you need `Go v1.16+` that can be
 [downloaded here](https://golang.org/dl/). Make sure you setup Go-related
@@ -48,7 +48,7 @@ go mod tidy
 To build the three components (configurator, db and web), you can either use
 the GNU Makefile (recommended) or build it manually.
 
-## GNU Makefile
+### GNU Makefile
 
 Using the GNU Makefile will incorporate the latest Git tag (version) into the
 binaries and is the recommended way of building the executables:
@@ -57,7 +57,7 @@ binaries and is the recommended way of building the executables:
 make
 ```
 
-## Manual build
+### Manual build
 
 No version information ("v0.0.0") is inserted into the binaries during manual
 build:
@@ -72,7 +72,7 @@ go build
 cd ..
 ```
 
-# Configuration
+## Configuration
 
 You need to configure/setup the `bitbank-relay` package in parallel with the
 multi-coin HD wallet / Trezor device you want to use to manage incoming crypto
@@ -81,7 +81,7 @@ funds. You can either do this automatically, semi-automatically or manually.
 The steps are described in a separate
 [README](https://github.com/bfix/bitbank-relay/tree/master/configurator).
 
-# Deployment
+## Deployment
 
 The deployment for `bitbank-relay` includes:
 
@@ -93,17 +93,18 @@ The deployment for `bitbank-relay` includes:
 A detailed description can be found in a separate
 [README](https://github.com/bfix/bitbank-relay/tree/master/deployment).
 
-# Maintenance
+## Maintenance
 
 The maintenance can either be done by directly interacting with the relay
 database via SQL commands or by using a GUI. The steps are described in detail
 in a separate [README](https://github.com/bfix/bitbank-relay/tree/master/db).
 
-# Testing
+## Testing
 
-To run the unit tests in `lib/`:
+To run the unit tests in the repo folder:
 
 ```bash
-cd lib/
-go test -v
+go test -v ./...
 ```
+
+Currently no unit tests are defined.

@@ -1,6 +1,6 @@
 # Bitbank - Relay
 
-(c) 2021-2022 Bernd Fix <brf@hoi-polloi.org>   >Y<
+(c) 2021-2024 Bernd Fix <brf@hoi-polloi.org>   >Y<
 
 bitbank-relay is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published
@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 SPDX-License-Identifier: AGPL3.0-or-later
 
-# Deployment
+## Deployment
 
 The deployment for `bitbank-relay` includes:
 
@@ -33,7 +33,7 @@ Steps 4 and 5 are described in detail below; as an amendment some words
 about running and maintaining the bitbank-relay can be found in the
 "Operation" section.
 
-## (Step 4) Relay database
+### (Step 4) Relay database
 
 The `config.json` specifies which database engine to use and how to access it.
 
@@ -60,14 +60,14 @@ Either database is initialized with a SQL script found in the `db/` folder:
 * `db_create.mysql.sql` for MySQL database engine (adjust to your local env)
 * `db_create.sqlite3.sql` for SQLite3 database file (add to deployment)
 
-### Fill database with custom data
+#### Fill database with custom data
 
 You need to customize the database with information about the accepted coins
 and the accounts you want to support. Each account has one or more
 crypto-currencies assigned to it; these are the coins that will be accepted
 for an account.
 
-#### Define the cryptocurrencies
+##### Define the cryptocurrencies
 
 **TL;DR**: To define the standard set of cryptocurrencies for bitbank-relay,
 run the `db_init.sql` script found in the `db/` folder and you are done.
@@ -109,7 +109,7 @@ add individual logo files by running:
 ./bitbank-relay-db -c config.json logo import -f images/coin.svg
 ```
 
-#### Define accounts and accepted cryptocurrencies
+##### Define accounts and accepted cryptocurrencies
 
 **TL;DR**: This step is optional as you can define accounts and coin
 acceptance in the GUI later.
@@ -128,7 +128,7 @@ insert into accept(coin,accnt) values
 
 The database is now set-up for productive use.
 
-## (Step 5) Integration into a website for use
+### (Step 5) Integration into a website for use
 
 This is the tricky part... Usually you have to integrate the new relay
 functionality into an existing site, so your choices on how to do that
@@ -145,7 +145,7 @@ The following **example** will use PHP to generate the webpages dynamically.
 This is required as the relay might assign new coin addresses to projects on
 certain conditions (see section "Operation").
 
-### (1) show list of cryptocurrencies
+#### (1) show list of cryptocurrencies
 
 The example uses a variable `{{label}}` that must match the value of the
 `label` field in the database record for the current account.
@@ -181,7 +181,7 @@ The example uses a variable `{{label}}` that must match the value of the
 </div>
 ```
 
-### (2) show checkout page
+#### (2) show checkout page
 
 As said before this usually is a new webpage dedicated to show the receiving
 coin address for a checkout. A minimal working example using PHP could look
@@ -228,9 +228,9 @@ like this:
 </html>
 ```
 
-# Operation
+## Operation
 
-## Technical details
+### Technical details
 
 The two executables in the deployment set (`bitbank-relay-web` and
 `bitbank-relay-db`) are each providing their own services. They share the
@@ -240,7 +240,7 @@ You need to write startup/shutdown scripts for the services and the integration
 of these scripts into your operating system yourself; the following description
 only covers how to start the services from the command-line directly.
 
-### bitbank-relay-web
+#### bitbank-relay-web
 
 This service provides a JSON-API for serving cryptocurrency addresses for
 accounts on a website. It is started by the following command:
@@ -249,7 +249,7 @@ accounts on a website. It is started by the following command:
 bitbank-relay-web -c config.json &
 ```
 
-### bitbank-relay-db
+#### bitbank-relay-db
 
 This service provides a browser-based GUI for auditing and managing `bb_relay`.
 It is started with the following command:
@@ -266,9 +266,9 @@ modern browser.
 If you run the pages behind a reverse proxy (e.g. nginx) on a path, don't
 forget to use the `-p <prefix>` option!
 
-## Crptocurrency details
+### Crptocurrency details
 
-### Managing addresses
+#### Managing addresses
 
 Addresses only need to be managed manually if funds from an address are
 about to transfered out (e.g. for cashing in).
