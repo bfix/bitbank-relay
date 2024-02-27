@@ -80,7 +80,7 @@ create table addr (
 -- transaction
 create table tx (
     id        integer     auto_increment primary key,            -- record id
-    txid      varchar(32) unique key,                            -- 256-bit transaction identifier
+    txid      varchar(64) unique key,                            -- 256-bit transaction identifier
     addr      integer     references addr(id) on delete cascade, -- reference to address used in transaction
     stat      integer     default 0,                             -- status:
                                                                  --  0 = pending
