@@ -169,7 +169,12 @@ func (mdl *Model) getItems(query string, args ...interface{}) (list []*Item, err
 		// assemble item
 		item := new(Item)
 		item.ID = values[0].(int64)
-		item.Name = string(values[1].(string))
+		switch x := values[1].(type) {
+		case []uint8:
+			item.Name = string(x)
+		case string:
+			item.Name = x
+		}
 		item.Status = (values[2].(int64) != 0)
 		item.Dict = make(map[string]interface{})
 		for i := range values[3:] {
