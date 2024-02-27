@@ -128,6 +128,13 @@ insert into accept(coin,accnt) values
 
 The database is now set-up for productive use.
 
+#### Test the Bitbank relay web service
+
+To test the relay service, start the `bitbank-relay-web` service and let it
+run in the background. The start the `bitbank-relay-play` service which
+emulates a website using the relay and browse to `localhost:8082`. Use the
+GUI to get payment addresses for different account/coin combinations.
+
 ### (Step 5) Integration into a website for use
 
 This is the tricky part... Usually you have to integrate the new relay
@@ -257,6 +264,7 @@ It is started with the following command:
 ```bash
 bitbank-relay-db -c config.json gui -l 0.0.0.0:8080 &
 ```
+
 The service will listen on port `8080` and will accept any source IP
 (`0.0.0.0`) for connections.
 
