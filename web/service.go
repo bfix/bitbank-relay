@@ -48,6 +48,7 @@ func runService(cfg *lib.ServiceConfig) func(ctx context.Context) error {
 	mux.HandleFunc("/status/", statusHandler)
 
 	// assemble HTTP server
+	logger.Printf(logger.INFO, "Service listening at %s", cfg.Listen)
 	srv := &http.Server{
 		Handler:      mux,
 		Addr:         cfg.Listen,
