@@ -1,0 +1,108 @@
+{{define "main"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 2em 10em 2em 10em;
+            }
+            table.rowed {
+                border-collapse: collapse;
+            }
+            table.rowed > tbody > tr {
+                border: solid;
+                border-width: 1px 0;
+                border-color: #ccc;
+            }
+            tr.row:nth-child(even) {
+                background: #eef;
+            }
+            tr.row:nth-child(odd) {
+                background: #ccf;
+            }
+            tr.header {
+                background: #33f;
+                color: white;
+                font-weight: bold;
+            }
+            td {
+                padding: 0.5em;
+            }
+        </style> 
+    </head>
+    <body>
+        <h1>Bitbank Relay Playground</h1>
+        <hr/>
+        {{.}}
+    </body>
+</html>
+{{end}}
+
+{{define "root"}}
+<div>
+    <h2>Select account to receive funds:</h2>
+    {{if .Accounts}}
+        <table class="rowed">
+            <tbody>
+            {{range .Accounts}}
+                <tr class="row">
+                    <td>
+                        <a href="/account/?l={{.Label}}">{{.Name}}</a>
+                    </td>
+                </tr>
+            {{end}}
+            </tbody>
+        </table>
+    {{else}}
+        <h3>No accounts defined yet.</h3>
+    {{end}}
+</div>
+{{end}}
+
+{{define "account"}}
+    <h2>Receiving account "{{.Accnt.Name}}"</h2>
+    {{$accnt := .Accnt.Label}}
+    <h3>Select cryptocurrency:</h3>
+    {{if .Coins}}
+        <table class="rowed">
+            <tbody>
+            {{range .Coins}}
+                <tr class="row">
+                    <td>
+                        <img src="data:image/svg+xml;base64,{{.Logo}}" height=32/>
+                    </td>
+                    <td>
+                        <a href="/checkout/?a={{$accnt}}&c={{.Symbol}}">{{.Label}}</a>
+                    </td>
+                </tr>
+            {{end}}
+            </tbody>
+        </table>
+    {{else}}
+        <h3>No cryptocurrencies available for account.</h3>
+    {{end}}
+{{end}}
+
+{{define "checkout"}}
+    {{if .Tx.Error}}
+        <h2>{{.Tx.Error}}<h2>
+    {{else}}
+    <h2>Receiving account "{{.Accnt.Name}}"</h2>
+    <div>
+        <div>
+            <img src="{{.Tx.Qr}}" width="256"/>
+        </div>
+        <div>
+            <p>Send your coins to the following address:</p>
+            <div>
+                <img src="data:image/svg+xml;base64,{{.Tx.Coin.Logo}}" height="32px"/>
+                &nbsp;<span style="font-size: 200%; text-weight: bold;">{{.Tx.Tx.Addr}}</span>
+            </div>
+        </div>
+    </div>
+    {{end}}
+{{end}}
