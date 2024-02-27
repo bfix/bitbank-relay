@@ -67,6 +67,14 @@ and the accounts you want to support. Each account has one or more
 crypto-currencies assigned to it; these are the coins that will be accepted
 for an account.
 
+#### Define the cryptocurrencies
+
+**TL;DR**: To define the standard set of cryptocurrencies for bitbank-relay,
+run the `db_init.sql` script found in the `db/` folder and you are done.
+
+If you want to manually add cryptocurrencies, execute the following SQL
+command on your database:
+
 ```sql
 -- create list of supported coins
 insert into coin(symbol,label) values
@@ -82,14 +90,6 @@ insert into coin(symbol,label) values
     ('zec',  'ZCash'),
     ('bch',  'Bitcoin Cash'),
     ('btg',  'Bitcoin Gold');
-
--- create list of accounts that accept coins
-insert into account(label,name) values
-    ('01', 'Campaign for ...'), ('02', 'Project ...');
-
--- create a map of coins for each account
-insert into accept(coin,accnt) values
-    (1, 1), (11, 1), (3, 2), ...;
 ```
 
 To add the coin logos to the database, change into the `db/` folder and run:
@@ -107,6 +107,23 @@ add individual logo files by running:
 
 ```bash
 ./bitbank-relay-db -c config.json logo import -f images/coin.svg
+```
+
+#### Define accounts and accepted cryptocurrencies
+
+**TL;DR**: This step is optional as you can define accounts and coin
+acceptance in the GUI later.
+
+To manually add accounts and acceptances, run the following SQL commands:
+
+```sql
+-- create list of accounts that accept coins
+insert into account(label,name) values
+    ('01', 'Campaign for ...'), ('02', 'Project ...');
+
+-- create a map of coins for each account
+insert into accept(coin,accnt) values
+    (1, 1), (11, 1), (3, 2), ...;
 ```
 
 The database is now set-up for productive use.
