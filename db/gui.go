@@ -29,10 +29,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"regexp"
 	"relay/lib"
 	"strconv"
 	"strings"
+	"syscall"
 	"text/template"
 	"time"
 
@@ -107,9 +110,46 @@ func gui(args []string) {
 		Handler:           mux,
 	}
 	// run HTTP server
-	logger.Printf(logger.INFO, "Starting HTTP server at %s...", listen)
-	if err := srv.ListenAndServe(); err != nil {
-		logger.Println(logger.ERROR, "GUI listener: "+err.Error())
+	go func() {
+		logger.Printf(logger.INFO, "Starting HTTP server at %s...", listen)
+		if err := srv.ListenAndServe(); err != nil {
+			logger.Println(logger.ERROR, "GUI listener: "+err.Error())
+		}
+	}()
+
+	// handle OS signals
+	sigCh := make(chan os.Signal, 5)
+	signal.Notify(sigCh)
+
+	// heart beat
+	tick := time.NewTicker(time.Duration(cfg.Service.Epoch) * time.Second)
+	epoch := 0
+loop:
+	for {
+		select {
+		// handle OS signals
+		case sig := <-sigCh:
+			switch sig {
+			case syscall.SIGKILL, syscall.SIGINT, syscall.SIGTERM:
+				logger.Printf(logger.INFO, "Terminating service (on signal '%s')\n", sig)
+				break loop
+			case syscall.SIGHUP:
+				logger.Println(logger.INFO, "SIGHUP")
+			case syscall.SIGURG:
+				// TODO: https://github.com/golang/go/issues/37942
+			default:
+				logger.Println(logger.INFO, "Unhandled signal: "+sig.String())
+			}
+		// handle heart beat
+		case now := <-tick.C:
+			epoch++
+			logger.Printf(logger.INFO, "Epoch #%d at %s", epoch, now.String())
+
+			// check for log rotation
+			if epoch%cfg.Service.LogRotate == 0 {
+				logger.Rotate()
+			}
+		}
 	}
 }
 
