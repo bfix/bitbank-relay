@@ -171,7 +171,7 @@ func (hdlr *CoinapiMarketHandler) CurrentRates(
 	return list, nil
 }
 
-// HostoricalRate returns the exchange rates for a given date and coin.
+// HistoricalRate returns the exchange rates for a given date and coin.
 func (hdlr *CoinapiMarketHandler) HistoricalRate(
 	ctx context.Context,
 	date int64,
